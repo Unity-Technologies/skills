@@ -1,5 +1,27 @@
-# skills
-Public slack channel: [#devs-unity-hub](https://unity.slack.com/messages/C7MKBJ34G/) <br/>
-[View this project in Unity Internal Developer Portal](https://developer.portal.internal.unity.com/catalog/default/component/skills) <br/>
-# Converting to public repository
-Any and all Unity software of any description (including components) (1) whose source is to be made available other than under a Unity source code license or (2) in respect of which a public announcement is to be made concerning its inner workings, may be licensed and released only upon the prior approval of Legal.
+# Unity Skills
+
+A collection of reusable AI agent skills for Unity workflows. Compatible with Claude Code, GitHub Copilot, Cursor, Cline, and [50+ other agents](https://skills.sh).
+
+## Install
+
+```bash
+npx skills add Unity-Technologies/skills
+```
+
+## Available skills
+
+| Skill | Description |
+|---|---|
+| `cli` | Interact with the Unity CLI — install editors, manage projects, run builds, check auth, and more |
+
+## Usage
+
+Once installed, your agent will automatically use the relevant skill when you ask it to perform Unity CLI operations. For example:
+
+> "Install Unity 6000.0.47f1 with the Android module"
+> "List my registered projects"
+> "Run the project in headless mode"
+
+## Contributing
+
+Skills live in the `skills/` directory as Markdown files. Internal contributors: [#devs-unity-hub](https://unity.slack.com/messages/C7MKBJ34G/)
