@@ -58,6 +58,19 @@ These work on every command:
 
 **Always use `--format json` when you need to parse output programmatically.**
 
+## Getting help
+
+If a command fails or you're unsure of the available options, append `-h` or `--help` to any command or subcommand:
+
+```bash
+unity --help
+unity install --help
+unity projects --help
+unity projects create --help
+```
+
+This works at every level of the command hierarchy.
+
 ## Exit codes
 
 | Code | Meaning |
