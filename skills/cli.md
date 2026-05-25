@@ -55,8 +55,29 @@ These work on every command:
 | `--no-banner` | Suppress the branded header — use in scripts |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
+| `--verbose` | Print full error details (stack trace + cause chain) on failure. Also via `UNITY_VERBOSE`. |
 
 **Always use `--format json` when you need to parse output programmatically.**
+
+## Environment variables
+
+All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corresponding env var.
+
+| Variable | Mirrors flag | Description |
+|---|---|---|
+| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`). `HUB_FORMAT` is a deprecated alias. |
+| `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
+| `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
+| `UNITY_PROJECT_PATH` | path argument | Project path for the `open` command. |
+| `UNITY_QUIET` | `--quiet` | Suppress non-essential output. |
+| `UNITY_VERBOSE` | `--verbose` | Show full error details on failure. |
+| `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
+| `UNITY_NO_BANNER` | `--no-banner` | Suppress the branded banner. |
+| `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
+| `UNITY_SERVICE_ACCOUNT_ID` | — | Service account client ID for non-interactive (CI) auth. |
+| `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
+
+**CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow. Equivalent to `unity auth login --client-id <id> --client-secret <secret>`.
 
 ## Getting help
 
@@ -105,6 +126,7 @@ unity auth logout
 
 ```bash
 # List all editors (installed + available releases)
+# Short alias: unity e
 unity editors --format json
 
 # List only installed editors
@@ -126,10 +148,16 @@ unity editors --installed --watch
 
 #### editors add
 
-Register an existing editor installation by path:
+Register one or more existing editor installations by path:
 
 ```bash
 unity editors add /path/to/Unity/Editor
+
+# Register multiple at once
+unity editors add /path/one /path/two
+
+# Skip macOS code-signature check (useful for unsigned or side-loaded builds)
+unity editors add /path/to/Unity/Editor --skip-signature-check
 ```
 
 #### editors default
@@ -166,6 +194,36 @@ Also available as the top-level `unity install-path` (with an additional `--get`
 ```bash
 # Show release details for a specific version
 unity editors info 6000.0.47f1 --format json
+```
+
+#### editors module / editor module
+
+Module management is exposed under **both** `editors module` and the `editor` (singular) command group. Both share the same subcommands:
+
+```bash
+# List modules for an installed editor
+unity editors module list 6000.0.47f1 --format json
+unity editor module list 6000.0.47f1 --architecture arm64 --format json
+
+# Add modules to an installed editor
+unity editors module add 6000.0.47f1 --module android --module ios
+unity editors module add 6000.0.47f1 --all          # Install every available module
+unity editors module add 6000.0.47f1 --module android --child-modules   # Include child modules
+unity editors module add 6000.0.47f1 --module android --accept-eula      # Accept EULAs automatically
+
+# Refresh module list for a manually located editor
+unity editors module refresh 6000.0.47f1
+```
+
+#### editor add (single path, with module-fetch control)
+
+The `editor add` subcommand is similar to `editors add` but targets a single path and supports skipping the module-fetch step:
+
+```bash
+unity editor add /path/to/Unity/Editor
+
+# Skip fetching module metadata (faster, but modules won't be listed until refreshed)
+unity editor add /path/to/Unity/Editor --no-fetch-modules
 ```
 
 ---
@@ -482,6 +540,17 @@ unity cache clean --yes
 
 ---
 
+### Changelog
+
+Show the embedded release notes for the currently installed CLI version:
+
+```bash
+unity changelog
+unity changelog --format json
+```
+
+---
+
 ### Language
 
 ```bash
@@ -557,6 +626,54 @@ unity upgrade --rollback
 
 ---
 
+### Pipeline — Unity Editor automation (experimental)
+
+The `pipeline` command manages the Unity Pipeline package, which enables programmatic control of running Unity Editor instances. Alias: `pipe`.
+
+```bash
+# List all running Unity Editor instances and their Pipeline package status
+unity pipeline list --format json
+
+# Install the Pipeline package into a project (auto-detects project if omitted)
+unity pipeline install
+unity pipeline install --project-path /path/to/MyProject
+
+# Use SSH instead of HTTPS when cloning the package
+unity pipeline install --project-path /path/to/MyProject --ssh
+```
+
+**Requires Unity 6.0 or higher.** The Pipeline package is cloned as an embedded package into `Packages/com.unity.pipeline/`.
+
+---
+
+### Request — send commands to a running Unity Editor (experimental)
+
+The `request` command communicates with a running Unity Editor that has the Pipeline package installed. Alias: `req`.
+
+```bash
+# List all commands available on the connected Unity Editor
+unity request
+unity request --format json
+
+# Execute a specific command
+unity request editor_play
+unity request log_editor "Hello from CLI"
+unity request editor_status --includeMemory true
+
+# Target a specific project or instance
+unity request editor_play --project-path /path/to/MyProject
+unity request editor_play --instance localhost:8765
+
+# Connect to a Unity Player runtime instance
+unity request <command> --runtime "MyGame"
+unity request <command> --runtime-path /path/to/port-file
+
+# Set a timeout (default: 30 seconds)
+unity request editor_play --timeout 60
+```
+
+---
+
 ### Self-uninstall — remove the CLI
 
 ```bash
@@ -572,6 +689,8 @@ unity self-uninstall --purge --yes
 # Dry-run: show what would be removed
 unity self-uninstall --dry-run
 ```
+
+> **`unity implode` is a deprecated alias for `unity self-uninstall`.** It prints a deprecation warning to stderr. Use `unity self-uninstall` instead.
 
 ---
 
