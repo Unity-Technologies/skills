@@ -28,4 +28,4 @@ Found a bug or have a suggestion? Post in the [Unity Discussions forum](https://
 
 ## Contributing
 
-Skills live in the `skills/` directory as Markdown files. Internal contributors: [#devs-unity-hub](https://unity.slack.com/messages/C7MKBJ34G/)
+Skills live in the `skills/` directory as Markdown files. Internal contributors: [#devs-unity-skills](https://unity.slack.com/messages/C7MKBJ34G/)
