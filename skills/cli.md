@@ -1,5 +1,5 @@
 ---
-name: cli
+name: unity-cli
 description: Use when interacting with Unity CLI from the terminal — install or uninstall editors, list or open projects, manage modules, check auth status, read logs, browse Unity releases, or run any other Unity CLI operation.
 allowed-tools:
   - Bash
@@ -51,7 +51,7 @@ These work on every command:
 
 | Flag | Description |
 |---|---|
-| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`. Also via `UNITY_FORMAT` env var. |
+| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`. Also via `UNITY_FORMAT` env var. |
 | `--no-banner` | Suppress the branded header — use in scripts |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
@@ -65,7 +65,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 
 | Variable | Mirrors flag | Description |
 |---|---|---|
-| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`). `HUB_FORMAT` is a deprecated alias. |
+| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`). `HUB_FORMAT` is a deprecated alias. |
 | `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
 | `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
 | `UNITY_PROJECT_PATH` | path argument | Project path for the `open` command. |
@@ -115,6 +115,16 @@ unity auth status --format json
 
 # Login (opens browser for OAuth)
 unity auth login
+
+# Login with service account credentials (CI — skips browser)
+# Preferred: read secret from stdin to avoid shell-history and process-list exposure
+unity auth login --client-id <id> --secret-from-stdin
+
+# Alternative: pass secret directly (visible in shell history and process list)
+unity auth login --client-id <id> --client-secret <secret>
+
+# Login without persisting credentials to the keyring (ephemeral CI)
+unity auth login --client-id <id> --secret-from-stdin --no-store
 
 # Logout
 unity auth logout
@@ -337,25 +347,28 @@ unity 6000.0.47f1 /path/to/MyProject
 
 #### projects create
 
-Create a project at a given path (non-interactive):
+Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template). In CI, pass `--non-interactive` or pipe stdin to suppress prompts and rely on stored defaults. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
-unity projects create /path/to/NewProject --editor-version 6000.0.47f1 --template com.unity.template.3d
+unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.3d
+
+# Place the project in a specific directory
+unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47f1
 ```
 
 #### projects new
 
-Interactive project creation wizard:
+Create a project without any interactive prompts — resolves missing options from stored defaults, never asks the user. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
-# Launch interactive wizard (prompts for path, editor version, template)
-unity projects new
+# All omitted options resolve from stored defaults
+unity projects new MyGame
 
-# Pre-fill options to skip individual prompts
-unity projects new --path /path/to/NewProject --editor-version 6000.0.47f1 --template com.unity.template.3d
+# Override stored defaults with explicit values
+unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.3d
 
 # Open the project immediately after creation
-unity projects new --open
+unity projects new MyGame --open
 ```
 
 #### projects pin / unpin
@@ -380,10 +393,11 @@ On a TTY with no path, prompts interactively.
 
 #### projects upgrade
 
-Upgrade a project to a different Unity editor version:
+Upgrade a project to a different Unity editor version. `--to` is required:
 
 ```bash
-unity projects upgrade /path/to/MyProject --yes
+unity projects upgrade --to 6000.0.47f1
+unity projects upgrade /path/to/MyProject --to 6000.0.47f1 --yes
 ```
 
 #### projects export / import
@@ -430,6 +444,20 @@ unity templates list --editor 6000.0.47f1 --format json
 
 # List only locally installed templates
 unity templates list --editor 6000.0.47f1 --installed --format json
+
+# Filter by type (core, learning, sample, custom, new, all) — case-insensitive
+unity templates list --editor 6000.0.47f1 --type core --format json
+unity templates list --editor 6000.0.47f1 --type learning --format json
+unity templates list --editor 6000.0.47f1 --type sample --format json
+unity templates list --editor 6000.0.47f1 --type new --format json
+unity templates list --editor 6000.0.47f1 --type all --format json  # no-op, returns everything
+
+# List only user-generated (custom) templates
+unity templates list --editor 6000.0.47f1 --custom --format json
+# --type custom is an alias for --custom
+unity templates list --editor 6000.0.47f1 --type custom --format json
+
+# --custom and --type are mutually exclusive — using both is an error (exit 1)
 
 # Show template details
 unity templates info com.unity.template.3d --editor 6000.0.47f1 --format json

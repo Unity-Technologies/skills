@@ -12,7 +12,7 @@ npx skills add Unity-Technologies/skills
 
 | Skill | Description |
 |---|---|
-| `cli` | Interact with the Unity CLI — install editors, manage projects, run builds, check auth, and more |
+| `unity-cli` | Interact with the Unity CLI — install editors, manage projects, run builds, check auth, and more |
 
 ## Usage
 
