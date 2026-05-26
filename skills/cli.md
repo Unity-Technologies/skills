@@ -1,5 +1,5 @@
 ---
-name: cli
+name: unity-cli
 description: Use when interacting with Unity CLI from the terminal — install or uninstall editors, list or open projects, manage modules, check auth status, read logs, browse Unity releases, or run any other Unity CLI operation.
 allowed-tools:
   - Bash
@@ -117,13 +117,14 @@ unity auth status --format json
 unity auth login
 
 # Login with service account credentials (CI — skips browser)
-unity auth login --client-id <id> --client-secret <secret>
-
-# Read the secret from stdin instead of the flag (avoids shell history)
+# Preferred: read secret from stdin to avoid shell-history and process-list exposure
 unity auth login --client-id <id> --secret-from-stdin
 
+# Alternative: pass secret directly (visible in shell history and process list)
+unity auth login --client-id <id> --client-secret <secret>
+
 # Login without persisting credentials to the keyring (ephemeral CI)
-unity auth login --client-id <id> --client-secret <secret> --no-store
+unity auth login --client-id <id> --secret-from-stdin --no-store
 
 # Logout
 unity auth logout
@@ -346,7 +347,7 @@ unity 6000.0.47f1 /path/to/MyProject
 
 #### projects create
 
-Create a project non-interactively. The first positional argument is the project **name**; `--path` sets the parent directory where the project folder will be created:
+Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template). In CI, pass `--non-interactive` or pipe stdin to suppress prompts and rely on stored defaults. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
 unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.3d
@@ -357,13 +358,13 @@ unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47
 
 #### projects new
 
-Interactive project creation wizard. The first positional argument is the project **name**; `--path` sets the parent directory:
+Create a project without any interactive prompts — resolves missing options from stored defaults, never asks the user. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
-# Launch interactive wizard (prompts for editor version, template)
+# All omitted options resolve from stored defaults
 unity projects new MyGame
 
-# Pre-fill options to skip individual prompts
+# Override stored defaults with explicit values
 unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.3d
 
 # Open the project immediately after creation
@@ -443,6 +444,20 @@ unity templates list --editor 6000.0.47f1 --format json
 
 # List only locally installed templates
 unity templates list --editor 6000.0.47f1 --installed --format json
+
+# Filter by type (core, learning, sample, custom, new, all) — case-insensitive
+unity templates list --editor 6000.0.47f1 --type core --format json
+unity templates list --editor 6000.0.47f1 --type learning --format json
+unity templates list --editor 6000.0.47f1 --type sample --format json
+unity templates list --editor 6000.0.47f1 --type new --format json
+unity templates list --editor 6000.0.47f1 --type all --format json  # no-op, returns everything
+
+# List only user-generated (custom) templates
+unity templates list --editor 6000.0.47f1 --custom --format json
+# --type custom is an alias for --custom
+unity templates list --editor 6000.0.47f1 --type custom --format json
+
+# --custom and --type are mutually exclusive — using both is an error (exit 1)
 
 # Show template details
 unity templates info com.unity.template.3d --editor 6000.0.47f1 --format json
