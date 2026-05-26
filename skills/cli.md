@@ -51,7 +51,7 @@ These work on every command:
 
 | Flag | Description |
 |---|---|
-| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`. Also via `UNITY_FORMAT` env var. |
+| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`. Also via `UNITY_FORMAT` env var. |
 | `--no-banner` | Suppress the branded header — use in scripts |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
@@ -65,7 +65,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 
 | Variable | Mirrors flag | Description |
 |---|---|---|
-| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`). `HUB_FORMAT` is a deprecated alias. |
+| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`). `HUB_FORMAT` is a deprecated alias. |
 | `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
 | `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
 | `UNITY_PROJECT_PATH` | path argument | Project path for the `open` command. |
@@ -115,6 +115,15 @@ unity auth status --format json
 
 # Login (opens browser for OAuth)
 unity auth login
+
+# Login with service account credentials (CI — skips browser)
+unity auth login --client-id <id> --client-secret <secret>
+
+# Read the secret from stdin instead of the flag (avoids shell history)
+unity auth login --client-id <id> --secret-from-stdin
+
+# Login without persisting credentials to the keyring (ephemeral CI)
+unity auth login --client-id <id> --client-secret <secret> --no-store
 
 # Logout
 unity auth logout
@@ -337,25 +346,28 @@ unity 6000.0.47f1 /path/to/MyProject
 
 #### projects create
 
-Create a project at a given path (non-interactive):
+Create a project non-interactively. The first positional argument is the project **name**; `--path` sets the parent directory where the project folder will be created:
 
 ```bash
-unity projects create /path/to/NewProject --editor-version 6000.0.47f1 --template com.unity.template.3d
+unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.3d
+
+# Place the project in a specific directory
+unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47f1
 ```
 
 #### projects new
 
-Interactive project creation wizard:
+Interactive project creation wizard. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
-# Launch interactive wizard (prompts for path, editor version, template)
-unity projects new
+# Launch interactive wizard (prompts for editor version, template)
+unity projects new MyGame
 
 # Pre-fill options to skip individual prompts
-unity projects new --path /path/to/NewProject --editor-version 6000.0.47f1 --template com.unity.template.3d
+unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.3d
 
 # Open the project immediately after creation
-unity projects new --open
+unity projects new MyGame --open
 ```
 
 #### projects pin / unpin
@@ -380,10 +392,11 @@ On a TTY with no path, prompts interactively.
 
 #### projects upgrade
 
-Upgrade a project to a different Unity editor version:
+Upgrade a project to a different Unity editor version. `--to` is required:
 
 ```bash
-unity projects upgrade /path/to/MyProject --yes
+unity projects upgrade --to 6000.0.47f1
+unity projects upgrade /path/to/MyProject --to 6000.0.47f1 --yes
 ```
 
 #### projects export / import
