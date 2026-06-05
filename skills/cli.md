@@ -56,6 +56,8 @@ These work on every command:
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
 | `--verbose` | Print full error details (stack trace + cause chain) on failure. Also via `UNITY_VERBOSE`. |
+| `--proxy <url>` | HTTP/HTTPS/SOCKS/PAC proxy URL for this invocation. Also via `UNITY_PROXY`. Takes precedence over standard `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` env vars and the persisted `proxy.json` setting. |
+| `--proxy-disable` | Disable proxy for this invocation, ignoring all sources (env vars, persisted config, system settings). |
 
 **Always use `--format json` when you need to parse output programmatically.**
 
@@ -76,6 +78,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
 | `UNITY_SERVICE_ACCOUNT_ID` | — | Service account client ID for non-interactive (CI) auth. |
 | `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
+| `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
 
 **CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow. Equivalent to `unity auth login --client-id <id> --client-secret <secret>`.
 
@@ -126,9 +129,16 @@ unity auth login --client-id <id> --client-secret <secret>
 # Login without persisting credentials to the keyring (ephemeral CI)
 unity auth login --client-id <id> --secret-from-stdin --no-store
 
-# Logout
+# Logout (clears both service-account and OAuth credential slots)
 unity auth logout
+
+# Skip the confirmation prompt
+unity auth logout --yes
 ```
+
+**Service-account credentials via env vars** (`UNITY_SERVICE_ACCOUNT_ID` + `UNITY_SERVICE_ACCOUNT_SECRET`) mint bearer tokens automatically for the duration of the process — no browser round-trip, no keyring write. If only one of the two is set, the CLI prints a warning on stderr instead of silently falling back to the keyring/OAuth identity.
+
+The interactive `unity auth login` flow now prints the sign-in URL to the terminal **before** attempting to launch the browser, which unblocks remote/headless sessions (SSH, containers, dev VMs) where `xdg-open` / `open` has no graphical session to attach to. With `--format json`, an `auth_url=…` progress frame is emitted so machine consumers can capture the URL without parsing human text.
 
 ---
 
@@ -262,12 +272,18 @@ unity install 6000.0.47f1 --yes --accept-eula
 # Force reinstall even if already present
 unity install 6000.0.47f1 --force
 
-# Resume an interrupted download
+# Resume an interrupted download (also recovers orphaned partials left by a crash or kill)
 unity install 6000.0.47f1 --resume
 
 # Dry-run: show what would be installed without doing it
 unity install 6000.0.47f1 --dry-run --format json
+
+# Space-separated module values after a single -m are equivalent to repeating -m
+unity install 6000.0.47f1 -m android ios          # space-separated
+unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 ```
+
+**NDJSON progress frames** for `unity install` and `unity install-modules` include a `phase: 'download' | 'install'` field so scripts can switch to an indeterminate spinner during the install phase (which is genuinely indeterminate — NSIS on Windows only reports success/failure). During the install phase, `pct` is locked at 50 and only jumps to 100 on completion. Module download/install progress is nested under the parent editor via `parentItemUid`, so consumers see one editor group with its modules rather than one group per module.
 
 ### Uninstall
 
@@ -314,6 +330,10 @@ unity install-modules --editor-version 6000.0.47f1 --all --accept-eula --dry-run
 ```
 
 `--list` and `--all` are mutually exclusive. `--list` is also mutually exclusive with `--module`.
+
+`--module android ios` (space-separated values after a single `--module`) and `--module android --module ios` (repeated flag) are equivalent — both install all listed modules.
+
+Module discovery works for editors registered via `unity editors add <path>` (located editors), not just editors installed by the Hub.
 
 ---
 
@@ -461,7 +481,128 @@ unity templates list --editor 6000.0.47f1 --type custom --format json
 
 # Show template details
 unity templates info com.unity.template.3d --editor 6000.0.47f1 --format json
+
+# Create a custom template from an existing Unity project
+# --name and --display-name are REQUIRED
+unity templates create /path/to/MyProject \
+  --name com.myorg.template.mytemplate \
+  --display-name "My Template"
+
+# With all optional options
+unity templates create /path/to/MyProject \
+  --name com.myorg.template.mytemplate \
+  --display-name "My Template" \
+  --description "A starting point for our projects" \
+  --template-version 1.0.0 \
+  --output /path/to/templates/dir \
+  --keep-embedded-packages \
+  --keep-project-settings \
+  --overwrite
+
+# JSON output (includes path to created .tgz archive)
+unity templates create /path/to/MyProject \
+  --name com.myorg.template.mytemplate \
+  --display-name "My Template" \
+  --json
+
+# NDJSON streaming — emits progress frames then a result frame
+unity templates create /path/to/MyProject \
+  --name com.myorg.template.mytemplate \
+  --display-name "My Template" \
+  --format ndjson
 ```
+
+**`templates create` key notes:**
+- `--name` must be a valid npm package name (e.g. `com.myorg.template.mytemplate`)
+- `--output` overrides the Hub-configured user templates directory
+- `--overwrite` replaces an existing archive of the same name without error
+- On success, prints the path to the created `.tgz` archive
+- Created templates appear in `unity templates list --editor <v> --custom`
+
+```bash
+# Delete a user-generated custom template (prompts for confirmation)
+unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1
+
+# Skip the confirmation prompt (CI-friendly)
+unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1 --yes
+
+# JSON output
+unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1 --yes --json
+```
+
+**`templates delete` key notes:**
+- Only user-generated templates (created via Hub UI or `templates create`) can be deleted
+- Attempting to delete a built-in Unity template exits with a descriptive error (exit 6)
+- Attempting to delete a template that doesn't exist exits with a descriptive error (exit 6)
+- In interactive mode, prompts for confirmation before deleting; use `--yes` to skip
+- On success, the template no longer appears in `unity templates list --editor <v> --custom`
+
+```bash
+# Get/set/reset the default storage path for custom templates
+# Print current configured templates location
+unity templates location
+
+# Set a new default templates directory (must exist as a directory)
+unity templates location --set /path/to/templates
+
+# Reset templates location to the Hub default
+unity templates location --reset
+
+# JSON output for any variant
+unity templates location --json
+unity templates location --set /path/to/templates --json
+unity templates location --reset --json
+```
+
+**`templates location` key notes:**
+- `--set` and `--reset` are mutually exclusive (using both is an error)
+- `--set` validates that the path exists and is a directory (exits 2 if not)
+- `--reset` restores the Hub default templates path
+- JSON output: `{ "path": "..." }` inside the standard envelope
+
+---
+
+### Config — persisted CLI configuration
+
+The `config` command group manages settings that persist across invocations.
+
+#### config proxy
+
+View or change the configured HTTP/HTTPS/SOCKS/PAC proxy. The persisted value is read by every CLI command that issues outbound HTTP (releases, install, auth, telemetry, etc.).
+
+```bash
+# Show the effective proxy configuration (resolution source + auth source)
+unity config proxy
+unity config proxy --json
+
+# Persist a proxy URL
+unity config proxy http://proxy.example.com:8080
+
+# Persist with embedded credentials (userinfo is redacted in echo output)
+unity config proxy http://user:secret@proxy.example.com:8080
+
+# Persist with bypass list (hosts that should NOT go through the proxy)
+unity config proxy http://proxy.example.com:8080 --bypass "localhost,127.0.0.1,*.internal"
+
+# SOCKS / PAC variants
+unity config proxy socks5://proxy.example.com:1080
+unity config proxy pac+http://wpad.example.com/proxy.pac
+unity config proxy pac+file:///etc/proxy.pac
+
+# Clear the persisted proxy
+unity config proxy --unset
+```
+
+**Supported schemes:** `http://`, `https://`, `socks://`, `socks4://`, `socks4a://`, `socks5://`, `socks5h://`, `pac+http://`, `pac+https://`, `pac+file://`.
+
+**Resolution priority** (highest → lowest):
+1. `--proxy <url>` global flag (one-shot override for the current invocation)
+2. `UNITY_PROXY` env var
+3. Persisted `proxy.json` (`unity config proxy <url>`)
+4. Standard env vars: `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY`
+5. System proxy settings (where supported)
+
+`--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
 
 ---
 
@@ -779,4 +920,5 @@ unity logs --follow --level info
 - `--format json` always produces machine-readable output; prefer it over parsing human text.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
-- The CLI is currently in **beta**. Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
+- The CLI is currently in **beta** (latest: `0.1.0-beta.5`). Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
+- Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
