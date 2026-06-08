@@ -1,0 +1,80 @@
+name: Require hub approval
+
+# Replaces the CODEOWNERS team-review requirement without committing the team
+# name to the source tree. The team slug lives in the repo Actions variable
+# HUB_TEAM_SLUG, and the org is derived from github.repository_owner.
+#
+# Make the "require-hub-approval" job a required status check on the protected
+# branch so a PR can only merge once a member of that team has approved it.
+#
+# Requires a repo secret HUB_APPROVAL_TOKEN: a token with `read:org` (to read
+# team membership) and read access to pull requests. The default GITHUB_TOKEN
+# cannot read org team membership, so a PAT or GitHub App token is required.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  require-hub-approval:
+    name: require-hub-approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify an approving review came from a hub member
+        env:
+          GH_TOKEN: ${{ secrets.HUB_APPROVAL_TOKEN }}
+          ORG: ${{ github.repository_owner }}
+          TEAM: ${{ vars.HUB_TEAM_SLUG }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TEAM}" ]; then
+            echo "::error::Repository variable HUB_TEAM_SLUG is not set."
+            exit 1
+          fi
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::Secret HUB_APPROVAL_TOKEN is not set (needs read:org)."
+            exit 1
+          fi
+
+          echo "Checking reviews on ${REPO}#${PR_NUMBER} for an approval from @${ORG}/${TEAM}"
+          reviews_json="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews")"
+
+          # Reduce to each reviewer's *latest* meaningful state. COMMENTED reviews
+          # don't change a reviewer's standing, so they're ignored. A later
+          # CHANGES_REQUESTED or DISMISSED overrides an earlier APPROVED.
+          approvers="$(printf '%s' "${reviews_json}" | jq -r '
+            map(select(.state != "COMMENTED"))
+            | sort_by(.submitted_at)
+            | reduce .[] as $r ({}; .[$r.user.login] = $r.state)
+            | to_entries
+            | map(select(.value == "APPROVED"))
+            | .[].key
+          ')"
+
+          if [ -z "${approvers}" ]; then
+            echo "::error::No current approving review. Require an approval from a member of @${ORG}/${TEAM}."
+            exit 1
+          fi
+
+          echo "Current approvers: $(printf '%s' "${approvers}" | tr '\n' ' ')"
+
+          for user in ${approvers}; do
+            # 200 with state "active" => member; 404 => not a member.
+            state="$(gh api "orgs/${ORG}/teams/${TEAM}/memberships/${user}" --jq '.state' 2>/dev/null || true)"
+            if [ "${state}" = "active" ]; then
+              echo "Approval from @${user}, an active member of @${ORG}/${TEAM}."
+              exit 0
+            fi
+          done
+
+          echo "::error::None of the current approvers are active members of @${ORG}/${TEAM}."
+          exit 1
