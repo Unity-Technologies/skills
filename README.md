@@ -25,7 +25,3 @@ Once installed, your agent will automatically use the relevant skill when you as
 ## Issues and feedback
 
 Found a bug or have a suggestion? Post in the [Unity Discussions forum](https://discussions.unity.com/).
-
-## Contributing
-
-Skills live in the `skills/` directory as Markdown files. Internal contributors: [#devs-unity-skills](https://unity.slack.com/messages/C7MKBJ34G/)
