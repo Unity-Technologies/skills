@@ -894,6 +894,8 @@ unity upgrade --rollback
 
 ### Pipeline — Unity Editor automation (experimental)
 
+> **⚠️ Unity-internal only (for now).** `unity pipeline install` clones the Pipeline package from a repository hosted on Unity's internal network, so it currently only succeeds for users with Unity internal access. External users will see a clone/authentication failure. Because the `command`, `eval`, `editor play/stop/pause`, and `status` commands below all require the Pipeline package to be installed in a running editor first, the entire experimental Pipeline workflow is unavailable to external users until the package is published publicly. If you're not on Unity's internal network, skip this section.
+
 The `pipeline` command manages the Unity Pipeline package, which enables programmatic control of running Unity Editor instances. Alias: `pipe`.
 
 ```bash
