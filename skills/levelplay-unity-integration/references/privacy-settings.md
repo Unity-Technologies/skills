@@ -14,7 +14,7 @@
 
 ## Overview
 
-LevelPlay SDK provides APIs to comply with privacy regulations including GDPR, CCPA, and COPPA. These settings must be configured before SDK initialization to ensure compliance with regional privacy laws.
+LevelPlay SDK provides APIs to help facilitate privacy regulation requirements including GDPR, CCPA, and COPPA. These settings must be configured before SDK initialization.
 
 **SDK Version Requirement:** SDK 9.4.0+ for current APIs (older deprecated APIs available in SDK 9.3.0 and lower)
 
@@ -352,7 +352,7 @@ If your app is child-directed:
 1. **Disable personalized ads**: COPPA requires non-personalized ads only
 2. **Google Play Families Policy**: If targeting children on Google Play:
    - Set COPPA flag: `LevelPlayPrivacySettings.SetCOPPA(true)`
-   - Ensure ad networks comply with Google Play Families requirements
+   - Review Google Play Families requirements for child-directed apps
    - Test thoroughly before submission
 3. **App Store age ratings**: Set appropriate age ratings in both app stores
 4. **Privacy policy**: Clearly state data collection practices for children
@@ -536,7 +536,7 @@ LevelPlay.SetMetaData("is_child_directed", "false");
 4. **Provide UI controls**: Give users easy access to privacy settings
 5. **Respect user choices**: Honor opt-outs and consent denials
 6. **Update promptly**: When user changes preferences, apply immediately via privacy APIs
-7. **Test thoroughly**: Verify compliance in all supported regions
+7. **Test thoroughly**: Test your privacy settings in all supported regions
 8. **Document clearly**: Include privacy policy links in your app
 9. **Use consent management platforms**: Consider third-party CMPs for complex consent requirements
 10. **Stay updated**: Privacy regulations evolve, monitor SDK updates for compliance changes
