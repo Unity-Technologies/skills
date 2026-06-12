@@ -22,6 +22,10 @@ Once installed, your agent will automatically use the relevant skill when you as
 > "List my registered projects"
 > "Run the project in headless mode"
 
+## Contributing
+
+Want to add a skill? See [CONTRIBUTING.md](CONTRIBUTING.md) for the folder layout, `SKILL.md` format, and PR flow.
+
 ## Issues and feedback
 
 Found a bug or have a suggestion? Post in the [Unity Discussions forum](https://discussions.unity.com/).
