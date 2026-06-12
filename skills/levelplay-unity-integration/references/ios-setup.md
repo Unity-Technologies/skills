@@ -66,7 +66,7 @@ After building to Xcode, you should see entries like this in Info.plist:
 
 ### What is ATT?
 
-Starting with iOS 14.5, apps must request user permission before tracking them across apps and websites. This is required for personalized advertising. ATT must be requested **before** `LevelPlay.Init()` to maximise ad fill rate.
+Apple requires ATT authorization before your app tracks users or accesses the device's advertising identifier on iOS 14.5+. Request ATT authorization before calling `LevelPlay.Init()` — this is both an Apple platform requirement and necessary for personalized ads (which also affects fill rate).
 
 ### Implementation
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.7.0 — 2026-06-05 — Initial public beta release
+## v0.7.0 — 2026-06-12 — Initial public beta release
 
 First release of the LevelPlay Unity integration skill, released as public beta.
 
@@ -17,4 +17,4 @@ First release of the LevelPlay Unity integration skill, released as public beta.
 
 ## Feedback
 
-This skill is currently in beta. Share your feedback here: https://docs.google.com/forms/d/e/1FAIpQLSe7WvWozJ67KjgOLglSBvLug8JdgEYk895nn_BHZs0HS_bWJA/viewform?usp=sharing&ouid=116753073211029919766
+This skill is currently in beta. [Share your feedback here](https://docs.google.com/forms/d/e/1FAIpQLSe7WvWozJ67KjgOLglSBvLug8JdgEYk895nn_BHZs0HS_bWJA/viewform).
