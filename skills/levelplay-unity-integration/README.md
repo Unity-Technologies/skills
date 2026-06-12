@@ -2,7 +2,7 @@
 
 ![Beta](https://img.shields.io/badge/status-beta-orange) ![Version](https://img.shields.io/badge/version-0.7.0-blue) ![License](https://img.shields.io/badge/license-Unity%20Companion-blue)
 
-> 🧪 **Note:** This skill is in beta and will be shaped by your feedback. Try it out and [let us know what you think](https://docs.google.com/forms/d/e/1FAIpQLSe7WvWozJ67KjgOLglSBvLug8JdgEYk895nn_BHZs0HS_bWJA/viewform?usp=sharing&ouid=116753073211029919766)!
+> 🧪 **Note:** This skill is in beta and will be shaped by your feedback. Try it out and [let us know what you think](https://docs.google.com/forms/d/e/1FAIpQLSe7WvWozJ67KjgOLglSBvLug8JdgEYk895nn_BHZs0HS_bWJA/viewform)!
 
 A skill that guides Unity developers through integrating the LevelPlay SDK using the Ads Mediation package in Unity Package Manager: from installation to fully working rewarded ads, interstitials, and banners.
 
@@ -49,6 +49,10 @@ Type `/levelplay-unity-integration` to activate the skill, then describe what yo
 - *"I have LevelPlay installed, help me implement banner ads"*
 
 You can jump in at any step. If the Unity package and SDK are already installed, your agent will pick up from where you are.
+
+## Privacy & Legal
+
+> **Note:** This skill provides technical integration guidance, including for LevelPlay's privacy APIs. It is not legal advice, and it does not determine which laws apply to your app — that depends on your users, your data practices, and your distribution. Consult your own legal counsel, and refer to [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings) for the authoritative LevelPlay documentation.
 
 ## What's in this folder
 
