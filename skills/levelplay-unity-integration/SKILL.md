@@ -5,11 +5,11 @@ description: Use when integrating LevelPlay (IronSource) ads into a Unity projec
 
 # LevelPlay Unity package/SDK Integration
 
-Use Unity.RunCommand for editor-side checks and operations. The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
+The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
 
 Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding.
 
-LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and automatically shows the highest-paying ad available. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
+LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and runs a unified auction across multiple ad networks and bidders to maximize competition for each impression. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
 
 ## Integration Workflow
 
@@ -164,14 +164,9 @@ This configuration is required for AdMob to work as a mediation network in Level
 
 ### 6.5. Privacy & Regulation Settings (If Required)
 
-**When to use**: If your app serves users in the EU (GDPR), California (CCPA), or is directed at children (COPPA).
+> **Note:** This skill provides technical integration guidance, including for LevelPlay's privacy APIs. It is not legal advice, and it does not determine which laws apply to your app — that depends on your users, your data practices, and your distribution. Consult your own legal counsel, and refer to [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings) for the authoritative LevelPlay documentation.
 
-Ask the user: "Does your app need to comply with any privacy regulations?"
-- **GDPR** (EU users): Requires user consent for data collection
-- **CCPA** (California users): Requires "Do Not Sell" opt-out option
-- **COPPA** (Child-directed apps): Restricts data collection for children under 13
-
-If you're unsure whether your app reaches EU users, implement GDPR handling as a precaution — it's better to request consent you don't strictly need than to miss it where you do.
+Ask the user: "Do you need to configure privacy settings for GDPR, CCPA/CPRA (or certain state privacy consumer acts), or for child-directed apps?"
 
 **If YES to any:**
 
@@ -224,7 +219,7 @@ Call these BEFORE `LevelPlay.Init()` in Step 7.
 
 For complete implementation with UI, consent management, and combined regulations, see `references/privacy-settings.md`.
 
-**For iOS builds — required regardless of privacy regulations above:** Also implement App Tracking Transparency (ATT) before proceeding to Step 7. ATT must be called before `LevelPlay.Init()` to maximize ad fill rate on iOS 14+. See `references/ios-setup.md` for the ATT implementation code.
+**For iOS builds — required regardless of privacy regulations above:** Also implement App Tracking Transparency (ATT) before proceeding to Step 7. Apple requires ATT authorization before your app tracks users or accesses the device's advertising identifier on iOS 14.5+. Request ATT authorization before calling `LevelPlay.Init()` — this is both an Apple platform requirement and necessary for personalized ads (which also affects fill rate). See `references/ios-setup.md` for the ATT implementation code.
 
 **If NO privacy regulations and not targeting iOS:** Skip this step and proceed to Step 7.
 
@@ -1109,3 +1104,4 @@ Read specific references based on what the user is implementing:
 8. Recommend balanced strategy (Step 8)
 9. Ask to see existing GameManager.cs, then provide code snippets (Step 9)
 10. Guide through testing (Step 10)
+
