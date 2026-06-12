@@ -45,7 +45,7 @@ public class InterstitialAdManager : MonoBehaviour
         interstitialAd.OnAdDisplayFailed += OnAdDisplayFailed;
         interstitialAd.OnAdClicked += OnAdClicked;
         interstitialAd.OnAdClosed += OnAdClosed;
-        interstitialAd.OnAdInfoChanged += OnAdInfoChanged;   // Fires when the loaded ad swaps to a higher-paying network
+        interstitialAd.OnAdInfoChanged += OnAdInfoChanged;   // Fires when the loaded ad updates after a new auction result
 
         // Load the ad
         LoadAd();
@@ -604,7 +604,7 @@ interstitialAd.OnAdClosed += (adInfo) =>
 **Best practice:** Load the next ad immediately in this callback.
 
 #### `OnAdInfoChanged`
-Fired when ad information changes, such as when a new highest-paying ad becomes available.
+Fired when ad information changes, such as when a new winning ad becomes available after auction.
 
 **Signature:** `event Action<LevelPlayAdInfo>`
 
@@ -617,7 +617,7 @@ interstitialAd.OnAdInfoChanged += (adInfo) =>
 };
 ```
 
-**Important:** This event indicates that a new ad with potentially different revenue has become available. The SDK automatically selects the highest-paying ad when you call `ShowAd()`, but this event lets you know when the ad info has been updated. This is particularly important for revenue optimization as it signals when a better-paying ad has loaded.
+**Important:** This event indicates that a new ad with potentially different revenue has become available. The SDK automatically selects the winning ad from the auction when you call `ShowAd()`, but this event lets you know when the ad info has been updated. This is particularly important for revenue optimization as it signals when a new auction winner has loaded.
 
 **When it fires:**
 - After a new ad loads with different properties than the previous one
