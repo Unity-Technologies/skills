@@ -14,6 +14,8 @@
 
 ## Overview
 
+> **Note:** This skill provides technical integration guidance, including for LevelPlay's privacy APIs. It is not legal advice, and it does not determine which laws apply to your app — that depends on your users, your data practices, and your distribution. Consult your own legal counsel, and refer to [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings) for the authoritative LevelPlay documentation.
+
 LevelPlay SDK provides APIs to help facilitate privacy regulation requirements including GDPR, CCPA, and COPPA. These settings must be configured before SDK initialization.
 
 **SDK Version Requirement:** SDK 9.4.0+ for current APIs (older deprecated APIs available in SDK 9.3.0 and lower)
