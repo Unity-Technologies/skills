@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal — install or uninstall editors, list or open projects, manage modules, check auth status, read logs, browse Unity releases, or run any other Unity CLI operation.
+description: Use when interacting with Unity CLI from the terminal — install or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, or run any other Unity CLI operation.
 allowed-tools:
   - Bash
 ---
@@ -61,6 +61,8 @@ These work on every command:
 
 **Always use `--format json` when you need to parse output programmatically.**
 
+A branded Unity header (logo, wordmark, CLI version) renders on the landing surfaces — bare `unity`, `unity --help` / `-h`, `unity help`, and above the first-run consent prompt. It's shown only on a TTY, prints at most once, and degrades to compact, uncolored text on narrow terminals, without Unicode, or under `NO_COLOR`. Piped output is unaffected. Use `--no-banner` to suppress it in scripts. Bare `unity` prints usage and exits 0.
+
 ## Environment variables
 
 All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corresponding env var.
@@ -76,6 +78,8 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
 | `UNITY_NO_BANNER` | `--no-banner` | Suppress the branded banner. |
 | `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
+| `UNITY_TEST_TIMEOUT` | `--timeout` | Timeout for `unity test` in seconds. |
+| `UNITY_CLOUD_ORG` | `--cloud-org` | Active Unity Cloud organization id or name for a single call. |
 | `UNITY_SERVICE_ACCOUNT_ID` | — | Service account client ID for non-interactive (CI) auth. |
 | `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
@@ -103,6 +107,7 @@ This works at every level of the command hierarchy.
 | 1 | General error |
 | 2 | Bad arguments |
 | 3 | Authentication failure |
+| 4 | Precondition not met (e.g. no license active, floating server not configured) |
 | 6 | Command-specific failure |
 | 130 | Interrupted (Ctrl+C) |
 
@@ -136,9 +141,49 @@ unity auth logout
 unity auth logout --yes
 ```
 
+**Shared sign-in with Hub.** The CLI and the GUI Hub share a single session through the OS keyring — sign in with either and the other picks up the session. Existing Hub sessions migrate from encrypted storage to the keyring automatically on next launch.
+
 **Service-account credentials via env vars** (`UNITY_SERVICE_ACCOUNT_ID` + `UNITY_SERVICE_ACCOUNT_SECRET`) mint bearer tokens automatically for the duration of the process — no browser round-trip, no keyring write. If only one of the two is set, the CLI prints a warning on stderr instead of silently falling back to the keyring/OAuth identity.
 
-The interactive `unity auth login` flow now prints the sign-in URL to the terminal **before** attempting to launch the browser, which unblocks remote/headless sessions (SSH, containers, dev VMs) where `xdg-open` / `open` has no graphical session to attach to. With `--format json`, an `auth_url=…` progress frame is emitted so machine consumers can capture the URL without parsing human text.
+The interactive `unity auth login` flow prints the sign-in URL to the terminal **before** attempting to launch the browser, which unblocks remote/headless sessions (SSH, containers, dev VMs) where `xdg-open` / `open` has no graphical session to attach to. With `--format json`, an `auth_url=…` progress frame is emitted so machine consumers can capture the URL without parsing human text.
+
+`unity auth status` reflects real session state (including an explicit "session expired" message), not optimistic local assumptions. `unity doctor` and `unity cloud status` report the same real session state.
+
+---
+
+### License — list, activate, return
+
+```bash
+# List the Unity licenses active on this machine
+unity license
+unity license list             # explicit form, identical output
+unity license --format json    # machine-readable
+
+# Summary: active license(s) + sign-in state
+unity license status
+
+# Activate a license — choose exactly one mode (default = signed-in subscription)
+unity license activate                              # signed-in user's subscription (entitlement) licenses
+unity license activate --serial SC-…                # serial-based (ULF) activation, no sign-in needed
+unity license activate --personal --accept-eula     # free Unity Personal license (must accept the EULA)
+unity license activate --floating                   # lease a seat from the configured floating server
+unity license activate --file ./Unity_lic.ulf       # offline activation from a .ulf / .xml file
+unity license activate --generate-request ./req.alf # write an offline activation request (air-gapped)
+
+# Return the active assigned/subscription licenses (prompts to confirm; --yes skips)
+unity license return
+unity license return --yes
+
+# Floating (network) license server
+unity license server list      # the configured floating license server(s)
+unity license server status    # reachability + available seats
+```
+
+`list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; if it can't be reached (offline), `list` reports an empty list rather than failing.
+
+`activate` takes a single mode flag (combining them is a usage error). The default (no flag) and `--personal` activate the signed-in user's entitlements — sign in first with `unity auth login`. `--personal` also requires `--accept-eula` to acknowledge the Unity Personal license terms. `--serial` / `--file` work offline without sign-in. `--floating` requires a configured floating license server (exit `4` if none is set). `--generate-request` writes a `.alf` request for air-gapped activation instead of activating. `return` returns the active licenses, prompting for confirmation first — pass `--yes` to skip (required in non-interactive shells and with `--json`). All honor `--json` / `--format` and exit non-zero on failure (`2` bad usage, `3` sign-in required, `4` floating not configured, `6` licensing-client error).
+
+`unity license server list` shows the configured floating license server (from the `licensingServiceBaseUrl` machine setting; a pure settings read, no client download). `unity license server status` contacts that server and reports reachability plus available seats — exit `4` when no server is configured, `6` when configured but unreachable.
 
 ---
 
@@ -189,6 +234,8 @@ unity editors --watch
 unity editors --installed --watch
 ```
 
+`unity editors` honors `--format tsv` and `--format ndjson` for its default listing. Identifier columns keep their natural width even if the table exceeds the terminal — they are no longer silently truncated.
+
 #### editors add
 
 Register one or more existing editor installations by path:
@@ -220,17 +267,27 @@ unity editors default --unset
 
 On a TTY with no arguments, shows an interactive selection prompt.
 
+#### editors path
+
+```bash
+# Print the install directory of an installed editor (local, offline — no release-feed fetch)
+unity editors path 6000.0.47f1
+unity editors path 6000.0.47f1 --architecture arm64 --json
+```
+
+Honors `--architecture` and `--format` / `--json`, and reports ambiguous matches so you can narrow by version or architecture.
+
 #### editors install-path
 
 ```bash
-# Show current editor install path
+# Show the directory where editors are installed
 unity editors install-path
 
 # Set a new install path
 unity editors install-path --set /path/to/editors
 ```
 
-Also available as the top-level `unity install-path` (with an additional `--get` flag).
+Also available as the top-level `unity install-path` (with an additional `--get` flag). Distinct from `editors path`: `install-path` gets/sets the *root* install directory; `editors path` prints the install directory of *one* editor version.
 
 #### editors info
 
@@ -308,6 +365,8 @@ unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 
 **NDJSON progress frames** for `unity install` and `unity install-modules` include a `phase: 'download' | 'install'` field so scripts can switch to an indeterminate spinner during the install phase (which is genuinely indeterminate — NSIS on Windows only reports success/failure). During the install phase, `pct` is locked at 50 and only jumps to 100 on completion. Module download/install progress is nested under the parent editor via `parentItemUid`, so consumers see one editor group with its modules rather than one group per module.
 
+Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
+
 ### Uninstall
 
 ```bash
@@ -329,6 +388,8 @@ unity modules list 6000.0.47f1 --format json
 # Filter by architecture
 unity modules list 6000.0.47f1 --architecture arm64 --format json
 ```
+
+`unity modules list` honors `--format ndjson` (empty results emit a clean, empty NDJSON stream).
 
 ### install-modules
 
@@ -360,7 +421,7 @@ Module discovery works for editors registered via `unity editors add <path>` (lo
 
 ---
 
-### Projects — list, open, create, register
+### Projects — list, open, create, register, clone, link
 
 ```bash
 # List registered projects
@@ -388,14 +449,11 @@ unity open /path/to/MyProject --args "-logFile output.log"
 unity open /path/to/MyProject --build-target StandaloneOSX
 unity open /path/to/MyProject --build-target-group Standalone
 
-# Use a specific editor binary instead of resolving by version
-unity open /path/to/MyProject --editor-path "/Applications/Unity/Hub/Editor/6000.0.47f1/Unity.app"
-
 # Version shorthand (equivalent to open with --editor-version)
 unity 6000.0.47f1 /path/to/MyProject
 ```
 
-The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path.
+The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
 
 #### projects create
 
@@ -406,7 +464,34 @@ unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.t
 
 # Place the project in a specific directory
 unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47f1
+
+# --template also accepts a .tgz file path or a directory, not just a registered template id
+unity projects create MyGame --template /path/to/template.tgz
 ```
+
+**Cloud linking during creation:**
+
+```bash
+# Create and link a NEW Unity Cloud project as part of creation
+unity projects create MyGame --cloud --cloud-org <id-or-name>
+
+# Link an EXISTING cloud project instead
+unity projects create MyGame --cloud-project <id-or-name>
+```
+
+**Source-control during creation** — publish the new project to a fresh repository:
+
+```bash
+unity projects create MyGame \
+  --vcs github \
+  --git-namespace my-org \
+  --git-repo my-game \
+  --git-visibility private \
+  --git-default-branch main \
+  --git-token-stdin
+```
+
+Source-control flags (shared with `projects link vcs`): `--vcs github|gitlab|uvcs`, `--git-namespace <name>`, `--git-repo <name>`, `--git-visibility private|public|internal` (default private), `--git-default-branch <name>`, `--git-token <pat>` / `--git-token-stdin`, `--no-initial-commit`, `--git-lfs`, and `--vcs-region <name>` for Unity Version Control.
 
 #### projects new
 
@@ -422,6 +507,27 @@ unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 
 # Open the project immediately after creation
 unity projects new MyGame --open
 ```
+
+#### projects clone
+
+Clone a remote repository and register the Unity project it contains. Works across providers:
+
+```bash
+# Clone by full repo URL / shorthand
+unity projects clone --vcs github --vcs-namespace my-org --vcs-repo my-game --path ./MyGame
+
+# Check out a specific ref (branch, sha, or UVCS changeset)
+unity projects clone --vcs uvcs --vcs-namespace my-org --vcs-repo my-game --ref main
+
+# Authenticate with a personal access token (prefer stdin)
+unity projects clone --vcs gitlab --vcs-namespace my-org --vcs-repo my-game --git-token-stdin
+
+# Project lives in a subdirectory of the repo
+unity projects clone --vcs github --vcs-namespace my-org --vcs-repo monorepo \
+  --path ./repo --project-path packages/MyGame
+```
+
+Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name>`, `--ref <branch|sha|changeset>` (an all-digit ref is treated as a Unity Version Control changeset, anything else as a branch), `--path <dest>` (clone destination), `--project-path <subpath>` (project subdirectory), `--git-token <pat>` / `--git-token-stdin`, `--json`. Git LFS assets are fetched as pointer files only.
 
 #### projects pin / unpin
 
@@ -470,12 +576,23 @@ unity projects import --input projects.json
 unity projects open MyProject
 # (the top-level `unity open` is the same thing)
 
-# Connect a local project to its cloud / version-control link
-unity projects link
+# --- Cloud links ---
+# Connect an existing local project to a Unity Cloud project
+unity projects link cloud /path/to/MyProject --cloud-org <id-or-name>
+# Disconnect from its Unity Cloud project
+unity projects unlink cloud /path/to/MyProject
 
-# Disconnect a local project from its cloud / version-control link
-unity projects unlink
+# --- Version-control links ---
+# Publish a local project to a NEW GitHub / GitLab / Unity Version Control repository
+unity projects link vcs /path/to/MyProject \
+  --vcs github --git-namespace my-org --git-repo my-game --git-token-stdin
+# Remove a project's git remotes (the remote repositories are NOT deleted)
+unity projects unlink vcs /path/to/MyProject
+# Also detach the Unity Version Control workspace
+unity projects unlink vcs /path/to/MyProject --unlink-workspace
 ```
+
+`link vcs` shares the source-control flag set documented under `projects create`. `link cloud` / `link vcs` accept `--cloud-org <id-or-name>` (env `UNITY_CLOUD_ORG`).
 
 ---
 
@@ -608,10 +725,31 @@ unity templates location --reset --json
 
 ```bash
 # Edit a user-generated (custom) template's metadata
-unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1
+# At least one of --display-name, --description, --template-version,
+# --preview-image, --remove-preview-image is required
+unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --display-name "My Updated Template"
+
+# Update multiple fields at once
+unity templates edit com.myorg.template.mytemplate \
+  --editor 6000.0.47f1 \
+  --display-name "My Updated Template" \
+  --description "A new description for the template" \
+  --template-version 1.1.0
+
+# Replace / remove preview image
+unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --preview-image /path/to/image.png
+unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --remove-preview-image
+
+# JSON / NDJSON output (--yes required because these are non-interactive)
+unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --display-name "Updated" --yes --json
 ```
 
-Only user-generated templates can be edited (use `unity templates edit --help` for the editable fields).
+**`templates edit` key notes:**
+- Only works on user-generated (custom) templates; built-in templates cannot be edited
+- Use `--editor` to specify which editor version's template list to search, or omit to use the stored default
+- `--preview-image <path>` resolves to an absolute path before passing to the service
+- `--remove-preview-image` is only applied when no valid `--preview-image` path is given; if both are passed with a valid image path, the new image wins and `--remove-preview-image` is ignored
+- On success (human format), prints the updated template's display name
 
 ---
 
@@ -651,11 +789,50 @@ unity config proxy --unset
 **Resolution priority** (highest → lowest):
 1. `--proxy <url>` global flag (one-shot override for the current invocation)
 2. `UNITY_PROXY` env var
-3. Persisted `proxy.json` (`unity config proxy <url>`)
-4. Standard env vars: `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY`
+3. Standard env vars: `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY`
+4. Persisted `proxy.json` (`unity config proxy <url>`)
 5. System proxy settings (where supported)
 
-`--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
+Credentials missing from the URL are looked up in the OS keyring (shared with the GUI Hub); Kerberos/SPNEGO-authenticated proxies are supported. `--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
+
+---
+
+### Hub — install the Unity Hub application
+
+Bootstrap Unity Hub on a clean machine from the command line.
+
+```bash
+# Install the latest stable Hub for the current OS + architecture
+unity hub install
+
+# Install a specific Hub version
+unity hub install --hub-version 3.17.0
+
+# Force reinstall even when Hub is already detected
+unity hub install --force
+
+# Run the installer silently (Windows only)
+unity hub install --headless
+
+# Override architecture (e.g. x64 Hub on Apple Silicon via Rosetta)
+unity hub install --architecture x64
+
+# Skip the installer code-signature check (unsigned/local builds — not recommended)
+unity hub install --skip-signature-check
+```
+
+Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--hub-version <version>` (default latest), `--skip-signature-check`.
+
+**Integrity & signature verification** — every download is checked against the SHA-512 from the HTTPS manifest, then the installer's **code signature** is verified before it runs with elevation: on macOS via `codesign` (signer `Developer ID Application: Unity Technologies`), on Windows via Authenticode (signer subject `Unity Technologies`), checked *before* the UAC prompt. Verification is **fail-closed** — if it fails or the verifier is unavailable, the command aborts with exit 6 and does not run the installer. Linux `.AppImage` has no standard verifier, so it is SHA-512-only. Pass `--skip-signature-check` to bypass (prints a warning; not recommended).
+
+**`--hub-version` behaviour** — fetches the version-specific manifest from the CDN; if that version does not exist, the command exits with code 6 (no fallback to latest).
+
+```bash
+# JSON output
+unity hub install --format json
+```
+
+Emits `{ "success": true, "command": "hub install", "data": { "version": "3.x.x", "installed": true } }` on success, or an `{ "alreadyInstalled": true, "installedPath": "…" }` payload when Hub was already present.
 
 ---
 
@@ -688,6 +865,36 @@ Error: Forwarded argument '-batchmode' conflicts with a reserved Unity flag mana
 Flags like `-nographics`, `-logFile <path>`, and `-executeMethod <Class.Method>` are not reserved and are forwarded normally.
 
 When `--timeout <seconds>` is set, the process receives SIGTERM at the deadline; if still alive after 2 s it receives SIGKILL. The command exits with code 6 (EXIT_COMMAND_FAILURE) on timeout.
+
+---
+
+### Test — run EditMode/PlayMode tests
+
+```bash
+# Run tests and write an NUnit XML report (omitting --mode runs the editor's default platform)
+unity test /path/to/MyProject
+
+# Run a specific platform (--mode is case-insensitive: EditMode/editmode both work)
+unity test /path/to/MyProject --mode EditMode
+unity test /path/to/MyProject --mode PlayMode --output ./results/play.xml
+
+# Run only tests whose names match a filter
+unity test /path/to/MyProject --filter "MyNamespace.MyTests"
+
+# Pin the editor version, installing it if missing; cap the run at 600 s
+unity test /path/to/MyProject --editor-version 6000.0.47f1 --allow-install --timeout 600
+# Equivalent via env var:
+UNITY_TEST_TIMEOUT=600 unity test /path/to/MyProject
+
+# Forward extra editor args after -- (reserved test flags are rejected)
+unity test /path/to/MyProject -- -nographics
+```
+
+`unity test` launches the editor's built-in test runner in batch mode (`-runTests -testPlatform <mode> -testResults <path> -testFilter <pattern>`), waits for it to finish, and writes the report to `--output` (default `test-results.xml`). It exits 0 when the run succeeds and 6 (EXIT_COMMAND_FAILURE) when the editor exits non-zero — i.e. reports test failures or fails to run. It runs the tests **directly via the editor command line** — no pipeline package or server is involved. `--mode` is optional; when omitted, `-testPlatform` is not passed and the editor runs its default platform.
+
+It deliberately does **not** pass `-quit`: `-runTests` quits the editor itself once results are written, so forcing `-quit` would terminate it before the report exists. Anything after `--` is forwarded to the editor verbatim, except reserved flags managed by the command (`-projectPath`, `-batchmode`, `-runTests`, `-testPlatform`, `-testResults`, `-testFilter`, `-quit`, `-useHub`, `-hubIPC`), which are rejected.
+
+Options: `--mode EditMode|PlayMode`, `--filter <pattern>`, `--output <path>`, `--editor-version <version>` (env `UNITY_EDITOR_VERSION`), `-e, --editor-path <path>`, `-a, --architecture <arch>`, `--allow-install`, `--timeout <seconds>` (env `UNITY_TEST_TIMEOUT`).
 
 ---
 
@@ -724,6 +931,23 @@ unity build /path/to/MyProject \
 | `--build-version <version>` | Explicit version string; only used with `--versioning-strategy custom`. |
 | `--allow-dirty-build` | Skip the uncommitted-changes guard (default: false). |
 
+**Android signing & export** (applied to Android targets only):
+
+| Flag | Description |
+|---|---|
+| `--android-export-type <type>` | `apk`, `aab`, or `android-studio-project`. |
+| `--android-keystore-base64 <b64>` | Keystore file, base64-encoded. |
+| `--android-keystore-password <pass>` | Keystore password. |
+| `--android-key-alias <alias>` | Key alias within the keystore. |
+| `--android-key-alias-password <pass>` | Key alias password. |
+| `--android-target-sdk-version <N>` | Target SDK version. |
+| `--android-symbol-type <type>` | `none`, `public`, or `debugging`. |
+| `--android-version-code <N>` | Android version code. |
+
+Keystore flags are validated together. The CLI warns that secrets passed this way can surface in shell history and CI logs — prefer CI secret stores.
+
+**Versioning** — `semantic` and `tag` derive the version from git tags/history; `custom` requires an explicit `--build-version`; a dirty working tree is rejected unless `--allow-dirty-build` is passed.
+
 ```bash
 # With --format json, stdout includes newline-delimited JSON progress frames before the final envelope:
 unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --format json
@@ -756,6 +980,8 @@ unity logs --level warn
 # Available levels: trace, debug, info, warn, error, fatal
 ```
 
+The CLI writes its own `cli-log.json` (separate from the Hub's `info-log.json`) and records its version on every start. `unity logs`, `unity bug`, and `unity doctor` read the CLI's own log.
+
 ---
 
 ### Doctor — system diagnostics
@@ -764,9 +990,11 @@ unity logs --level warn
 # Full system report
 unity doctor --format json
 
-# Includes: platform info, auth status, installed editors, recent log lines
+# Includes: platform info, auth status, installed editors, recent log lines, resolved proxy
 unity doctor --tail 50
 ```
+
+`unity doctor` reports real session state (matching `unity auth status`) and surfaces the resolved proxy URL, its source, and auth source.
 
 ---
 
@@ -776,7 +1004,7 @@ unity doctor --tail 50
 # Show environment paths
 unity env --format json
 
-# Returns: user data path, editor install path, download cache path, config path, CLI version
+# Returns: user data path, editor install path, download cache path, config path, CLI version, resolved proxy
 ```
 
 ---
@@ -795,14 +1023,21 @@ unity cache clean --yes
 
 ### Analytics — usage/telemetry consent
 
+The CLI defaults to **opt-out**. On the first interactive run a y/N prompt is shown once before any data is collected; non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
+
 ```bash
 # Show current consent status
+unity analytics status
 unity analytics status --format json
 
-# Enable / disable anonymous usage data collection
+# Opt in to anonymous usage data collection
 unity analytics opt-in
+
+# Opt out (the default)
 unity analytics opt-out
 ```
+
+Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa.
 
 ---
 
@@ -892,11 +1127,33 @@ unity upgrade --rollback
 
 ---
 
-### Pipeline — Unity Editor automation (experimental)
+### Self-uninstall — remove the CLI
 
-> **⚠️ Unity-internal only (for now).** `unity pipeline install` clones the Pipeline package from a repository hosted on Unity's internal network, so it currently only succeeds for users with Unity internal access. External users will see a clone/authentication failure. Because the `command`, `eval`, `editor play/stop/pause`, and `status` commands below all require the Pipeline package to be installed in a running editor first, the entire experimental Pipeline workflow is unavailable to external users until the package is published publicly. If you're not on Unity's internal network, skip this section.
+```bash
+# Uninstall the CLI (interactive confirmation)
+unity self-uninstall
 
-The `pipeline` command manages the Unity Pipeline package, which enables programmatic control of running Unity Editor instances. Alias: `pipe`.
+# Uninstall without prompts
+unity self-uninstall --yes
+
+# Also remove config and data files
+unity self-uninstall --purge --yes
+
+# Dry-run: show what would be removed
+unity self-uninstall --dry-run
+```
+
+> **`unity implode` is a deprecated alias for `unity self-uninstall`.** It prints a deprecation warning to stderr. Use `unity self-uninstall` instead.
+
+---
+
+## Development-only commands (hidden in production builds)
+
+The commands below drive a running Unity Editor through the in-Editor **Pipeline** package, or exercise Unity Cloud Pipeline / Collaboration APIs. They are **absent from the published production CLI** (they only register when `HUB_ENV=development`) and so will not appear in `unity --help` for a normal install. They are documented here for completeness; if you don't see them, they're not available in your build.
+
+> **⚠️ Unity-internal.** `unity pipeline install` clones the Pipeline package from a repository on Unity's internal network, so it currently only succeeds for users with Unity internal access. The `command`, `eval`, `editor play/stop/pause`, `status`, `cloud-pipeline`, and `collab` commands all depend on the Pipeline package (or internal cloud services) and are unavailable to external users until those are published publicly.
+
+### pipeline (alias: pipe) — manage the Unity Pipeline package
 
 ```bash
 # List all running Unity Editor instances and their Pipeline package status
@@ -916,15 +1173,11 @@ unity pipeline install --install-samples --install-tests
 unity pipeline install --force
 ```
 
-`pipeline install` options: `--project-path <path>`, `--ssh`, `--install-samples`, `--install-tests`, `--force`.
+`pipeline install` options: `--project-path <path>`, `--ssh`, `--install-samples`, `--install-tests`, `--force`. **Requires Unity 6.0 or higher.** The package is cloned as an embedded package into `Packages/com.unity.pipeline/`.
 
-**Requires Unity 6.0 or higher.** The Pipeline package is cloned as an embedded package into `Packages/com.unity.pipeline/`.
+### command (alias: cmd) — send commands to a running Unity Editor
 
----
-
-### Command — send commands to a running Unity Editor (experimental)
-
-The `command` command (alias: `cmd`) communicates with a running Unity Editor that has the Pipeline package installed. (`request`/`req` remain as deprecated hidden aliases — prefer `command`.)
+Communicates with a running Unity Editor that has the Pipeline package installed. (`request`/`req` remain as deprecated hidden aliases — prefer `command`.)
 
 ```bash
 # List all commands available on the connected Unity Editor
@@ -950,7 +1203,7 @@ unity command editor_play --timeout 60
 
 If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running, the Pipeline package is installed, and its HTTP server is up).
 
-#### eval — evaluate a C# expression in a running editor
+### eval — evaluate a C# expression in a running editor
 
 ```bash
 unity eval 'Application.version'
@@ -963,9 +1216,9 @@ unity eval 'Debug.Log("hello");'
 unity eval 'var s = Application.dataPath; return s.Length;'
 ```
 
-Targeting options match `command`: `--project-path`, `--instance <host:port>`, `--runtime <name>`, `--runtime-path <path>`.
+Compile failures surface the Roslyn diagnostics and exit non-zero. Targeting options match `command`: `--project-path`, `--instance <host:port>`, `--runtime <name>`, `--runtime-path <path>`.
 
-#### editor play / stop / pause — play-mode control
+### editor play / stop / pause — play-mode control
 
 Higher-level wrappers over `command` for the connected editor:
 
@@ -979,7 +1232,7 @@ unity editor play --project-path /path/to/MyProject
 unity editor play --instance localhost:8765
 ```
 
-#### status — live state of connected editors
+### status — live state of connected editors
 
 ```bash
 # Show port, state, project, version, PID for every connected Unity Editor
@@ -990,25 +1243,15 @@ unity status --port 8765
 unity status --project megacity
 ```
 
----
+Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
 
-### Self-uninstall — remove the CLI
+### cloud-pipeline — Unity Cloud Pipeline
 
-```bash
-# Uninstall the CLI (interactive confirmation)
-unity self-uninstall
+Manage Unity Cloud Pipeline resources. Subcommand groups: `status`, `onboard`, `assets` (`list`/`status`/`url`), `branches` (`list`/`show`/`create`/`url`/`enable`/`edit`/`disable`), `pending-changes list`, `files` (`create`/`update`/`delete`/`move`), `pull-request create`. Use `unity cloud-pipeline --help` (development build) for the full flag set.
 
-# Uninstall without prompts
-unity self-uninstall --yes
+### collab — Unity collaboration (annotations & attachments)
 
-# Also remove config and data files
-unity self-uninstall --purge --yes
-
-# Dry-run: show what would be removed
-unity self-uninstall --dry-run
-```
-
-> **`unity implode` is a deprecated alias for `unity self-uninstall`.** It prints a deprecation warning to stderr. Use `unity self-uninstall` instead.
+Manage review annotations and attachments. Subcommand groups: `annotations` (`count`/`create`/`delete`/`get`/`update`/`replies`/`resolve`/`status`/`unresolve`) and `attachments` (`list`/`delete`/`update`). Use `unity collab --help` (development build) for the full flag set.
 
 ---
 
@@ -1041,6 +1284,27 @@ unity editors --installed --format json
 unity open /path/to/MyProject
 ```
 
+### CI: activate a license, then build
+
+```bash
+# 1. Sign in non-interactively with a service account
+unity auth login --client-id "$UNITY_SERVICE_ACCOUNT_ID" --secret-from-stdin <<<"$UNITY_SERVICE_ACCOUNT_SECRET"
+
+# 2. Activate the entitlement license (or use --serial / --floating)
+unity license activate
+
+# 3. Build
+unity build /path/to/MyProject \
+  --editor-version 6000.0.47f1 \
+  --target StandaloneLinux64 \
+  --execute-method Builder.PerformBuild \
+  --allow-install
+echo "Exit code: $?"
+
+# 4. Return the seat when done (floating/assigned)
+unity license return --yes
+```
+
 ### CI: headless build
 
 Prefer the dedicated `unity build` command (handles batch mode, logging, and CI flags):
@@ -1064,6 +1328,18 @@ unity run /path/to/MyProject \
 echo "Exit code: $?"
 ```
 
+### CI: run tests and publish results
+
+```bash
+unity test /path/to/MyProject \
+  --editor-version 6000.0.47f1 \
+  --mode EditMode \
+  --output ./test-results.xml \
+  --allow-install \
+  --timeout 600
+echo "Exit code: $?"   # 0 = pass, 6 = test failures
+```
+
 ### Debug the CLI
 
 ```bash
@@ -1079,8 +1355,9 @@ unity logs --follow --level info
 ## Notes
 
 - `--non-interactive` and `--yes` together suppress all prompts — use both in CI.
-- `--format json` always produces machine-readable output; prefer it over parsing human text.
+- `--format json` always produces machine-readable output; prefer it over parsing human text. Error envelopes are pretty-printed with the same 2-space indent as success envelopes.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
-- The CLI is currently in **beta** (latest: `0.1.0-beta.6`). Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
+- Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, while SGR color/style codes are preserved.
+- The CLI is currently in **beta** (latest: `0.1.0-beta.7`). Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
