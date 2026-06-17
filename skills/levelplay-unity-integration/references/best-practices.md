@@ -64,8 +64,8 @@ Every ad implementation involves a fundamental trade-off between revenue generat
 
 **Expected Outcomes:** *(Industry benchmarks, not LevelPlay-specific)*
 - ✅ 30-50% higher ad revenue
-- ⚠️ 5-15% increase in early abandonment
-- ⚠️ Lower user satisfaction scores
+- ⚠ 5-15% increase in early abandonment
+- ⚠ Lower user satisfaction scores
 - ✅ Strong monetization from engaged users
 
 ### UX-Focused Implementation
@@ -89,7 +89,7 @@ Every ad implementation involves a fundamental trade-off between revenue generat
 - Hide during any active user engagement
 
 **Expected Outcomes:** *(Industry benchmarks, not LevelPlay-specific)*
-- ⚠️ 40-60% lower ad revenue vs revenue-focused
+- ⚠ 40-60% lower ad revenue vs revenue-focused
 - ✅ Better user retention and satisfaction
 - ✅ Higher organic growth and word-of-mouth
 - ✅ Premium brand perception

@@ -477,7 +477,7 @@ public class PrivacyComplianceManager : MonoBehaviour
 
 ## Deprecated APIs (SDK 9.3.0 and Lower)
 
-**⚠️ These APIs are deprecated. Use the current `LevelPlayPrivacySettings` APIs instead.**
+**⚠ These APIs are deprecated. Use the current `LevelPlayPrivacySettings` APIs instead.**
 
 ### Deprecated GDPR API — LevelPlay.SetConsent
 

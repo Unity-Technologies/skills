@@ -1151,7 +1151,7 @@ unity self-uninstall --dry-run
 
 The commands below drive a running Unity Editor through the in-Editor **Pipeline** package, or exercise Unity Cloud Pipeline / Collaboration APIs. They are **absent from the published production CLI** (they only register when `HUB_ENV=development`) and so will not appear in `unity --help` for a normal install. They are documented here for completeness; if you don't see them, they're not available in your build.
 
-> **⚠️ Unity-internal.** `unity pipeline install` clones the Pipeline package from a repository on Unity's internal network, so it currently only succeeds for users with Unity internal access. The `command`, `eval`, `editor play/stop/pause`, `status`, `cloud-pipeline`, and `collab` commands all depend on the Pipeline package (or internal cloud services) and are unavailable to external users until those are published publicly.
+> **⚠ Unity-internal.** `unity pipeline install` clones the Pipeline package from a repository on Unity's internal network, so it currently only succeeds for users with Unity internal access. The `command`, `eval`, `editor play/stop/pause`, `status`, `cloud-pipeline`, and `collab` commands all depend on the Pipeline package (or internal cloud services) and are unavailable to external users until those are published publicly.
 
 ### pipeline (alias: pipe) — manage the Unity Pipeline package
 
