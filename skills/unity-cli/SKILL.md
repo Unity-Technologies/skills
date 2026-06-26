@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal — install or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, or run any other Unity CLI operation.
+description: Use when interacting with Unity CLI from the terminal — install, upgrade or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation.
 allowed-tools:
   - Bash
 ---
@@ -83,6 +83,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_SERVICE_ACCOUNT_ID` | — | Service account client ID for non-interactive (CI) auth. |
 | `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
+| `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
 
 **CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow. Equivalent to `unity auth login --client-id <id> --client-secret <secret>`.
 
@@ -141,7 +142,7 @@ unity auth logout
 unity auth logout --yes
 ```
 
-**Shared sign-in with Hub.** The CLI and the GUI Hub share a single session through the OS keyring — sign in with either and the other picks up the session. Existing Hub sessions migrate from encrypted storage to the keyring automatically on next launch.
+**Separate sign-in from Hub.** As of `0.1.0-beta.8`, the CLI and the GUI Hub store their sign-in credentials **separately** — signing in to one no longer signs you out of (or overwrites the account of) the other, so each can stay signed in as a different account. (In earlier betas they shared a single keyring session.)
 
 **Service-account credentials via env vars** (`UNITY_SERVICE_ACCOUNT_ID` + `UNITY_SERVICE_ACCOUNT_SECRET`) mint bearer tokens automatically for the duration of the process — no browser round-trip, no keyring write. If only one of the two is set, the CLI prints a warning on stderr instead of silently falling back to the keyring/OAuth identity.
 
@@ -179,7 +180,7 @@ unity license server list      # the configured floating license server(s)
 unity license server status    # reachability + available seats
 ```
 
-`list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; if it can't be reached (offline), `list` reports an empty list rather than failing.
+`list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; as of `0.1.0-beta.8`, if the client is unavailable `list` reports a clear error and exits non-zero (matching `status`), rather than printing an empty list.
 
 `activate` takes a single mode flag (combining them is a usage error). The default (no flag) and `--personal` activate the signed-in user's entitlements — sign in first with `unity auth login`. `--personal` also requires `--accept-eula` to acknowledge the Unity Personal license terms. `--serial` / `--file` work offline without sign-in. `--floating` requires a configured floating license server (exit `4` if none is set). `--generate-request` writes a `.alf` request for air-gapped activation instead of activating. `return` returns the active licenses, prompting for confirmation first — pass `--yes` to skip (required in non-interactive shells and with `--json`). All honor `--json` / `--format` and exit non-zero on failure (`2` bad usage, `3` sign-in required, `4` floating not configured, `6` licensing-client error).
 
@@ -214,10 +215,11 @@ unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG e
 
 ```bash
 # List all editors (installed + available releases)
-# Short alias: unity e
+# Short alias: unity e. Explicit subcommand: unity editors list (matches projects/templates/modules)
 unity editors --format json
 
 # List only installed editors
+# As of beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
 unity editors --installed --format json
 
 # List only available releases
@@ -294,6 +296,27 @@ Also available as the top-level `unity install-path` (with an additional `--get`
 ```bash
 # Show release details for a specific version
 unity editors info 6000.0.47f1 --format json
+```
+
+#### editors upgrade
+
+New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in its same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over. The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
+
+```bash
+# Upgrade a specific editor (or the default / lts / latest) to the newest patch in its line
+unity editors upgrade 2022.3.10f1
+unity editors upgrade lts
+
+# Upgrade every installed editor that has a newer patch
+unity editors upgrade --all --yes --accept-eula
+
+# Report current → target without installing (--check is an alias for --dry-run)
+unity editors upgrade --all --dry-run --format json
+
+# Remove the old editor after a successful upgrade; skip carrying modules; add extra modules
+unity editors upgrade 2022.3.10f1 --replace --yes
+unity editors upgrade 2022.3.10f1 --no-modules
+unity editors upgrade 2022.3.10f1 --module android --module ios
 ```
 
 #### editors module / editor module
@@ -795,6 +818,17 @@ unity config proxy --unset
 
 Credentials missing from the URL are looked up in the OS keyring (shared with the GUI Hub); Kerberos/SPNEGO-authenticated proxies are supported. `--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
 
+#### config update-check
+
+New in `0.1.0-beta.8`. Enable or disable the background check for a newer CLI version (the unobtrusive "update available" notice; interactive sessions only, never delays a command). Equivalent to the `UNITY_NO_UPDATE_CHECK` env var.
+
+```bash
+unity config update-check          # show the current setting
+unity config update-check off      # disable
+unity config update-check on       # enable
+unity config update-check --json
+```
+
 ---
 
 ### Hub — install the Unity Hub application
@@ -1093,7 +1127,7 @@ Interactive bug reporter that collects system info and recent logs, then submits
 unity bug
 ```
 
-Prompts for title, description, email, and reproducibility level.
+Prompts for title, description, email, and reproducibility level. As of beta.8 it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
 
 ---
 
@@ -1143,57 +1177,84 @@ unity self-uninstall --purge --yes
 unity self-uninstall --dry-run
 ```
 
-> **`unity implode` is a deprecated alias for `unity self-uninstall`.** It prints a deprecation warning to stderr. Use `unity self-uninstall` instead.
+> **`unity implode` was removed** in `0.1.0-beta.8` (it was previously a deprecated alias). Use `unity self-uninstall`.
 
 ---
 
-## Development-only commands (hidden in production builds)
+### MCP — Model Context Protocol server (AI agent integration)
 
-The commands below drive a running Unity Editor through the in-Editor **Pipeline** package, or exercise Unity Cloud Pipeline / Collaboration APIs. They are **absent from the published production CLI** (they only register when `HUB_ENV=development`) and so will not appear in `unity --help` for a normal install. They are documented here for completeness; if you don't see them, they're not available in your build.
-
-> **⚠ Unity-internal.** `unity pipeline install` clones the Pipeline package from a repository on Unity's internal network, so it currently only succeeds for users with Unity internal access. The `command`, `eval`, `editor play/stop/pause`, `status`, `cloud-pipeline`, and `collab` commands all depend on the Pipeline package (or internal cloud services) and are unavailable to external users until those are published publicly.
-
-### pipeline (alias: pipe) — manage the Unity Pipeline package
+New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands a connected Editor adds show up as tools automatically.
 
 ```bash
-# List all running Unity Editor instances and their Pipeline package status
-unity pipeline list --format json
+# Start the MCP stdio server (usually launched by the AI client, not by hand)
+unity mcp
 
-# Install the Pipeline package into a project (auto-detects project if omitted)
-unity pipeline install
-unity pipeline install --project-path /path/to/MyProject
-
-# Use SSH instead of HTTPS when cloning the package
-unity pipeline install --project-path /path/to/MyProject --ssh
-
-# Keep the Samples / Tests folders in the installed package
-unity pipeline install --install-samples --install-tests
-
-# Force reinstall even if the package is already present
-unity pipeline install --force
+# Pin the server to a specific Unity project / Editor instance
+unity mcp --project-path /path/to/MyProject
+unity mcp --instance localhost:55000
 ```
 
-`pipeline install` options: `--project-path <path>`, `--ssh`, `--install-samples`, `--install-tests`, `--force`. **Requires Unity 6.0 or higher.** The package is cloned as an embedded package into `Packages/com.unity.pipeline/`.
+#### mcp configure — register the server in an AI client
 
-### command (alias: cmd) — send commands to a running Unity Editor
+Writes the Unity MCP server entry into an AI client's config in one step, preserving every other key in the file. 16 clients are supported: `claude`, `claude-code`, `cursor`, `vscode`, `vscode-insiders`, `copilot-cli`, `windsurf`, `cline`, `codex`, `kiro`, `trae`, `openclaw`, `antigravity`, `zed`, `continue`, `inspect`.
 
-Communicates with a running Unity Editor that has the Pipeline package installed. (`request`/`req` remain as deprecated hidden aliases — prefer `command`.)
+```bash
+# List all supported clients and their config paths
+unity mcp configure --list
+
+# Configure a client
+unity mcp configure claude
+unity mcp configure claude-code
+
+# Project-local config for clients that support it (e.g. cursor, windsurf)
+unity mcp configure cursor --local
+
+# Pin to a project; skip the "already exists, update?" prompt; preview without writing
+unity mcp configure claude --project-path /path/to/MyProject
+unity mcp configure vscode --yes
+unity mcp configure vscode --dry-run
+```
+
+---
+
+### Connected Editors — pipeline / command / status
+
+> **Promoted to production in `0.1.0-beta.8`.** In earlier betas these were development-only (and the Pipeline package was Unity-internal). They now talk to any running Unity Editor over its Pipeline server, and the supporting Editor-side package (`com.unity.pipeline`) is resolved from the **Unity (UPM) registry** and added to the project's `Packages/manifest.json` — no internal access or manual setup required. The Editor defines each command's parameters, help, and error messages, so the commands a connected Editor exposes are usable without a CLI update.
+
+#### pipeline (alias: pipe) — manage the Unity Pipeline package
+
+```bash
+# List the Editors the CLI can reach and the Pipeline package status of each
+unity pipeline list --format json
+
+# Install / update the Pipeline package into a project (auto-detects project if omitted)
+unity pipeline install
+unity pipeline install --project-path /path/to/MyProject
+unity pipeline install --force          # re-resolve to the latest version even if present
+```
+
+`pipeline install` options: `--project-path <path>`, `--force`. The package is resolved from the Unity registry and written to `Packages/manifest.json`.
+
+#### command (aliases: cmd, request) — send commands to a running Unity Editor
+
+Forwards a command to a connected Editor. Run it with no arguments to list the commands the connected Editor exposes.
 
 ```bash
 # List all commands available on the connected Unity Editor
 unity command
 unity command --format json
 
-# Execute a specific command
+# Execute a specific command (names/params come from the Editor)
 unity command editor_play
 unity command log_editor "Hello from CLI"
 unity command editor_status --includeMemory true
 
-# Target a specific project or instance
+# Capture a Scene/Game view screenshot (forwarded to the Editor's screenshot command, new in beta.8)
+unity command screenshot --output ./shot.png --width 1920 --height 1080
+
+# Target a specific project / instance / Player runtime
 unity command editor_play --project-path /path/to/MyProject
 unity command editor_play --instance localhost:8765
-
-# Connect to a Unity Player runtime instance
 unity command <command> --runtime "MyGame"
 unity command <command> --runtime-path /path/to/port-file
 
@@ -1201,9 +1262,30 @@ unity command <command> --runtime-path /path/to/port-file
 unity command editor_play --timeout 60
 ```
 
-If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running, the Pipeline package is installed, and its HTTP server is up).
+If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running and its Pipeline server is up).
+
+#### status — live state of connected editors
+
+```bash
+# Show port, state, project, version, PID for every connected Unity Editor
+unity status --format json
+
+# Filter to one instance
+unity status --port 8765
+unity status --project megacity
+```
+
+Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+
+---
+
+## Development-only commands (hidden in production builds)
+
+The commands below are **absent from the published production CLI** — they only register when `HUB_ENV=development`, so they won't appear in `unity --help` for a normal install. Documented here for completeness; if you don't see them, they're not available in your build.
 
 ### eval — evaluate a C# expression in a running editor
+
+Requires a connected Editor with the Pipeline package (see *Connected Editors* above).
 
 ```bash
 unity eval 'Application.version'
@@ -1217,33 +1299,6 @@ unity eval 'var s = Application.dataPath; return s.Length;'
 ```
 
 Compile failures surface the Roslyn diagnostics and exit non-zero. Targeting options match `command`: `--project-path`, `--instance <host:port>`, `--runtime <name>`, `--runtime-path <path>`.
-
-### editor play / stop / pause — play-mode control
-
-Higher-level wrappers over `command` for the connected editor:
-
-```bash
-unity editor play     # enter play mode
-unity editor stop     # exit play mode
-unity editor pause    # toggle pause
-
-# Target a specific project or instance
-unity editor play --project-path /path/to/MyProject
-unity editor play --instance localhost:8765
-```
-
-### status — live state of connected editors
-
-```bash
-# Show port, state, project, version, PID for every connected Unity Editor
-unity status --format json
-
-# Filter to one instance
-unity status --port 8765
-unity status --project megacity
-```
-
-Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
 
 ### cloud-pipeline — Unity Cloud Pipeline
 
@@ -1359,5 +1414,6 @@ unity logs --follow --level info
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, while SGR color/style codes are preserved.
-- The CLI is currently in **beta** (latest: `0.1.0-beta.7`). Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
+- The CLI is currently in **beta** (latest: `0.1.0-beta.8`). Once GA ships, the `UNITY_CLI_CHANNEL=beta` part of the install command can be dropped.
+- As of beta.8 the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
