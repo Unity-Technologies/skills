@@ -6,7 +6,51 @@ each entry notes the CLI version the skill was aligned to.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — aligned to CLI `0.1.0-beta.7` (2026-06-17)
+## [Unreleased] — aligned to CLI `0.1.0-beta.8` (2026-06-25)
+
+### Added
+
+- **MCP server** — `unity mcp` (built-in Model Context Protocol stdio server
+  exposing a connected Editor's commands as tools) and
+  `unity mcp configure <client>` (one-step config for 16 AI clients: `claude`,
+  `claude-code`, `cursor`, `vscode`, `vscode-insiders`, `copilot-cli`,
+  `windsurf`, `cline`, `codex`, `kiro`, `trae`, `openclaw`, `antigravity`,
+  `zed`, `continue`, `inspect`; with `--list`, `--local`, `--project-path`,
+  `--yes`, `--dry-run`).
+- **`unity editors upgrade [editor]`** — upgrade an installed editor to the
+  newest f-channel patch in its `major.minor` line, carrying modules over;
+  `--all`, `--replace` (`--remove-old`), `--dry-run` (`--check`), `--no-modules`,
+  `--module`, `--architecture`, `--yes`, `--accept-eula`. Documented the
+  explicit `editors list` subcommand and the new "Upgrade to" column on
+  `editors --installed`.
+- **`unity config update-check`** and the `UNITY_NO_UPDATE_CHECK` env var, plus
+  the background "update available" notice.
+- `unity command screenshot` example (a command forwarded to the Editor).
+
+### Changed
+
+- **`pipeline`, `command`, and `status` promoted from development-only to
+  production.** They now talk to any running Editor, and the Pipeline package
+  (`com.unity.pipeline`) resolves from the **Unity UPM registry** into
+  `Packages/manifest.json` — no internal-network clone or SSH. Moved into a new
+  "Connected Editors" section; dropped `--ssh` / `--install-samples` /
+  `--install-tests` from `pipeline install`; corrected the `command` aliases to
+  `cmd`, `request`.
+- **Auth:** the CLI and the Hub now store sign-in credentials **separately**
+  (previously a shared keyring session).
+- **`unity license list`** now reports a clear error and a non-zero exit when
+  the licensing client is unavailable (previously an empty list).
+- **`unity bug`** collects the same diagnostic system information as the Hub bug
+  reporter (including GPU details).
+- Refreshed the latest-version note to `0.1.0-beta.8`.
+
+### Removed
+
+- **`unity implode`** — removed (use `unity self-uninstall`).
+- Dropped the no-longer-existent `editor play/stop/pause` wrappers. `eval`,
+  `cloud-pipeline`, and `collab` remain documented as development-only.
+
+## CLI `0.1.0-beta.7` (2026-06-17)
 
 ### Added
 
