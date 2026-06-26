@@ -215,8 +215,8 @@ unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG e
 
 ```bash
 # List all editors (installed + available releases)
-# Short alias: unity e. Explicit subcommand: unity editors list (matches projects/templates/modules)
-unity editors --format json
+# Short alias: unity e. The bare `unity editors` is shorthand for the explicit `unity editors list` (matches projects/templates/modules)
+unity editors list --format json
 
 # List only installed editors
 # As of beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
@@ -300,7 +300,7 @@ unity editors info 6000.0.47f1 --format json
 
 #### editors upgrade
 
-New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in its same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over. The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
+New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in the same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over. The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
 
 ```bash
 # Upgrade a specific editor (or the default / lts / latest) to the newest patch in its line
@@ -1183,7 +1183,7 @@ unity self-uninstall --dry-run
 
 ### MCP — Model Context Protocol server (AI agent integration)
 
-New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands a connected Editor adds show up as tools automatically.
+New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands that a connected Editor adds show up as tools automatically.
 
 ```bash
 # Start the MCP stdio server (usually launched by the AI client, not by hand)
