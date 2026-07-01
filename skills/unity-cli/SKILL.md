@@ -85,7 +85,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
 | `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
 
-**CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow. Equivalent to `unity auth login --client-id <id> --client-secret <secret>`.
+**CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow — this keeps the secret out of the process argument list and shell history. Equivalent to `unity auth login --client-id <id> --secret-from-stdin`.
 
 ## Getting help
 
@@ -129,8 +129,10 @@ unity auth login
 # Preferred: read secret from stdin to avoid shell-history and process-list exposure
 unity auth login --client-id <id> --secret-from-stdin
 
-# Alternative: pass secret directly (visible in shell history and process list)
-unity auth login --client-id <id> --client-secret <secret>
+# A --client-secret <secret> flag also exists, but passing a secret as a
+# command-line argument exposes it in shell history and the process list.
+# Avoid it — use --secret-from-stdin (above) or the
+# UNITY_SERVICE_ACCOUNT_ID / UNITY_SERVICE_ACCOUNT_SECRET env vars instead.
 
 # Login without persisting credentials to the keyring (ephemeral CI)
 unity auth login --client-id <id> --secret-from-stdin --no-store
@@ -792,8 +794,9 @@ unity config proxy --json
 # Persist a proxy URL
 unity config proxy http://proxy.example.com:8080
 
-# Persist with embedded credentials (userinfo is redacted in echo output)
-unity config proxy http://user:secret@proxy.example.com:8080
+# Embedded userinfo (user:password@host) is supported and redacted in echo
+# output, but prefer leaving credentials out of the URL — the CLI looks them
+# up in the OS keyring instead (see Resolution priority below).
 
 # Persist with bypass list (hosts that should NOT go through the proxy)
 unity config proxy http://proxy.example.com:8080 --bypass "localhost,127.0.0.1,*.internal"
@@ -978,7 +981,7 @@ unity build /path/to/MyProject \
 | `--android-symbol-type <type>` | `none`, `public`, or `debugging`. |
 | `--android-version-code <N>` | Android version code. |
 
-Keystore flags are validated together. The CLI warns that secrets passed this way can surface in shell history and CI logs — prefer CI secret stores.
+Keystore flags are validated together. Secrets passed as command-line flags surface in shell history and CI logs — supply `--android-keystore-base64`, `--android-keystore-password`, and `--android-key-alias-password` from CI secret environment variables (e.g. `--android-keystore-password "$KEYSTORE_PASSWORD"`), never as inline literals, and prefer a dedicated CI secret store over plaintext.
 
 **Versioning** — `semantic` and `tag` derive the version from git tags/history; `custom` requires an explicit `--build-version`; a dirty working tree is rejected unless `--allow-dirty-build` is passed.
 
