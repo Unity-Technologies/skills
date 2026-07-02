@@ -85,7 +85,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
 | `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
 
-**CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow — this keeps the secret out of the process argument list and shell history. Equivalent to `unity auth login --client-id <id> --secret-from-stdin`.
+**CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow — this keeps the secret out of the process argument list and shell history. These map to the `--client-id` / `--secret-from-stdin` inputs of `unity auth login`, but reading the credentials from the environment isn't a full login: it doesn't run the interactive flow or persist credentials to the keyring.
 
 ## Getting help
 
@@ -129,7 +129,7 @@ unity auth login
 # Preferred: read secret from stdin to avoid shell-history and process-list exposure
 unity auth login --client-id <id> --secret-from-stdin
 
-# A --client-secret <secret> flag also exists, but passing a secret as a
+# A --client-secret flag also exists, but passing a secret as a
 # command-line argument exposes it in shell history and the process list.
 # Avoid it — use --secret-from-stdin (above) or the
 # UNITY_SERVICE_ACCOUNT_ID / UNITY_SERVICE_ACCOUNT_SECRET env vars instead.
@@ -981,7 +981,7 @@ unity build /path/to/MyProject \
 | `--android-symbol-type <type>` | `none`, `public`, or `debugging`. |
 | `--android-version-code <N>` | Android version code. |
 
-Keystore flags are validated together. Secrets passed as command-line flags surface in shell history and CI logs — supply `--android-keystore-base64`, `--android-keystore-password`, and `--android-key-alias-password` from CI secret environment variables (e.g. `--android-keystore-password "$KEYSTORE_PASSWORD"`), never as inline literals, and prefer a dedicated CI secret store over plaintext.
+Keystore flags are validated together. Secrets passed as command-line flags surface in the process list and can be echoed into CI logs. Supply `--android-keystore-base64`, `--android-keystore-password`, and `--android-key-alias-password` from CI secret environment variables (e.g. `--android-keystore-password "$KEYSTORE_PASSWORD"`), never as inline literals, and source those variables from a dedicated CI secret store. Note that sourcing from an env var only avoids hard-coding the literal — the expanded value still appears in `argv`, so also mask it in CI log output.
 
 **Versioning** — `semantic` and `tag` derive the version from git tags/history; `custom` requires an explicit `--build-version`; a dirty working tree is rejected unless `--allow-dirty-build` is passed.
 
