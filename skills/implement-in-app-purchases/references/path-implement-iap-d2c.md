@@ -6,14 +6,15 @@
 - [Prerequisites (verify before any changes)](#prerequisites-verify-before-any-changes)
 - [Step 1 — Project Scan](#step-1--project-scan)
 - [Step 2 — Product Discovery](#step-2--product-discovery)
-- [Step 3 — IAPManager with PaymentProvider](#step-3--iapmanager-with-paymentprovider)
-- [Step 4 — Remote Catalog](#step-4--remote-catalog)
-- [Step 5 — Deep Link Setup](#step-5--deep-link-setup)
-- [Step 6 — Purchase Handling](#step-6--purchase-handling)
-- [Step 7 — Product Type Behavior](#step-7--product-type-behavior)
-- [Step 8 — Cloud Save Integration](#step-8--cloud-save-integration)
-- [Step 9 — Verification Report](#step-9--verification-report)
-- [Step 10 — Manual Steps (always include in report)](#step-10--manual-steps-always-include-in-report)
+- [Step 3 — Deploy Catalog to Remote Catalog](#step-3--deploy-catalog-to-remote-catalog)
+- [Step 4 — IAPManager with PaymentProvider](#step-4--iapmanager-with-paymentprovider)
+- [Step 5 — Remote Catalog](#step-5--remote-catalog)
+- [Step 6 — Deep Link Setup](#step-6--deep-link-setup)
+- [Step 7 — Purchase Handling](#step-7--purchase-handling)
+- [Step 8 — Product Type Behavior](#step-8--product-type-behavior)
+- [Step 9 — Cloud Save Integration](#step-9--cloud-save-integration)
+- [Step 10 — Verification Report](#step-10--verification-report)
+- [Step 11 — Manual Steps (always include in report)](#step-11--manual-steps-always-include-in-report)
 
 Use this reference when the user explicitly asks to add IAP D2C Capabilities (third-party payment provider such as Stripe or Coda) to a project. This path is valid only when the project has no IAP, or already has `com.unity.purchasing` v5.x installed.
 
@@ -36,7 +37,7 @@ Use this reference when the user explicitly asks to add IAP D2C Capabilities (th
 | `com.unity.services.authentication` | **v3.7.1+** — IAP D2C Capabilities will not initialize without this version or later |
 | `com.unity.services.core` | **v1.18.0+** — required by IAP 5.4 |
 | Unity Gaming Services initialized | `UnityServices.InitializeAsync()` and sign-in must complete **before** IAP D2C Capabilities initialization |
-| Unity Deployment package | Required to deploy product catalogs to the Remote Catalog service — install via **Window > Package Manager > Unity Registry > Deployment** |
+| Unity Deployment package | Required to deploy product catalogs to the Remote Catalog service (see Step 3) — install via **Window > Package Manager > Unity Registry > Deployment** |
 | Unity Cloud project linked | Project must be connected to a Unity Cloud organization |
 | Payment provider account | Developer must have a Stripe or Coda account connected in the Unity Cloud IAP dashboard |
 | Unity Cloud IAP dashboard setup | Products must be created and deployed to the Remote Catalog in Unity Cloud before the client can fetch them |
@@ -179,7 +180,7 @@ So a file named `coins_100.ucat` with no `uSKU` field gives you `uSKU = "coins_1
 - `isWebshopAvailable` is never uploaded — the server infers webshop-ness from the `$schema` array.
 - `categories`, `hdImages`, `promotion` are only emitted on upload when `isWebshopAvailable=true`. Toggling it off and re-uploading erases the server-side webshop data.
 
-Remind the user that `.ucat` files must be **deployed to the Remote Catalog** via Unity Cloud dashboard or the Deployment package before the client can fetch them.
+Remind the user that `.ucat` files must be **deployed to the Remote Catalog** before the client can fetch them — see Step 3.
 
 ### Product definition format (`.catalog.csv`)
 
@@ -229,7 +230,20 @@ coins_100,com.mygame.coins100,Consumable,fr_FR,100 Pièces,Un lot de 100 pièces
 
 The same amount/schema conversion applies on upload as for `.ucat`.
 
-## Step 3 — IAPManager with PaymentProvider
+## Step 3 — Deploy Catalog to Remote Catalog
+
+`.ucat` and `.catalog.csv` files under `Assets/` are local definitions only. Until they are deployed to the Remote Catalog for the active Unity Cloud environment, `FetchRemoteCatalog()` returns no products and no purchase can be initiated. Deploy from the Editor **before** writing or running the client code in later steps.
+
+### Deploying from the Editor
+
+1. Open **Services > Deployment** in the Unity Editor. If the menu is missing, install the Unity Deployment package via **Window > Package Manager > Unity Registry > Deployment**.
+2. The Deployment window lists the `.ucat` and `.catalog.csv` files discovered under `Assets/` alongside any other deployable assets.
+3. Select the catalog files and click **Deploy**.
+4. On success, the window marks each file as deployed. The products are now fetchable by the client via `FetchRemoteCatalog()` (see Step 5).
+
+The deployment targets the environment configured in **Edit > Project Settings > Services > Environments** (Development / Staging / Production). To move a catalog between environments, switch the active environment and re-deploy. For environment configuration, project linking, and multi-environment workflows, see the [build-live-games](https://github.com/Unity-Technologies/skills) skill (also shipped with Unity AI Assistant).
+
+## Step 4 — IAPManager with PaymentProvider
 
 ### Key difference from standard IAP 5
 
@@ -374,7 +388,7 @@ Same as standard IAP 5 (see `path-add-iap-to-new-project.md` Step 4), with these
 - Call `GetEligiblePaymentProviders()` after connect and use the result to gate purchase UI visibility.
 - **Only automatic entitlement delivery is supported.** Do not implement server-authoritative grant logic in this path unless the user explicitly requests it.
 
-## Step 4 — Remote Catalog
+## Step 5 — Remote Catalog
 
 IAP D2C Capabilities products come from Unity Cloud, not a local `List<ProductDefinition>`. Use `RemoteCatalogProvider` to fetch them:
 
@@ -466,7 +480,7 @@ await store.PaymentProvidersExtendedPurchaseService?
 
 The SDK fetches the webshop URL, runs the registered compliance callback (`SetComplianceCheck`), and opens the URL on approval. Network failures propagate as exceptions on the returned `Task`; compliance rejection routes through the standard `OnPurchaseFailed` path.
 
-## Step 5 — Deep Link Setup
+## Step 6 — Deep Link Setup
 
 IAP D2C Capabilities launches the device's mobile browser to handle payment. After payment, the browser must redirect back to the game via a deep link.
 
@@ -553,7 +567,7 @@ IAP_SKIP_EXTERNAL_LINK_VALIDATION
 
 **WARNING:** Do not include this define in production builds — it violates Google Play policies.
 
-## Step 6 — Purchase Handling
+## Step 7 — Purchase Handling
 
 Purchase handling follows the same save-before-confirm contract as standard IAP 5. See **Step 5 — Purchase Handling Contract** in `path-add-iap-to-new-project.md` for the full rules.
 
@@ -623,17 +637,17 @@ await store.PaymentProvidersExtendedPurchaseService.GenerateURL(catalogListingId
 
 Tokens are stored with the order and surfaced in the `order.paid` webhook payload under `externalTransactionTokens`. You can supply up to two tokens per order (e.g., one for EU, one for Japan).
 
-## Step 7 — Product Type Behavior
+## Step 8 — Product Type Behavior
 
 Same rules as standard IAP 5 (see `path-add-iap-to-new-project.md` Step 6), with one restriction:
 
 **Subscriptions are not supported by IAP D2C Capabilities in v5.4+.** Skip any subscription products, warn the user which ones were excluded, and continue with Consumable and NonConsumable products only. Document excluded subscriptions as a TODO in the verification report for when subscription support is added.
 
-## Step 8 — Cloud Save Integration
+## Step 9 — Cloud Save Integration
 
 Same rules as standard IAP 5 — see `path-add-iap-to-new-project.md` Step 7. Save must complete before `ConfirmPurchase` is called.
 
-## Step 9 — Verification Report
+## Step 10 — Verification Report
 
 After applying changes, produce a report with these sections:
 
@@ -646,11 +660,11 @@ After applying changes, produce a report with these sections:
 7. **Pending / deferred handling** — confirmation of save-before-confirm and deferred UI
 8. **Manual steps still required** — listed below
 
-## Step 10 — Manual Steps (always include in report)
+## Step 11 — Manual Steps (always include in report)
 
 These cannot be automated and must be completed by the developer:
 
-1. **Unity Cloud IAP dashboard — product catalog** — create products and deploy to the Remote Catalog via **Services > Deployment** in the Unity Editor.
+1. **Product catalog deployment** — deploy `.ucat` / `.catalog.csv` files to the Remote Catalog from the Editor (see Step 3). Alternatively, products can be authored directly in the Unity Cloud IAP dashboard.
 2. **Payment provider account** — connect Stripe or Coda account in Unity Cloud IAP dashboard (**IAP > Payment Providers > Connect**). Request enablement from Unity Client Partner with your organization ID if not yet enabled.
 3. **Redirect URLs** — set the Success Redirect URL (and optionally Cancel Redirect URL) in the payment provider dashboard (e.g., `mygame://iapresult/okay`). The Cancel Redirect URL adds a back button to the checkout page.
 4. **Entitlement delivery method** — in the Unity Dashboard under **IAP > Payment Providers > Entitlement Delivery Method**, select how purchases are fulfilled server-side:
