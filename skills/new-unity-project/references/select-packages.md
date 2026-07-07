@@ -10,6 +10,39 @@ chosen template (URP templates already include the render pipeline, Input System
 add what's missing. Don't pin exact versions unless a skill requires a minimum; `Client.Add`
 without a version resolves the latest compatible release.
 
+The tables below are a starting point, not the whole registry. **Search the UPM registry** to
+discover packages beyond this list, confirm an id exists, or check available versions before
+installing — see [Discovering and verifying packages](#discovering-and-verifying-packages).
+
+## Discovering and verifying packages
+
+Two ways to search, depending on whether the Editor is involved:
+
+**In-Editor — the PackageManager Client API (preferred; same async pattern as the installer).**
+`Client.SearchAll()` returns every package available in the project's configured registries
+(the Unity registry plus any scoped registries), each with all its versions and metadata — this
+is what the Package Manager window's search filters over. `Client.Search("<id>")` inspects a
+single package. Use this to discover candidates and verify ids/versions before building the
+install list. A ready-to-run `PackageSearch` method is in
+[package-manager-api.md](package-manager-api.md#searching-the-registry).
+
+**Terminal — query the npm-compatible registry directly** (no Editor needed) to confirm a known
+id exists and list its versions:
+
+```bash
+# Full metadata for one package: versions{}, dist-tags.latest, description, dependencies
+curl -s https://packages.unity.com/com.unity.cinemachine | python3 -m json.tool | head -40
+
+# Just the latest published version
+curl -s https://packages.unity.com/com.unity.cinemachine \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['dist-tags']['latest'])"
+```
+
+Note: the registry supports fetching a **known** package id, but **not** free-text search over
+HTTP (the npm `-/v1/search` endpoint is not available — it 404s). For keyword discovery, use
+`Client.SearchAll()` in-Editor, or the Package Manager window / the
+[Unity package documentation](https://docs.unity3d.com/Manual/pack-keys.html).
+
 ## Foundation (almost every project)
 
 | Need | Package | Notes |

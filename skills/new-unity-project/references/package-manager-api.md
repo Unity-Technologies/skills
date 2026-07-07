@@ -108,6 +108,77 @@ namespace ProjectBootstrap
 error-prone than one `Client.Add` per package. To also *remove* packages (e.g. drop a template's
 unwanted default), pass `packagesToRemove:`.
 
+## Searching the registry
+
+To discover packages or verify ids/versions before building the install list (see
+[select-packages.md](select-packages.md#discovering-and-verifying-packages)), use
+`Client.SearchAll()` (all packages in the configured registries) or `Client.Search("<id>")` (one
+package). These are async, so they use the same poll-and-`Exit` pattern as the installer and must
+be launched the same way (direct Editor invocation, **no** `-quit`).
+
+Write `Assets/Editor/ProjectBootstrap/PackageSearch.cs`:
+
+```csharp
+using System;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
+using UnityEngine;
+
+namespace ProjectBootstrap
+{
+    public static class PackageSearch
+    {
+        const double TimeoutSeconds = 120;
+        static SearchRequest _request;
+        static double _deadline;
+
+        // Invoke with: -executeMethod ProjectBootstrap.PackageSearch.SearchAll  (NO -quit)
+        public static void SearchAll()
+        {
+            _request = Client.SearchAll();                 // or Client.Search("com.unity.cinemachine")
+            _deadline = EditorApplication.timeSinceStartup + TimeoutSeconds;
+            EditorApplication.update += Poll;
+        }
+
+        static void Poll()
+        {
+            if (_request == null) return;
+            if (!_request.IsCompleted)
+            {
+                if (EditorApplication.timeSinceStartup > _deadline)
+                {
+                    EditorApplication.update -= Poll;
+                    Debug.LogError("[PackageSearch] Timed out.");
+                    EditorApplication.Exit(2);
+                }
+                return;
+            }
+            EditorApplication.update -= Poll;
+
+            if (_request.Status == StatusCode.Success)
+            {
+                foreach (var p in _request.Result.OrderBy(p => p.name))
+                    Debug.Log($"[PackageSearch] {p.name}@{p.versions.latestCompatible}  {p.displayName}");
+                Debug.Log($"[PackageSearch] {_request.Result.Length} packages found.");
+                EditorApplication.Exit(0);
+            }
+            else
+            {
+                Debug.LogError($"[PackageSearch] Failed: {_request.Error?.message}");
+                EditorApplication.Exit(1);
+            }
+        }
+    }
+}
+```
+
+Run it with the same direct-Editor invocation shown below (swap the `-executeMethod` for
+`ProjectBootstrap.PackageSearch.SearchAll`) and read the `[PackageSearch]` lines from the log.
+`_request.Result` is a `PackageInfo[]`; each entry exposes `name`, `displayName`, `description`,
+and `versions` (`.latest`, `.latestCompatible`, `.all`).
+
 ## Run it headless (direct Editor invocation, no `-quit`)
 
 Resolve the Editor binary from the version, then run it in batch mode. The script owns quitting

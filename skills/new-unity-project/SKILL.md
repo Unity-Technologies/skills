@@ -150,7 +150,9 @@ step via `unity projects create ... --vcs github ...` or `unity projects link vc
 
 Map the brief (Step 1) and platforms/monetization (Step 2) to a concrete package list. See
 [references/select-packages.md](references/select-packages.md) for the genre/look/platform →
-package mapping and version guidance.
+package mapping and version guidance. That list is a starting point — **search the UPM registry**
+to discover packages beyond it and confirm ids/versions, via `Client.SearchAll()` in-Editor or a
+`curl https://packages.unity.com/<id>` metadata query (see select-packages.md).
 
 Install them from C# using `UnityEditor.PackageManager.Client` — **not** by hand-editing
 `Packages/manifest.json`. Write a small editor script into the project and run it headless.
