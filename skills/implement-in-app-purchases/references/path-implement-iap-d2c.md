@@ -224,9 +224,11 @@ An alternative to per-item `.ucat` JSON is a single `.catalog.csv` file at any l
 
 ```csv
 CatalogListingId,Sku,ProductType,Language,Title,Description,CurrencyCode,Amount,ImageUrl
-coins_100,com.mygame.coins100,Consumable,en_US,100 Coins,A pack of 100 coins.,USD,1.99,https://example.com/img/coins100.png
-coins_100,com.mygame.coins100,Consumable,fr_FR,100 Pièces,Un lot de 100 pièces.,EUR,1.79,
+,com.mygame.coins100,Consumable,en_US,100 Coins,A pack of 100 coins.,USD,1.99,https://example.com/img/coins100.png
+,com.mygame.coins100,Consumable,fr_FR,100 Pièces,Un lot de 100 pièces.,EUR,1.79,
 ```
+
+The `CatalogListingId` column is deliberately blank — the parser derives the value as `"catalog/" + Sku` (yielding `catalog/com.mygame.coins100` here). If you fill it in explicitly, the value **must** include the `catalog/` prefix (e.g. `catalog/coins_100`); a bare value like `coins_100` fails validation because catalog listing IDs must start with `catalog/`.
 
 The same amount/schema conversion applies on upload as for `.ucat`.
 

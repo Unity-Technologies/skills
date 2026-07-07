@@ -358,7 +358,7 @@ void OnPromotionalPurchase(Product product)
 |---|---|
 | `SKProduct` | `Product` (via `store.GetProductById`) |
 | `SKPaymentTransaction` | `PendingOrder` (on `OnPurchasePending`) |
-| `SKPaymentTransaction.transactionIdentifier` | `pendingOrder.Info.Apple?.transactionId` |
+| `SKPaymentTransaction.transactionIdentifier` | `pendingOrder.Info.TransactionID` |
 | `SKPaymentTransaction.payment.productIdentifier` | `pendingOrder.CartOrdered.Items().First().Product.definition.id` |
 | App receipt (`appStoreReceiptURL` base64) | `order.Info.Apple?.jwsRepresentation` (per-transaction JWS — see receipt format note) |
 | `SKPaymentQueue.default().finishTransaction:` | `store.ConfirmPurchase(pendingOrder)` |
