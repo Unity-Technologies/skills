@@ -12,7 +12,11 @@ npx skills add Unity-Technologies/skills
 
 | Skill | Description |
 |---|---|
+| `new-unity-project` | Start a new game from scratch — gather the concept, platforms, and monetization, install the CLI and Editor, create the project and source control, install packages, and scaffold a skeleton |
 | `unity-cli` | Interact with the Unity CLI — install editors, manage projects, run builds, check auth, and more |
+| `build-live-game` | Build and operate a live game with Unity Gaming Services — auth, cloud save, cloud code, economy, remote config, leaderboards, and more |
+| `implement-in-app-purchases` | Implement, configure, and debug Unity In-App Purchases (IAP) |
+| `levelplay-unity-integration` | Integrate LevelPlay (IronSource) ad mediation — rewarded, interstitial, and banner ads |
 
 ## Usage
 
