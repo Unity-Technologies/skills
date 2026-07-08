@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal — bootstrap or create a new project from scratch, install, upgrade or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation.
+description: Use when interacting with Unity CLI from the terminal — install, upgrade or uninstall editors, create, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation. For a guided idea-to-running-project flow for a brand-new game, use the new-unity-project skill instead.
 allowed-tools:
   - Bash
 ---
@@ -134,6 +134,11 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 ## Common workflows
 
 ### Bootstrap a new project from scratch
+
+> For a **guided** end-to-end experience — concept questions, installing the Editor in the
+> background while you plan, package selection, and monetization handoff — use the
+> **`new-unity-project`** skill. This section is the raw CLI recipe that skill builds on; use it
+> directly when you just want the commands.
 
 Take an idea to a running, version-controlled project using only the CLI. Decide the **target
 platforms first** — they determine which Editor modules you install in step 2, and a project
