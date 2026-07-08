@@ -273,6 +273,17 @@ Do not call `StoreController(PaymentProvider.Name)` before the player is authent
 
 **Anonymous sign-in warning:** Do not use anonymous sign-in as the authentication method for D2C purchases. Anonymous sign-in does not persist purchases after the session token is lost — if the player reinstalls the app or clears app data, their purchase history becomes unrecoverable. Use a persistent identity method (e.g., Unity Authentication with a linked account, or your own identity provider).
 
+### Payment provider services on the StoreController
+
+The `StoreController` (scoped to `PaymentProvider.Name`) exposes the payment-provider APIs through **two** properties. Use the exact property names below — do not substitute the interface name for the property name, and do not use `PurchaseService.PaymentProviders` (that is a different entry point that returns the purchase-extended interface). Both properties are `null` on unsupported platforms, so null-check before use.
+
+| StoreController property | Returns interface | Members used in this doc |
+| --- | --- | --- |
+| `store.PaymentProviderStoreExtendedService` | `IPaymentProvidersExtendedService` | `GetEligiblePaymentProviders`, `GetPaymentOptionProviderUGUI`, `GetPaymentOptionProviderUITK`, `SetCheckoutPresentationMode`, `SetDeepLinkScheme` |
+| `store.PaymentProvidersExtendedPurchaseService` | `IPaymentProvidersExtendedPurchaseService` | `PurchaseProduct`, `RedirectToWebshop`, `GenerateURL`, `SetComplianceCheck`, `SetPaymentProviderOverride` |
+
+Note the naming asymmetry: the presentation-service property is singular (`PaymentProvider`**Store**`ExtendedService`) while the purchase-service property is plural (`PaymentProviders`**ExtendedPurchase**`Service`). This mirrors the Apple/Google split (`...ExtendedService` + `...ExtendedPurchaseService`).
+
 ### Coexistence with existing Apple / Google StoreController
 
 If the project already has a `StoreController` for Apple App Store or Google Play (standard IAP 5):
@@ -293,7 +304,14 @@ If the project already has a `StoreController` for Apple App Store or Google Pla
 Before initiating purchase, use `GetEligiblePaymentProviders()` to confirm that at least one payment provider is available for the current user and region. Call this after `Connect()` and `FetchProducts()` succeed:
 
 ```csharp
-var eligible = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
+var svc = store.PaymentProviderStoreExtendedService;
+if (svc == null)
+{
+    // No payment provider service — hide purchase UI or show an error
+    return;
+}
+
+var eligible = await svc.GetEligiblePaymentProviders();
 if (eligible == null || eligible.Providers.Count == 0)
 {
     // No payment providers available — hide purchase UI or show an error
@@ -328,7 +346,8 @@ Then initiate purchase with the `catalogListingId`:
 ```csharp
 public async void Buy(string catalogListingId)
 {
-    var eligibility = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
+    var svc = store.PaymentProviderStoreExtendedService;
+    var eligibility = svc != null ? await svc.GetEligiblePaymentProviders() : null;
     if (eligibility?.Providers.Count > 0)
     {
         // Show the Purchase Options UI — lets the player pick native, D2C, or webshop
@@ -476,8 +495,14 @@ Returns `null` when the product wasn't fetched through the PaymentProvider store
 Skip the picker entirely and open the webshop for a specific listing (or the generic Unity webshop when `catalogListingId` is null):
 
 ```csharp
-await store.PaymentProvidersExtendedPurchaseService?
-    .RedirectToWebshop("coins_100_offer_usd");
+var svc = store.PaymentProvidersExtendedPurchaseService;
+if (svc == null)
+{
+    // No payment provider purchase service — surface an error or hide the entry point
+    return;
+}
+
+await svc.RedirectToWebshop("coins_100_offer_usd");
 ```
 
 The SDK fetches the webshop URL, runs the registered compliance callback (`SetComplianceCheck`), and opens the URL on approval. Network failures propagate as exceptions on the returned `Task`; compliance rejection routes through the standard `OnPurchaseFailed` path.
@@ -575,7 +600,7 @@ Purchase handling follows the same save-before-confirm contract as standard IAP 
 
 IAP D2C Capabilities-specific notes:
 
-- **Checkout presentation mode:** By default, the payment flow opens in the device's external browser. Unity IAP 5.4 also supports an in-app WebView via `CheckoutPresentationMode`. Set the mode on `IPaymentProvidersExtendedService` before purchase:
+- **Checkout presentation mode:** By default, the payment flow opens in the device's external browser. Unity IAP 5.4 also supports an in-app WebView via `CheckoutPresentationMode`. Set the mode before purchase via `store.PaymentProviderStoreExtendedService` (the `IPaymentProvidersExtendedService` accessor — see "Payment provider services on the StoreController" above):
 
   ```csharp
   // External browser (default)
