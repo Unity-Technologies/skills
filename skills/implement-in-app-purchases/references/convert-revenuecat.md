@@ -217,13 +217,11 @@ Present two choices:
 
 1. **Install Unity IAP 5** if not already present — follow Step 1 of [path-add-iap-to-new-project.md](path-add-iap-to-new-project.md).
 
-2. **Resolve the BillingClient Gradle conflict.** Both SDKs bundle `com.android.billingclient`. Add the following to `Assets/Plugins/Android/mainTemplate.gradle` inside the `android { }` block:
+2. **Resolve the BillingClient Gradle conflict.** Both SDKs bundle `com.android.billingclient`. Unity IAP 5 declares `com.android.billingclient:billing:9.0.0` via `Plugins/UnityPurchasing/Android/IAPResolver/IAPAndroidDependencies.cs` — do **not** add a project-wide `configurations.all { exclude group: 'com.android.billingclient' }` in `mainTemplate.gradle`, as that will strip Unity IAP's own BillingClient along with RevenueCat's and leave the Android build with no BillingClient at all.
 
-   ```groovy
-   configurations.all {
-       exclude group: 'com.android.billingclient', module: 'billing'
-   }
-   ```
+   Instead, remove only RevenueCat's copy:
+   - Locate RevenueCat's EDM4U dependency file (typically `Assets/RevenueCat/Editor/RevenueCatDependencies.xml` or similar) and delete the `<androidPackage spec="com.android.billingclient:billing:..."/>` entry, **or**
+   - After Force Resolve, delete the RevenueCat-contributed `billing-*.aar` from `Assets/Plugins/Android/` and keep the one contributed by Unity IAP.
 
    Then run **Assets > External Dependency Manager > Android Resolver > Delete Resolved Libraries**, followed by **Force Resolve**.
 

@@ -222,7 +222,7 @@ Product coinsPack = store.GetProductById("com.mygame.coins100");
 
 ### CatalogListings and uSku (v5.4+)
 
-In v5.4, `Product` exposes two new members. Prefer these for new code — `product.definition.id` and `productId` remain backwards compatible but point new users toward `CatalogListings`:
+In v5.4, `Product` exposes two new members. Prefer these for new code — `product.definition.id` remains backwards compatible but points new users toward `CatalogListings`:
 
 ```csharp
 // product.uSku — the Unity-side identifier for the product (cross-platform canonical ID)
