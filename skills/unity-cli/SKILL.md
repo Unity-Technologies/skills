@@ -1379,11 +1379,12 @@ git ls-files | grep -c '^Library/'     # must print 0
 ```
 
 **What the CLI does and doesn't cover.** The CLI handles editor, project, and source control.
-It does **not** manage UPM (Unity Package Manager) packages — add packages beyond the template
-in-Editor via the Package Manager window. For what comes next, hand off to the dedicated
-skills: `implement-in-app-purchases` (IAP), `levelplay-unity-integration` (ads), or
-`build-live-game` (accounts, cloud save, economy, remote config, leaderboards). Open the
-project to start working: `unity open ~/UnityProjects/MyGame`.
+It does **not** manage UPM (Unity Package Manager) packages — to add packages beyond the
+template headlessly, use the **`unity-package-management`** skill (C# PackageManager Client
+API). For monetization/backend, hand off to the dedicated skills: `implement-in-app-purchases`
+(IAP), `levelplay-unity-integration` (ads), or `build-live-game` (accounts, cloud save,
+economy, remote config, leaderboards). Open the project to start working:
+`unity open ~/UnityProjects/MyGame`.
 
 ### Find and install a missing editor
 

@@ -13,6 +13,7 @@ npx skills add Unity-Technologies/skills
 | Skill | Description |
 |---|---|
 | `unity-cli` | Interact with the Unity CLI — bootstrap a new project from scratch, install editors, manage projects, run builds, check auth, and more |
+| `unity-package-management` | Add, remove, upgrade, or discover Unity (UPM) packages programmatically — headless/CI installs via the C# PackageManager Client API, and choosing packages by genre/platform/monetization |
 | `build-live-game` | Build and operate a live game with Unity Gaming Services — auth, cloud save, cloud code, economy, remote config, leaderboards, and more |
 | `implement-in-app-purchases` | Implement, configure, and debug Unity In-App Purchases (IAP) |
 | `levelplay-unity-integration` | Integrate LevelPlay (IronSource) ad mediation — rewarded, interstitial, and banner ads |
