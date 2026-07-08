@@ -119,7 +119,8 @@ Read the final list back to the user before installing; verify `manifest.json` a
 Open the project once so Unity imports the assets and generates every `.meta` file, then commit:
 
 ```bash
-unity open "<project-path>"     # or a headless save — see unity-cli / unity-package-management
+unity open "<project-path>"     # imports + generates .meta; for headless/CI use the
+                                # "Import & save headlessly" method in unity-package-management
 cd "<project-path>"
 git add -A
 git status                      # Library/ Temp/ obj/ Build/ must NOT be staged
