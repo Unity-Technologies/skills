@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal — install, upgrade or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation.
+description: Use when interacting with Unity CLI from the terminal — bootstrap or create a new project from scratch, install, upgrade or uninstall editors, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation.
 allowed-tools:
   - Bash
 ---
@@ -1314,6 +1314,67 @@ Manage review annotations and attachments. Subcommand groups: `annotations` (`co
 ---
 
 ## Common workflows
+
+### Bootstrap a new project from scratch
+
+Take an idea to a running, version-controlled project using only the CLI. Decide the **target
+platforms first** — they determine which Editor modules you install in step 2, and a project
+created without the right module can't build for that platform.
+
+```bash
+# 1. Confirm the CLI works and you're signed in and licensed (see Auth / License above).
+unity --version
+unity auth status --format json      # if signed out:      unity auth login
+unity license status --format json   # if none active:      unity license activate
+
+# 2. Pick and install an Editor with the modules your target platforms need.
+#    Default to the latest LTS unless you need a feature only in a newer release.
+#    (lts / latest aliases work wherever a version is accepted.)
+unity releases --stream lts --limit 5 --format json
+unity install lts --module android --module ios --yes --accept-eula   # add --module webgl, etc.
+unity editors --installed --format json                               # confirm it landed
+
+# 3. List the real template ids this Editor offers — don't guess them.
+unity templates list --editor lts --format json
+#    Common ids: com.unity.template.3d, com.unity.template.2d, and a URP template (id varies by version).
+
+# 4. Create the project. The first positional arg is the NAME; --path sets the parent directory.
+#    All options supplied, so it won't prompt; add --non-interactive in CI.
+unity projects create "MyGame" --path ~/UnityProjects \
+  --editor-version lts --template com.unity.template.3d
+```
+
+**Source control.** The CLI can publish the new project to a fresh remote in one step as part
+of creation. Prefer this, and **always pass the token on stdin** (`--git-token-stdin`) so the
+secret never lands in shell history or the process list:
+
+```bash
+unity projects create "MyGame" --path ~/UnityProjects \
+  --editor-version lts --template com.unity.template.3d \
+  --vcs github --git-namespace my-org --git-repo my-game \
+  --git-visibility private --git-default-branch main --git-token-stdin
+```
+
+For a purely local repository instead, initialize git with a Unity-appropriate ignore so the
+multi-GB `Library/` and other generated folders are never committed:
+
+```bash
+cd ~/UnityProjects/MyGame
+git init -b main
+# Download (do not pipe to a shell) a maintained Unity .gitignore:
+curl -fsSL https://raw.githubusercontent.com/github/gitignore/main/Unity.gitignore -o .gitignore
+git add -A
+git status                             # sanity-check: Library/ Temp/ obj/ Build/ must NOT be staged
+git commit -m "Initial Unity project: MyGame"
+git ls-files | grep -c '^Library/'     # must print 0
+```
+
+**What the CLI does and doesn't cover.** The CLI handles editor, project, and source control.
+It does **not** manage UPM (Unity Package Manager) packages — add packages beyond the template
+in-Editor via the Package Manager window. For what comes next, hand off to the dedicated
+skills: `implement-in-app-purchases` (IAP), `levelplay-unity-integration` (ads), or
+`build-live-game` (accounts, cloud save, economy, remote config, leaderboards). Open the
+project to start working: `unity open ~/UnityProjects/MyGame`.
 
 ### Find and install a missing editor
 
