@@ -1328,7 +1328,9 @@ unity auth status --format json      # if signed out:      unity auth login
 unity license status --format json   # if none active:      unity license activate
 
 # 2. Pick and install an Editor with the modules your target platforms need.
-#    Default to the latest LTS unless you need a feature only in a newer release.
+#    Default to the latest LTS (most stable, ~2 years of patches). Reach for a Tech-stream
+#    release (--stream tech) only for a feature not yet in LTS; treat --stream beta/alpha as
+#    evaluation-only, never for a project you intend to ship. A deadline argues for LTS.
 #    (lts / latest aliases work wherever a version is accepted.)
 unity releases --stream lts --limit 5 --format json
 unity install lts --module android --module ios --yes --accept-eula   # add --module webgl, etc.
@@ -1352,7 +1354,8 @@ secret never lands in shell history or the process list:
 unity projects create "MyGame" --path ~/UnityProjects \
   --editor-version lts --template com.unity.template.3d \
   --vcs github --git-namespace my-org --git-repo my-game \
-  --git-visibility private --git-default-branch main --git-token-stdin
+  --git-visibility private --git-default-branch main --git-token-stdin \
+  --git-lfs                            # track binary assets with Git LFS (asset-heavy games)
 ```
 
 For a purely local repository instead, initialize git with a Unity-appropriate ignore so the
@@ -1363,6 +1366,12 @@ cd ~/UnityProjects/MyGame
 git init -b main
 # Download (do not pipe to a shell) a maintained Unity .gitignore:
 curl -fsSL https://raw.githubusercontent.com/github/gitignore/main/Unity.gitignore -o .gitignore
+
+# Asset-heavy game? Keep large binaries out of git history with Git LFS:
+git lfs install
+git lfs track "*.psd" "*.fbx" "*.wav" "*.mp3" "*.png"   # adjust to your asset types
+git add .gitattributes
+
 git add -A
 git status                             # sanity-check: Library/ Temp/ obj/ Build/ must NOT be staged
 git commit -m "Initial Unity project: MyGame"
