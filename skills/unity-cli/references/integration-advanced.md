@@ -1,4 +1,4 @@
-#  — unity-cli command reference
+# Integration & advanced — unity-cli command reference
 
 Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,

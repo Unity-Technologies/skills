@@ -106,9 +106,10 @@ Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verba
 - Set up source control — **ask the user which they want**, don't assume: Git (GitHub / GitLab;
   add `--git-lfs` for asset-heavy games) or **Unity Version Control** (`--vcs uvcs`, which handles
   large binary assets natively — no LFS), or a purely local `git init` + Unity `.gitignore`.
-  Publish in one step with `unity projects create --vcs … --git-token-stdin` (tokens on stdin).
-  See the `unity-cli` workflow for exact flags. **Do the first commit in Step 6**, after packages
-  and `.meta` files exist.
+  Publish in one step with `unity projects create --vcs … --git-token-stdin --no-initial-commit`
+  (tokens on stdin). Pass **`--no-initial-commit`** so the CLI doesn't commit the bare project
+  before packages and `.meta` files exist — you make the real first commit/check-in in Step 6.
+  See the `unity-cli` workflow for exact flags.
 
 ## Step 5 — Packages
 
@@ -119,18 +120,27 @@ Read the final list back to the user before installing; verify `manifest.json` a
 
 ## Step 6 — Save & first commit
 
-Open the project once so Unity imports the assets and generates every `.meta` file, then commit:
+Open the project once so Unity imports the assets and generates every `.meta` file, then make
+the first commit **with whichever VCS you set up in Step 4**:
 
 ```bash
 unity open "<project-path>"     # imports + generates .meta; for headless/CI use the
                                 # "Import & save headlessly" method in unity-package-management
-cd "<project-path>"
-git add -A
-git status                      # Library/ Temp/ obj/ Build/ must NOT be staged
-git commit -m "Initial Unity project: <Name>"
 ```
 
-Every `.cs`/asset must be committed together with its `.meta`.
+- **Git (GitHub / GitLab / local):**
+  ```bash
+  cd "<project-path>"
+  git add -A
+  git status                    # Library/ Temp/ obj/ Build/ must NOT be staged
+  git commit -m "Initial Unity project: <Name>"
+  ```
+  Every `.cs`/asset must be committed together with its `.meta`.
+- **Unity Version Control (UVCS):** check in through your UVCS client/workspace (created during
+  Step 4) — there's no `git` step. Generated folders are still excluded by the ignore rules.
+
+If you published via `--vcs` in Step 4 **without** `--no-initial-commit`, the CLI already made an
+initial commit of the bare project — add a follow-up commit here rather than double-committing.
 
 ## Step 7 — Hand off
 

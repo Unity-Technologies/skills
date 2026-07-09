@@ -141,8 +141,9 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 > directly when you just want the commands.
 
 Take an idea to a running, version-controlled project using only the CLI. Decide the **target
-platforms first** — they determine which Editor modules you install in step 2, and a project
-created without the right module can't build for that platform.
+platforms first** — they determine which Editor modules you install in step 2. You can add
+modules later (`unity install-modules`), but a project can't build for a platform until that
+platform's module is installed, so it's simplest to decide up front.
 
 ```bash
 # 1. Confirm the CLI works and you're signed in and licensed (see references/auth-license-cloud.md).
@@ -181,7 +182,8 @@ land in shell history or the process list. Pick based on the project — don't d
   selects the region.
 
 ```bash
-# Git (GitHub) — drop --git-lfs if the game isn't asset-heavy:
+# Git (GitHub) — drop --git-lfs if the game isn't asset-heavy. Add --no-initial-commit if you
+# want to add packages/assets BEFORE the first commit (see the new-unity-project flow).
 unity projects create "MyGame" --path ~/UnityProjects \
   --editor-version lts --template com.unity.template.3d \
   --vcs github --git-namespace my-org --git-repo my-game \
@@ -193,7 +195,10 @@ unity projects create "MyGame" --path ~/UnityProjects \
   --vcs uvcs --git-namespace my-org --git-repo my-game --vcs-region <region>
 ```
 
-See [references/projects-templates.md](references/projects-templates.md) for the full
+Feed the token to `--git-token-stdin` from a secret store, never a literal — e.g.
+`… --git-token-stdin <<<"$GIT_TOKEN"` where `$GIT_TOKEN` comes from your CI/secret manager
+(UVCS uses your Unity sign-in, so no token is needed). See
+[references/projects-templates.md](references/projects-templates.md) for the full
 source-control flag set. For a purely local Git repository instead, initialize git with a
 Unity-appropriate ignore so the multi-GB `Library/` and other generated folders are never committed:
 
