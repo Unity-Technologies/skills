@@ -275,11 +275,11 @@ Do not call `StoreController(PaymentProvider.Name)` before the player is authent
 
 ### Payment provider services on the StoreController
 
-The `StoreController` (scoped to `PaymentProvider.Name`) exposes the payment-provider APIs through **two** properties. Use the exact property names below — do not substitute the interface name for the property name, and do not use `PurchaseService.PaymentProviders` (that is a different entry point that returns the purchase-extended interface). Both properties are `null` on unsupported platforms, so null-check before use.
+The `StoreController` (scoped to `PaymentProvider.Name`) exposes the payment-provider APIs through **two** properties. Use the exact property names below — do not substitute the interface name for the property name, and do not use `PurchaseService.PaymentProviders` (that is a different entry point that returns the purchase-extended interface). Both properties are typed as nullable, but on a `PaymentProvider.Name`-scoped `StoreController` the factory always populates them — they are only `null` when reached from a `StoreController` scoped to another store (Apple / Google), where the payment-provider extensions do not apply. Guard with `?.` if the same code path could see either kind of controller.
 
 | StoreController property | Returns interface | Members used in this doc |
 | --- | --- | --- |
-| `store.PaymentProviderStoreExtendedService` | `IPaymentProvidersExtendedService` | `GetEligiblePaymentProviders`, `GetPaymentOptionProviderUGUI`, `GetPaymentOptionProviderUITK`, `SetCheckoutPresentationMode`, `SetDeepLinkScheme` |
+| `store.PaymentProviderStoreExtendedService` | `IPaymentProvidersExtendedService` | `GetEligiblePaymentProviders`, `GetPaymentOptionProviderUGUI`, `GetPaymentOptionProviderUITK`, `SetCheckoutPresentationMode`, `SetWebshopPresentationMode`, `SetDeepLinkScheme` |
 | `store.PaymentProvidersExtendedPurchaseService` | `IPaymentProvidersExtendedPurchaseService` | `PurchaseProduct`, `RedirectToWebshop`, `GenerateURL`, `SetComplianceCheck`, `SetPaymentProviderOverride` |
 
 Note the naming asymmetry: the presentation-service property is singular (`PaymentProvider`**Store**`ExtendedService`) while the purchase-service property is plural (`PaymentProviders`**ExtendedPurchase**`Service`). This mirrors the Apple/Google split (`...ExtendedService` + `...ExtendedPurchaseService`).
@@ -304,14 +304,7 @@ If the project already has a `StoreController` for Apple App Store or Google Pla
 Before initiating purchase, use `GetEligiblePaymentProviders()` to confirm that at least one payment provider is available for the current user and region. Call this after `Connect()` and `FetchProducts()` succeed:
 
 ```csharp
-var svc = store.PaymentProviderStoreExtendedService;
-if (svc == null)
-{
-    // No payment provider service — hide purchase UI or show an error
-    return;
-}
-
-var eligible = await svc.GetEligiblePaymentProviders();
+var eligible = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
 if (eligible == null || eligible.Providers.Count == 0)
 {
     // No payment providers available — hide purchase UI or show an error
@@ -346,8 +339,7 @@ Then initiate purchase with the `catalogListingId`:
 ```csharp
 public async void Buy(string catalogListingId)
 {
-    var svc = store.PaymentProviderStoreExtendedService;
-    var eligibility = svc != null ? await svc.GetEligiblePaymentProviders() : null;
+    var eligibility = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
     if (eligibility?.Providers.Count > 0)
     {
         // Show the Purchase Options UI — lets the player pick native, D2C, or webshop
@@ -495,14 +487,8 @@ Returns `null` when the product wasn't fetched through the PaymentProvider store
 Skip the picker entirely and open the webshop for a specific listing (or the generic Unity webshop when `catalogListingId` is null):
 
 ```csharp
-var svc = store.PaymentProvidersExtendedPurchaseService;
-if (svc == null)
-{
-    // No payment provider purchase service — surface an error or hide the entry point
-    return;
-}
-
-await svc.RedirectToWebshop("coins_100_offer_usd");
+await store.PaymentProvidersExtendedPurchaseService?
+    .RedirectToWebshop("coins_100_offer_usd");
 ```
 
 The SDK fetches the webshop URL, runs the registered compliance callback (`SetComplianceCheck`), and opens the URL on approval. Network failures propagate as exceptions on the returned `Task`; compliance rejection routes through the standard `OnPurchaseFailed` path.
@@ -611,6 +597,16 @@ IAP D2C Capabilities-specific notes:
   ```
 
   When using `ExternalBrowser`, the game is suspended during payment and resumes via the deep link redirect. When using `WebView`, the game remains active and the WebView is dismissed on completion. `OnPurchasePending` fires in both cases after the payment is processed.
+
+- **Webshop presentation mode:** `RedirectToWebshop` uses a **separate** `SetWebshopPresentationMode` setter — it is independent of `SetCheckoutPresentationMode` (verified by `PaymentProviderImplTests.TestWebshopModeIsIndependentOfCheckoutMode`). Setting the checkout mode to `WebView` does **not** move the webshop flow into the in-app WebView; without an explicit webshop-mode call, `RedirectToWebshop` opens the external browser. Set it before invoking `RedirectToWebshop`:
+
+  ```csharp
+  // External browser (default)
+  store.PaymentProviderStoreExtendedService?.SetWebshopPresentationMode(CheckoutPresentationMode.ExternalBrowser);
+
+  // In-app WebView
+  store.PaymentProviderStoreExtendedService?.SetWebshopPresentationMode(CheckoutPresentationMode.WebView);
+  ```
 
 - `OnPurchaseDeferred` fires if the payment is not immediately completed. Do not grant — show pending UI.
 - Always confirm (`ConfirmPurchase`) only after entitlement is granted and saved. For consumables, Unity IAP D2C Capabilities prevents re-purchase until the previous order is confirmed.
