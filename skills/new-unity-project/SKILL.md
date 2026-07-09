@@ -103,9 +103,12 @@ Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verba
 - List the **real** template ids the Editor offers (`unity templates list`) and pick one matching
   2D/3D and render pipeline from the brief — don't guess ids.
 - Create with `unity projects create "<Name>" --path <dir> --editor-version <v> --template <id>`.
-- Set up source control: local `git init` + a Unity `.gitignore`, or publish to a remote in one
-  step with `--vcs … --git-token-stdin` (token on stdin only). Add `--git-lfs` for asset-heavy
-  games. **Do the first commit in Step 6**, after packages and `.meta` files exist.
+- Set up source control — **ask the user which they want**, don't assume: Git (GitHub / GitLab;
+  add `--git-lfs` for asset-heavy games) or **Unity Version Control** (`--vcs uvcs`, which handles
+  large binary assets natively — no LFS), or a purely local `git init` + Unity `.gitignore`.
+  Publish in one step with `unity projects create --vcs … --git-token-stdin` (tokens on stdin).
+  See the `unity-cli` workflow for exact flags. **Do the first commit in Step 6**, after packages
+  and `.meta` files exist.
 
 ## Step 5 — Packages
 

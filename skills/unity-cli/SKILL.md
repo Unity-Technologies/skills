@@ -169,20 +169,33 @@ unity projects create "MyGame" --path ~/UnityProjects \
   --editor-version lts --template com.unity.template.3d
 ```
 
-**Source control.** The CLI can publish the new project to a fresh remote in one step as part
-of creation. Prefer this, and **always pass the token on stdin** (`--git-token-stdin`) so the
-secret never lands in shell history or the process list:
+**Source control — let the user choose.** The CLI publishes the new project to a fresh remote in
+one step for any provider. **Always pass tokens on stdin** (`--git-token-stdin`) so secrets never
+land in shell history or the process list. Pick based on the project — don't default to one:
+
+- **Git — GitHub / GitLab** (`--vcs github` / `--vcs gitlab`). Ubiquitous. For asset-heavy games
+  add **Git LFS** (`--git-lfs`) so large binaries don't bloat history.
+- **Unity Version Control — UVCS** (`--vcs uvcs`). Unity's own VCS, built for large binary game
+  assets: it handles them natively (**no LFS needed**) and supports file locking — often the
+  better fit for art-heavy projects or larger teams. Auth uses your Unity sign-in; `--vcs-region`
+  selects the region.
 
 ```bash
+# Git (GitHub) — drop --git-lfs if the game isn't asset-heavy:
 unity projects create "MyGame" --path ~/UnityProjects \
   --editor-version lts --template com.unity.template.3d \
   --vcs github --git-namespace my-org --git-repo my-game \
-  --git-visibility private --git-default-branch main --git-token-stdin \
-  --git-lfs                            # track binary assets with Git LFS (asset-heavy games)
+  --git-visibility private --git-default-branch main --git-token-stdin --git-lfs
+
+# Unity Version Control (UVCS) — handles binaries natively, so no LFS:
+unity projects create "MyGame" --path ~/UnityProjects \
+  --editor-version lts --template com.unity.template.3d \
+  --vcs uvcs --git-namespace my-org --git-repo my-game --vcs-region <region>
 ```
 
-For a purely local repository instead, initialize git with a Unity-appropriate ignore so the
-multi-GB `Library/` and other generated folders are never committed:
+See [references/projects-templates.md](references/projects-templates.md) for the full
+source-control flag set. For a purely local Git repository instead, initialize git with a
+Unity-appropriate ignore so the multi-GB `Library/` and other generated folders are never committed:
 
 ```bash
 cd ~/UnityProjects/MyGame
