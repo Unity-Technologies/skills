@@ -251,7 +251,9 @@ cat "<project-path>/Packages/manifest.json"
 
 Confirm the run exited `0` and each package from the list is present in `manifest.json`. If a
 package fails to resolve, `_request.Error.message` is logged; read it and check the id/version
-against the registry. `unity logs --level error` surfaces Editor logs.
+against the registry. The Editor's own log (including the `[PackageInstaller]` lines) is the
+stdout you streamed with `-logFile -` above — read it there, not via `unity logs` (which shows
+the CLI's own log, not the Editor's).
 
 ## Import & save headlessly (generate `.meta` files)
 

@@ -28,11 +28,13 @@ ids/versions before building the install list.
 **known** id exists and list its versions:
 
 ```bash
-# Full metadata for one package: versions{}, dist-tags.latest, description, dependencies
-curl -s https://packages.unity.com/com.unity.cinemachine | python3 -m json.tool | head -40
+# Full metadata for one package: versions{}, dist-tags.latest, description, dependencies.
+# -f makes curl fail (non-zero) on HTTP errors — e.g. a 404 for a bad id — instead of piping
+# an error page into python; -L follows redirects.
+curl -fsSL https://packages.unity.com/com.unity.cinemachine | python3 -m json.tool | head -40
 
 # Just the latest published version
-curl -s https://packages.unity.com/com.unity.cinemachine \
+curl -fsSL https://packages.unity.com/com.unity.cinemachine \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['dist-tags']['latest'])"
 ```
 
