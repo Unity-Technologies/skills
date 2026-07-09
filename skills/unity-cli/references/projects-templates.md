@@ -78,6 +78,8 @@ unity projects create MyGame \
 
 Source-control flags (shared with `projects link vcs`): `--vcs github|gitlab|uvcs`, `--git-namespace <name>`, `--git-repo <name>`, `--git-visibility private|public|internal` (default private), `--git-default-branch <name>`, `--git-token <pat>` / `--git-token-stdin`, `--no-initial-commit`, `--git-lfs`, and `--vcs-region <name>` for Unity Version Control.
 
+**Flag names differ by subcommand:** `projects create` and `projects link vcs` use `--git-namespace` / `--git-repo`, while `projects clone` (below) uses `--vcs-namespace` / `--vcs-repo`. Copy the names for the exact command you're running, and confirm with `--help` if unsure.
+
 #### projects new
 
 Create a project without any interactive prompts — resolves missing options from stored defaults, never asks the user. The first positional argument is the project **name**; `--path` sets the parent directory:
