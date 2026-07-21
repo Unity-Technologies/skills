@@ -118,6 +118,8 @@ Keystore flags are validated together. Secrets passed as command-line flags surf
 
 **Versioning** — `semantic` and `tag` derive the version from git tags/history; `custom` requires an explicit `--build-version`; a dirty working tree is rejected unless `--allow-dirty-build` is passed.
 
+**Interrupt exit codes** — interrupting `unity build` exits with the conventional signal code (`130` for Ctrl-C / SIGINT, `143` for SIGTERM) rather than a generic `1`, so callers and CI can tell an aborted build apart from a failed one. The temporary Android keystore is scrubbed before exit.
+
 ```bash
 # With --format json, stdout includes newline-delimited JSON progress frames before the final envelope:
 unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --format json

@@ -129,9 +129,16 @@ unity editors module add 6000.0.47f1 --all          # Install every available mo
 unity editors module add 6000.0.47f1 --module android --child-modules   # Include child modules
 unity editors module add 6000.0.47f1 --module android --accept-eula      # Accept EULAs automatically
 
+# Remove installed modules from an editor by id (-m/--module, repeatable)
+unity editors module remove 6000.0.47f1 --module android --module ios
+unity editor module remove 6000.0.47f1 -m android -a arm64   # disambiguate side-by-side installs
+unity editors module remove 6000.0.47f1 -m android --yes     # skip the confirm prompt (required non-interactively)
+
 # Refresh module list for a manually located editor
 unity editors module refresh 6000.0.47f1
 ```
+
+`module remove` prompts to confirm before deleting the module files; `-y` / `--yes` skips the prompt and is required in non-interactive mode. Supports `-a` / `--architecture` to disambiguate side-by-side installs and the global `--format human|json|tsv|ndjson`.
 
 #### editor add (single path, with module-fetch control)
 
@@ -179,7 +186,14 @@ unity install 6000.0.47f1 --dry-run --format json
 # Space-separated module values after a single -m are equivalent to repeating -m
 unity install 6000.0.47f1 -m android ios          # space-separated
 unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
+
+# Windows: skip the elevated (UAC) install helper — for user-writable install locations
+# and CI shells where a UAC prompt can't be answered (installs into protected paths then
+# fail with a permission error instead of prompting). Also via UNITY_NO_ELEVATE=1.
+unity install 6000.0.47f1 --no-elevate --yes --accept-eula
 ```
+
+When installing an editor with several modules, a failed module no longer aborts the whole batch — `unity install` (and `unity install-modules`) continue with the remaining items and exit non-zero if any failed. Each editor and module is listed as installed (✓), failed (✗), or pending (·); the NDJSON `result` frame carries the same breakdown as an `items` array (each entry has `uid`, `name`, `kind`, `status`), so scripts can tell exactly which modules succeeded even on a non-zero exit.
 
 **NDJSON progress frames** for `unity install` and `unity install-modules` include a `phase: 'download' | 'install'` field so scripts can switch to an indeterminate spinner during the install phase (which is genuinely indeterminate — NSIS on Windows only reports success/failure). During the install phase, `pct` is locked at 50 and only jumps to 100 on completion. Module download/install progress is nested under the parent editor via `parentItemUid`, so consumers see one editor group with its modules rather than one group per module.
 
@@ -229,9 +243,25 @@ unity install-modules --editor-version 6000.0.47f1 --module android --no-cm
 
 # Accept EULAs and dry-run
 unity install-modules --editor-version 6000.0.47f1 --all --accept-eula --dry-run
+
+# Reinstall modules that are already installed (a repair)
+unity install-modules --editor-version 6000.0.47f1 --module android --reinstall
+
+# -f/--force implies --reinstall, auto-includes child modules, and skips confirmation prompts
+unity install-modules --editor-version 6000.0.47f1 --module android --force
+
+# Tune the automatic retry for modules whose download/validation fails intermittently
+# (default retries twice with backoff; 0 disables). Also via UNITY_INSTALL_RETRIES.
+unity install-modules --editor-version 6000.0.47f1 --module android --retries 3
+unity install-modules --editor-version 6000.0.47f1 --module android --retries 0
+
+# Windows: skip the elevated (UAC) install helper (also via UNITY_NO_ELEVATE=1)
+unity install-modules --editor-version 6000.0.47f1 --module android --no-elevate
 ```
 
 `--list` and `--all` are mutually exclusive. `--list` is also mutually exclusive with `--module`.
+
+A module whose download or validation fails intermittently — common for large modules such as Android SDK/NDK and OpenJDK — is retried automatically (up to twice with exponential backoff by default) instead of failing the whole run; already-installed modules are never re-downloaded, and retry attempts surface in both human and `--format ndjson` output.
 
 `--module android ios` (space-separated values after a single `--module`) and `--module android --module ios` (repeated flag) are equivalent — both install all listed modules.
 
