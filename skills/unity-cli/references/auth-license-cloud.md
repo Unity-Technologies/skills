@@ -63,7 +63,7 @@ unity license activate --floating                   # lease a seat from the conf
 unity license activate --file ./Unity_lic.ulf       # offline activation from a .ulf / .xml file
 unity license activate --generate-request ./req.alf # write an offline activation request (air-gapped)
 
-# Return the active assigned/subscription licenses (prompts to confirm; --yes skips)
+# Return the active licenses — assigned/subscription AND serial-activated (prompts to confirm; --yes skips)
 unity license return
 unity license return --yes
 
@@ -75,6 +75,8 @@ unity license server status    # reachability + available seats
 `list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; as of `0.1.0-beta.8`, if the client is unavailable `list` reports a clear error and exits non-zero (matching `status`), rather than printing an empty list.
 
 `activate` takes a single mode flag (combining them is a usage error). The default (no flag) and `--personal` activate the signed-in user's entitlements — sign in first with `unity auth login`. `--personal` also requires `--accept-eula` to acknowledge the Unity Personal license terms. `--serial` / `--file` work offline without sign-in. `--floating` requires a configured floating license server (exit `4` if none is set). `--generate-request` writes a `.alf` request for air-gapped activation instead of activating. `return` returns the active licenses, prompting for confirmation first — pass `--yes` to skip (required in non-interactive shells and with `--json`). All honor `--json` / `--format` and exit non-zero on failure (`2` bad usage, `3` sign-in required, `4` floating not configured, `6` licensing-client error).
+
+**Service accounts.** The `license` commands recognize service-account sessions (`UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET`, or `unity auth login --client-id`): `unity license status` reports `Signed in: yes (service account)` and includes the auth mode in JSON. Unity's licensing backend does **not** accept service-account tokens for license activation, so with a service-account session the default entitlement mode and `--personal` fail up front — before contacting the licensing client — with guidance toward the unattended options (`--floating`, `--file`, `--generate-request`, or a perpetual `--serial`). `unity license return` lists and returns serial-activated licenses too (not just assigned/subscription seats) — important for CI machines that activate per run — and returns each license individually, so when only some can be freed it reports what succeeded (in text and in the JSON `returned` / `failed` fields) instead of an all-or-nothing failure.
 
 `unity license server list` shows the configured floating license server (from the `licensingServiceBaseUrl` machine setting; a pure settings read, no client download). `unity license server status` contacts that server and reports reachability plus available seats — exit `4` when no server is configured, `6` when configured but unreachable.
 
@@ -100,6 +102,8 @@ unity cloud project list --format json
 # Override the active organization for a single call
 unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
 ```
+
+**Exit codes.** The `cloud` and `auth` commands map an authentication failure (expired or missing session, rejected sign-in) to `3`, and any other operational failure (network, server error) to `6` — so scripts can distinguish "sign in again" from a genuine command failure. `unity auth status` / `logout` follow the same convention.
 
 ---
 

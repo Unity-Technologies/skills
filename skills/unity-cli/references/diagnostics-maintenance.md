@@ -39,7 +39,21 @@ unity doctor --format json
 unity doctor --tail 50
 ```
 
-`unity doctor` reports real session state (matching `unity auth status`) and surfaces the resolved proxy URL, its source, and auth source.
+`unity doctor` reports real session state (matching `unity auth status`) and surfaces the resolved proxy URL, its source, and auth source. It also runs environment health checks and reports pass/warn per check (in every output format): whether the `unity` binary's directory is actually on `PATH` (the top post-install pitfall on Windows, where a new terminal is needed), whether multiple `unity` binaries shadow each other on `PATH`, and whether Windows long-path support is enabled.
+
+---
+
+### Diagnose proxy — proxy diagnostic report
+
+```bash
+# Print a redacted, paste-safe proxy diagnostic report for support
+unity diagnose proxy
+
+# Machine-readable
+unity diagnose proxy --json
+```
+
+Reports the resolved proxy and where it came from, PAC configuration, CA bundle, and credential-store and Kerberos checks — redacted so it's safe to paste into a support ticket. A copy is also written to the logs directory. For per-request proxy logging over the course of a repro, use the global `--log-proxy` flag (or `UNITY_LOG_PROXY=1`), which writes one redacted entry per outbound request to `proxy-request.json`.
 
 ---
 
@@ -68,7 +82,7 @@ unity cache clean --yes
 
 ### Analytics — usage/telemetry consent
 
-The CLI defaults to **opt-out**. On the first interactive run a y/N prompt is shown once before any data is collected; non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
+The CLI defaults to **opt-out**. On the first interactive run a prompt is shown once before any data is collected; it now requires an explicit `y` or `n` — pressing Enter alone re-asks instead of silently recording the opt-out default, so an accidental keystroke can't lock in an answer. Ctrl-C skips the prompt and keeps the opt-out default. Non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
 
 ```bash
 # Show current consent status
@@ -112,7 +126,7 @@ unity language --set zh-hans
 unity lang --set ko
 ```
 
-On a TTY with no flags, shows an interactive selection prompt.
+On a TTY with no flags, shows an interactive selection prompt. The regional variants Spanish (Latin America), French (Canada), and Portuguese (Portugal) are no longer offered; Spanish, French, and Portuguese (Brazil) remain.
 
 ---
 
@@ -169,6 +183,8 @@ unity upgrade --dry-run
 # Rollback to previous version
 unity upgrade --rollback
 ```
+
+`unity upgrade` detects how the CLI was installed: the `curl | sh` install keeps upgrading itself in place, while on a package-manager install it points you at the owning manager instead of replacing the binary (and the background "update available" notice is suppressed there). `--check`, `--changelog`, and `--dry-run` still work everywhere.
 
 ---
 
