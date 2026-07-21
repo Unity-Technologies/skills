@@ -188,8 +188,8 @@ unity install 6000.0.47f1 -m android ios          # space-separated
 unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 
 # Windows: skip the elevated (UAC) install helper — for user-writable install locations
-# and CI shells where a UAC prompt can't be answered (installs into protected paths then
-# fail with a permission error instead of prompting). Also via UNITY_NO_ELEVATE=1.
+# and CI shells where a UAC prompt can't be answered (installing into a protected path then
+# fails with a permission error instead of prompting). Also via UNITY_NO_ELEVATE=1.
 unity install 6000.0.47f1 --no-elevate --yes --accept-eula
 ```
 

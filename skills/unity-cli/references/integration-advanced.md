@@ -73,7 +73,7 @@ unity pipeline upgrade --project-path /path/to/MyProject
 unity pipeline list-versions --format json
 ```
 
-`pipeline install` options: `--project-path <path>`, `--force`, `--package-version <version>`. The package is resolved from the Unity registry and written to `Packages/manifest.json`. Unlike `install --force` (which always rewrites to latest), `upgrade` compares the pinned version first.
+`pipeline install` options: `--project-path <path>`, `--force`, `--package-version <version>`. The package is resolved from the Unity registry and written to `Packages/manifest.json`. Unlike `pipeline install --force` (which always rewrites to latest), `upgrade` compares the pinned version first.
 
 When multiple Editors are running, `install` and `upgrade` consider only the editors that actually need the operation (`install` → editors without the package; `upgrade` → editors behind the registry's latest). If exactly one needs it, that editor is chosen automatically; if none do, the command reports there's nothing to do; if several do, an interactive terminal shows a selector while non-interactive contexts (machine output, non-TTY, or `--non-interactive`) error and list the projects so you can pass `--project-path`.
 
