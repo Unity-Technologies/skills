@@ -14,7 +14,7 @@ environment variables, exit codes, and common workflows. All global flags (`--fo
 unity editors list --format json
 
 # List only installed editors
-# As of beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
+# As of 0.1.0-beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
 unity editors --installed --format json
 
 # List only available releases

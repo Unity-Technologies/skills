@@ -91,7 +91,7 @@ unity command editor_play
 unity command log_editor "Hello from CLI"
 unity command editor_status --includeMemory true
 
-# Capture a Scene/Game view screenshot (forwarded to the Editor's screenshot command, new in beta.8)
+# Capture a Scene/Game view screenshot (forwarded to the Editor's screenshot command, new in 0.1.0-beta.8)
 unity command screenshot --output ./shot.png --width 1920 --height 1080
 
 # Target a specific project (the CLI discovers the running Editor itself) or a Player runtime
