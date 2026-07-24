@@ -6,7 +6,33 @@ each entry notes the CLI version the skill was aligned to.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — aligned to CLI `1.0.0-beta.2` (2026-07-21)
+## [Unreleased] — aligned to CLI `1.0.0-beta.3` (2026-07-24)
+
+### Added
+
+- **`unity run --command <name>`** — execute a registered `[CliCommand]` Editor command headlessly in one invocation (batch-mode Editor, args after `--` parsed against the `[CliArg]` schema, return value printed, Editor shut down or an already-running one reused). New subsection in build-run-test.md.
+- **`unity shell` machine/agent mode** — `--protocol ndjson` (framed request/response over stdio on one warm process), plus cross-session history (secret flag values masked on disk), tab completion, and session context/defaults (`use project` / `use org`, `set format|verbose|banner`, `unset`, `context`).
+- **`unity editors running`** — list running Editor instances + project/version/PID (works without the Pipeline package; empty list exits 0, unlike `unity status`).
+- **`unity projects size [--all]`** — per-project disk footprint by top-level folder.
+- **`unity bug` non-interactive mode** — `--title`, `--description`, `--steps` (repeatable), `--reproducibility`, `--email`; fails fast (exit 2) listing missing flags.
+- **Global `--json`** shorthand on every command; **flag-name conventions** (`--project-path` / `--cloud-org` canonical, old spellings as hidden aliases).
+- **unity-downloader-cli compatibility** — component-name aliases on `-m` (`windows-il2cpp`, `mono`, host-dependent `il2cpp`, …), `unity install <v> --list-components`, downloader names shown in module listings; noted that an unknown module name prints a suggestion but doesn't fail the command by itself.
+- **Crash reporting** section (Sentry; anonymous + scrubbed; `UNITY_NO_CRASH_REPORT`), the expanded opt-in analytics scope, and **`UNITY_NO_CONSENT_PROMPT`**; documented that `analytics opt-in`/`opt-out` permanently answer the first-run prompt.
+- **Linux distribution lanes** — `.deb`/`.rpm` via Unity's apt/rpm repos (beta = `unstable` suite; rpm GPG-signed), AppImage in-place `unity upgrade` (+ `--rollback`; Homebrew-cask AppImages defer to brew), `install.sh` now targeting `~/.local/bin`.
+- Windows Terminal taskbar progress (`OSC 9;4`) note on `unity install`.
+
+### Changed
+
+- **Exit code 143 is now CLI-wide** (SIGTERM handled globally; auth login cancels cleanly) — previously documented as `unity build`-only.
+- **Piped `unity shell` exits with the first failing command's code** (previously "always exit 0").
+- **`unity open`**: confirms before installing a missing editor (non-interactive fails fast with the `unity install` command); with an explicit editor flag it works without `ProjectSettings/ProjectVersion.txt`.
+- **`unity language --set`** accepts common code spellings case-insensitively (`ja-JP`, `ja_JP`, `ja`, `jp`); ambiguous inputs (`zh`) still prompt.
+- **`unity mcp`** survives Editor recompiles (401 → one retry with a fresh token); failed `eval`/`eval_file` tool calls are `isError: true`. **`unity command eval`** exits 6 on Editor-reported eval failure; `unity command <name>` shows full command docs on validation errors.
+- **`--proxy`** with an invalid URL fails fast with a usage error (exit 2); `UNITY_PROJECT_PATH` documented as honored by `unity status` and project-path commands.
+- **`unity auth login`**: missing `xdg-open` reported via the warning path while the wait continues; WSL opens the Windows browser via interop.
+- Refreshed the latest-version note to `1.0.0-beta.3`.
+
+## CLI `1.0.0-beta.2` (2026-07-21)
 
 Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-beta.2`. The CLI's own `[Unreleased]` changes (e.g. the universal `--json` shorthand) are intentionally **not** documented yet — they aren't in the shipped `1.0.0-beta.2` binary.
 

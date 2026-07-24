@@ -20,6 +20,8 @@ unity mcp --project-path /path/to/MyProject
 
 `unity mcp` no longer accepts `--instance <host:port>`: talking to an Editor requires that Editor's per-instance auth token, which a bare host and port can't carry, so the CLI always discovers running Editors itself — run from the project directory or pass `--project-path` to target one. Editors launched to create a new project (`-createproject`) are discovered too.
 
+The MCP session survives Editor script recompiles: the Editor's Pipeline server rotates its auth token on every domain reload, and `tools/call` retries once with a freshly discovered token on a 401 instead of failing every subsequent call. Failed `eval` / `eval_file` tool calls (e.g. a compilation error) are reported as MCP errors (`isError: true`) with the full envelope — including compiler diagnostics — so connected agents can self-correct instead of seeing a false success.
+
 #### mcp configure — register the server in an AI client
 
 Writes the Unity MCP server entry into an AI client's config in one step, preserving every other key in the file. 16 clients are supported: `claude`, `claude-code`, `cursor`, `vscode`, `vscode-insiders`, `copilot-cli`, `windsurf`, `cline`, `codex`, `kiro`, `trae`, `openclaw`, `antigravity`, `zed`, `continue`, `inspect`.
@@ -105,6 +107,8 @@ unity command editor_play --timeout 60
 
 If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running and its Pipeline server is up).
 
+`unity command eval` / `eval_file` exit non-zero (6) when the Editor reports an eval failure (a compilation error or missing file), with the compiler diagnostics on stderr — a successful HTTP round-trip is no longer treated as command success. When a parameter or argument fails validation, `unity command <name>` shows the target command's full documentation (description and parameters) instead of a generic tip.
+
 `unity command` no longer accepts `--instance <host:port>` — the CLI discovers running Editors itself, so run from the project directory or pass `--project-path` to target one.
 
 #### list — discover a connected Editor's tools
@@ -139,18 +143,32 @@ Reads the lockfile the Pipeline package writes per running Editor (faster and mo
 
 ```bash
 unity shell
-# unity> status --format json
-# unity> config proxy http://proxy:8080
-# unity> config proxy            # the write above is visible to this read
-# unity> exit
+# ❯ status --format json
+# ❯ use project /path/to/MyProject   # session context: later commands target this project
+# ❯ set format json                  # session default for --format
+# ❯ context                          # show current session context and defaults
+# ❯ exit
 ```
 
 - Arguments are tokenized shell-style (single/double quotes; unquoted Windows backslash paths are preserved).
 - Leave with `exit`, `quit`, or Ctrl-D; blank lines and `#` comments are ignored.
+- **History**: ↑/↓ recall previous commands across sessions (stored under the CLI data directory, capped at 1000 entries; secret-bearing flag values such as `--client-secret` and the keystore passwords are masked to `***` before being written to disk).
+- **Tab completion**: completes command names, subcommands, option flags, and option values (e.g. `--format`) against the live command tree, plus the shell's own builtins.
+- **Session context & defaults**: `use project <path>` / `use org <id>` set an active project/organization for later commands; `set format <fmt>` / `set verbose on|off` / `set banner on|off` set default global options; `unset <key>` clears one and `context` shows the current state. Per-session only, and a per-command flag still wins.
 - Ctrl-C cancels a cancellable running command (such as `build`) and returns to the prompt; for a command that doesn't yet support cancellation the first Ctrl-C is held (with a hint) and a second quick press force-quits the session.
-- The prompt shows the previous command's exit code when it was non-zero.
+- The prompt (`❯` on Unicode-capable terminals, `>` elsewhere) shows the previous command's exit code when it was non-zero.
 - Interactive prompts (confirmations, sign-in) work inside the shell, and a write in one command (`auth logout`, `config`, `editors default`, …) is visible to the next.
-- Piped/scripted sessions (`… | unity shell`) run every line and always exit 0.
+- **Piped/scripted sessions** (`… | unity shell`) run every line and exit with the first failing command's exit code (0 when everything succeeded) — usable in automation with `$?`. Interactive sessions still exit 0.
+
+#### shell --protocol ndjson — machine/agent mode
+
+A framed NDJSON request/response protocol over stdio on the same warm process — for automated consumers that want to skip per-command startup cost without scraping the human prompt:
+
+```bash
+printf '{"id":"1","argv":["status","--format","json"]}\n' | unity shell --protocol ndjson
+```
+
+One JSON request per line — a pre-tokenized `argv` array or a raw `command` string, with an optional `id` — and exactly one JSON result per line back: the echoed `id`, an in-band `exitCode`, and the standard result envelope. Commands run headlessly (a command that would need an interactive prompt fails fast), and malformed lines or unknown commands produce an error frame rather than ending the session.
 
 ---
 

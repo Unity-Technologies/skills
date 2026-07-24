@@ -93,6 +93,17 @@ Also available as the top-level `unity install-path` (with an additional `--get`
 unity editors info 6000.0.47f1 --format json
 ```
 
+#### editors running
+
+List running Unity Editor instances and the project each has open, with editor version and PID:
+
+```bash
+unity editors running
+unity editors running --format json
+```
+
+Detection is cross-platform (process table plus each project's Pipeline lockfile); the version falls back to `ProjectSettings/ProjectVersion.txt` for editors without the Pipeline package, so instances show up even with no `com.unity.pipeline` installed. An empty list is a normal result (exit 0) — unlike `unity status`, which exits non-zero when no Pipeline-connected Editor is reachable.
+
 #### editors upgrade
 
 New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in the same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over. The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
@@ -191,7 +202,15 @@ unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 # and CI shells where a UAC prompt can't be answered (installing into a protected path then
 # fails with a permission error instead of prompting). Also via UNITY_NO_ELEVATE=1.
 unity install 6000.0.47f1 --no-elevate --yes --accept-eula
+
+# List the locally installed editor's modules and exit without installing
+# (downloader-compatible alias for `unity modules list <version>`)
+unity install 6000.0.47f1 --list-components
 ```
+
+**unity-downloader-cli compatibility.** `-m` / `--module` on `install` and `install-modules` accepts `unity-downloader-cli` component names as aliases for Hub module ids — `windows-il2cpp`, `linux-server`, `mono`, the host-dependent `il2cpp`, and the rest — so existing downloader CI scripts can switch to `unity` with minimal edits. Aliases work with `--reinstall`, unknown names get "did you mean" suggestions that include alias names, and restricted console components (`ps5`, `switch`, …) fail with a clear message pointing at the entitled flow. Module listings (`unity modules list`, `--list-components`) show each module's downloader-compatible name alongside the Hub id in every output format. Note: an unknown module name prints the suggestion but does **not** by itself fail the command — check the output (or the JSON `items[]`) rather than relying on the exit code to catch a typo'd module name.
+
+On Windows Terminal, `unity install` also reports progress to the taskbar icon itself (via the `OSC 9;4` sequence, as winget does) — interactive terminals only, never in piped output, always cleared on exit.
 
 When installing an editor with several modules, a failed module no longer aborts the whole batch — `unity install` (and `unity install-modules`) continue with the remaining items and exit non-zero if any failed. Each editor and module is listed as installed (✓), failed (✗), or pending (·); the NDJSON `result` frame carries the same breakdown as an `items` array (each entry has `uid`, `name`, `kind`, `status`), so scripts can tell exactly which modules succeeded even on a non-zero exit.
 

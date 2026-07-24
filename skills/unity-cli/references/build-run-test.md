@@ -36,6 +36,25 @@ Flags like `-nographics`, `-logFile <path>`, and `-executeMethod <Class.Method>`
 
 When `--timeout <seconds>` is set, the process receives SIGTERM at the deadline; if still alive after 2 s it receives SIGKILL. The command exits with code 6 (EXIT_COMMAND_FAILURE) on timeout.
 
+#### run --command — execute a registered Editor command headlessly
+
+`unity run --command <name>` runs a registered `[CliCommand]` Editor command in one invocation: the CLI starts the Editor in batch mode, waits for the project's Pipeline server, runs the command, prints the return value, and shuts the Editor down. Requires the `com.unity.pipeline` package in the project (`unity pipeline install`).
+
+```bash
+# Run a registered command; arguments after -- are parsed against the command's [CliArg] schema
+unity run /path/to/MyProject --command my_export -- --format fbx --scale 2
+
+# Machine-readable result envelope containing the command's return value
+unity run /path/to/MyProject --command my_export --format json
+```
+
+- Arguments after `--` are validated against the command's declared `[CliArg]` schema — no hand-written `Environment.GetCommandLineArgs()` parsing in the Editor code.
+- The Editor log — including `Debug.Log` output — streams to **stderr**; the command's return value goes to stdout.
+- A failed command exits non-zero.
+- A running Editor that already has the project open is **reused** (and left running) instead of spawning a second one; the project-path match is case-insensitive on Windows.
+
+Use `unity list` (see [integration-advanced.md](integration-advanced.md)) to discover the commands a project's Editor exposes.
+
 ---
 
 ### Test — run EditMode/PlayMode tests

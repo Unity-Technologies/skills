@@ -40,6 +40,18 @@ unity 6000.0.47f1 /path/to/MyProject
 
 The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
 
+**Missing editor:** when the requested `--editor-version` isn't installed, an interactive terminal confirms before starting the (multi-gigabyte) editor install; a non-interactive session (piped stdio, CI, `--non-interactive`) fails fast and prints the exact `unity install` command to run instead. **Missing `ProjectVersion.txt`:** with an explicit `--editor-version` or `--editor-path`, `unity open` no longer requires `ProjectSettings/ProjectVersion.txt` (common for demo/sample projects that gitignore it) — it checks the folder contains an `Assets` directory, warns, and lets the Editor recreate the file. Without an explicit editor flag the version file is still required (`projects add` requires it too).
+
+#### projects size
+
+Report a project's on-disk footprint, broken down by top-level folder (Assets, Library, Packages, …) with a total — what `unity projects clean` would reclaim:
+
+```bash
+unity projects size /path/to/MyProject
+unity projects size --all            # every registered project, sorted largest-first
+unity projects size --all --json     # raw bytes in json/ndjson; human output uses KB/MB/GB
+```
+
 #### projects create
 
 Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template). In CI, pass `--non-interactive` or pipe stdin to suppress prompts and rely on stored defaults. The first positional argument is the project **name**; `--path` sets the parent directory:

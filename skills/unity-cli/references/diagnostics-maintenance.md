@@ -84,6 +84,10 @@ unity cache clean --yes
 
 The CLI defaults to **opt-out**. On the first interactive run a prompt is shown once before any data is collected; it now requires an explicit `y` or `n` — pressing Enter alone re-asks instead of silently recording the opt-out default, so an accidental keystroke can't lock in an answer. Ctrl-C skips the prompt and keeps the opt-out default. Non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
 
+Running `unity analytics opt-in` or `opt-out` **permanently answers the first-run prompt** — a choice recorded from a script (where the prompt never appears) is honored on the next interactive run instead of being asked again. For wrapper scripts on an interactive terminal that must never absorb a prompt but shouldn't record a choice either, set `UNITY_NO_CONSENT_PROMPT` (any value) — it suppresses only the prompt and changes nothing else (unlike `UNITY_NON_INTERACTIVE`).
+
+When opted **in**, collected usage data covers: which commands run (registered command names only — never arguments, paths, or project names), install/uninstall and project open/create outcomes (editor version and template id only), CLI self-upgrade/uninstall results, `unity shell` / `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out (the default), no events are sent.
+
 ```bash
 # Show current consent status
 unity analytics status
@@ -97,6 +101,12 @@ unity analytics opt-out
 ```
 
 Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa.
+
+---
+
+### Crash reporting
+
+Separately from usage analytics, the CLI reports crashes and unexpected command failures to Sentry — **anonymous** events for all users: no IP address, no hostname, home-directory paths and token-like values scrubbed before send. Analytics opt-in additionally attaches an anonymized machine id (for crash-free-user rates); opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` (any value) to disable crash reporting entirely.
 
 ---
 
@@ -117,16 +127,17 @@ unity changelog --format json
 # Show current language and available options
 unity language
 
-# Set language by code
-unity language --set en
+# Set language by code — common spellings are accepted and resolved case-insensitively:
+# BCP-47 (ja-JP), locale (ja_JP), bare language (ja), or bare region (jp)
 unity language --set ja
-unity language --set zh-hans
+unity language --set ja-JP
+unity language --set pt          # resolves to pt_br
 
 # Alias
 unity lang --set ko
 ```
 
-On a TTY with no flags, shows an interactive selection prompt. The regional variants Spanish (Latin America), French (Canada), and Portuguese (Portugal) are no longer offered; Spanish, French, and Portuguese (Brazil) remain.
+On a TTY with no flags, shows an interactive selection prompt. Ambiguous inputs still ask you to pick (`zh` → choose `zh_cn` or `zh_tw`). The regional variants Spanish (Latin America), French (Canada), and Portuguese (Portugal) are no longer offered; Spanish, French, and Portuguese (Brazil) remain.
 
 ---
 
@@ -146,13 +157,21 @@ unity completion powershell
 
 ### Bug — report a bug
 
-Interactive bug reporter that collects system info and recent logs, then submits to Unity:
+Bug reporter that collects system info and recent logs, then submits to Unity:
 
 ```bash
+# Interactive: prompts for title, description, email, and reproducibility level
 unity bug
+
+# Non-interactive: supply the report through flags — works from scripts, CI, and piped shells
+unity bug --title "Install hangs at 99%" \
+  --description "unity install 6000.0.47f1 hangs on the android module" \
+  --steps "Run unity install 6000.0.47f1 -m android" --steps "Wait for 99%" \
+  --reproducibility always \
+  --email dev@example.com
 ```
 
-Prompts for title, description, email, and reproducibility level. As of beta.8 it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
+Flags: `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add. It collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
 
 ---
 
@@ -184,7 +203,7 @@ unity upgrade --dry-run
 unity upgrade --rollback
 ```
 
-`unity upgrade` detects how the CLI was installed: the `curl | sh` install keeps upgrading itself in place, while on a package-manager install it points you at the owning manager instead of replacing the binary (and the background "update available" notice is suppressed there). `--check`, `--changelog`, and `--dry-run` still work everywhere.
+`unity upgrade` detects how the CLI was installed: the `curl | sh` install keeps upgrading itself in place, while on a package-manager install it points you at the owning manager instead of replacing the binary. When the release manifest says your package manager carries the new version, the background update notice suggests that manager's exact upgrade command (e.g. `sudo apt update && sudo apt upgrade unity-cli`). **AppImage installs upgrade in place**: the new `.AppImage` is downloaded, checksum-verified against the release manifest, and atomically swapped for the file you launched (`--rollback` restores the previous one) — except an AppImage installed through Homebrew's cask, which is left to `brew upgrade unity-cli`. `--check`, `--changelog`, and `--dry-run` work everywhere.
 
 ---
 
