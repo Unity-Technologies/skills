@@ -121,7 +121,7 @@ This works at every level of the command hierarchy.
 | 4 | Precondition not met (e.g. no license active, floating server not configured) |
 | 6 | Command-specific failure |
 | 130 | Interrupted — Ctrl+C / SIGINT (128 + 2) |
-| 143 | Terminated by SIGTERM (128 + 15) — e.g. plain `kill`, a CI/runner timeout, or `timeout`(1). The CLI handles SIGTERM globally: any command cleans up and exits promptly with 143 (`unity build` scrubs the temporary Android keystore; SIGTERM during `unity auth login` cancels the sign-in cleanly, exactly like Ctrl-C exits 130). |
+| 143 | Terminated by SIGTERM (128 + 15) — e.g. plain `kill`, a CI/runner timeout, or the `timeout(1)` command. The CLI handles SIGTERM globally: any command cleans up and exits promptly with 143 (`unity build` scrubs the temporary Android keystore; SIGTERM during `unity auth login` cancels the sign-in cleanly, exactly like Ctrl-C exits 130). |
 
 The `cloud` and `auth` commands map an authentication failure (expired/missing session, rejected sign-in) to `3`, and any other operational failure (network, server error) to `6` — so scripts can reliably tell "sign in again" apart from a genuine command failure.
 

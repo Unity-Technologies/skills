@@ -44,7 +44,7 @@ The project argument is matched against the Hub registry first (exact name or pa
 
 #### projects size
 
-Report a project's on-disk footprint, broken down by top-level folder (Assets, Library, Packages, …) with a total — what `unity projects clean` would reclaim:
+Report a project's on-disk footprint, broken down by top-level folder (Assets, Library, Packages, …) with a total — useful for spotting how much of a project is regenerable build state (`Library/`, `Temp/`) versus actual source and assets:
 
 ```bash
 unity projects size /path/to/MyProject
