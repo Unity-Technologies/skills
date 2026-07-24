@@ -38,7 +38,7 @@ unity open /path/to/MyProject --build-target-group Standalone
 unity 6000.0.47f1 /path/to/MyProject
 ```
 
-The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
+The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. Path matching is tolerant of casing, separator direction, and a trailing slash — resolved against real filesystem path identity — so a registered project is found even when the path is spelled differently, while two genuinely distinct case-variant folders on a case-sensitive volume stay distinct. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
 
 #### projects create
 
@@ -125,6 +125,37 @@ unity projects pin /path/to/MyProject
 # Unpin
 unity projects unpin /path/to/MyProject
 ```
+
+#### projects size
+
+Report a project's on-disk footprint broken down by top-level folder (Assets, Library, Packages, …) with a total, so you can see how much is regenerable build state (Library, Temp) versus source and assets:
+
+```bash
+# Size of one project (defaults to the current project when the argument is omitted)
+unity projects size /path/to/MyProject
+
+# Summarize every registered project, largest first
+unity projects size --all
+
+# Machine output — raw bytes instead of readable KB/MB/GB units
+unity projects size --all --json
+```
+
+Human output uses readable units; `--json` (and `--format ndjson`) emit raw byte counts.
+
+#### projects close
+
+Close the running editor that has a project open — asks the editor to quit gracefully and reports what happened (project, PID, method):
+
+```bash
+# Ask the editor to quit gracefully (default 30-second wait)
+unity projects close /path/to/MyProject
+
+# Bound the graceful wait, then force-terminate if it won't exit (unsaved changes are lost)
+unity projects close /path/to/MyProject --timeout 15 --force
+```
+
+`--timeout <seconds>` bounds the graceful wait (default 30); `--force` terminates the process when it can't or won't exit — a graceful termination first, then a hard kill (on Unix, SIGTERM then SIGKILL) — and warns that unsaved changes are lost. Closing a project that isn't open is a no-op (exit 0); a close that fails exits non-zero. Honors the global `--format human|json|tsv|ndjson`.
 
 #### projects require
 

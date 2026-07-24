@@ -6,9 +6,35 @@ each entry notes the CLI version the skill was aligned to.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — aligned to CLI `1.0.0-beta.2` (2026-07-21)
+## [Unreleased] — aligned to CLI `1.0.0-beta.3` (2026-07-24)
 
-Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-beta.2`. The CLI's own `[Unreleased]` changes (e.g. the universal `--json` shorthand) are intentionally **not** documented yet — they aren't in the shipped `1.0.0-beta.2` binary.
+Tracks the CLI's `1.0.0-beta.3` release. The CLI's own `[Unreleased]` changes (detached command jobs — `unity command --detach`, `unity job wait/status/cancel` — and live in-terminal progress for `unity command`) are intentionally **not** documented yet: they aren't in the shipped `1.0.0-beta.3` binary.
+
+### Added
+
+- **`unity editors running`** — list running Editor instances and the project each has open (version + PID; cross-platform; an empty list is exit 0).
+- **`unity projects size [project]`** — on-disk footprint by top-level folder (`-a, --all`; `--json` emits raw bytes).
+- **`unity projects close <project>`** — gracefully quit the running editor that has a project open (`--timeout <seconds>` default 30, `--force`).
+- **`unity run --command <name>`** — execute a registered `[CliCommand]` Editor command headlessly (arguments after `--` parsed against its `[CliArg]` schema; requires `com.unity.pipeline`).
+- **`unity install --list-components`** — list an editor's available modules and exit (a drop-in alias for `unity modules list <version>`).
+- **`unity bug` non-interactive flags** — `--title`, `--description`, `--steps` (repeatable), `--reproducibility <first-time|sometimes|always>`, `--email`.
+- **`unity shell`** — command-history persistence (↑/↓; secret-bearing flag values masked on disk), tab completion, session context/defaults (`use project|org`, `set format|verbose|banner`, `unset`, `context`), and the `--protocol ndjson` machine/agent mode.
+- Environment variables **`UNITY_NO_CONSENT_PROMPT`** (suppress the first-run consent prompt without recording a choice) and **`UNITY_NO_CRASH_REPORT`** (disable anonymous crash/error reporting).
+- Global **`--json`** shorthand (accepted on every command) in the global-flags table.
+- OSC 9;4 taskbar progress note for `unity install` on interactive terminals.
+
+### Changed
+
+- **`unity upgrade`** — documented Linux AppImage in-place updates and the apt/rpm repositories (GPG-signed rpm); the background "update available" notice is now package-manager-aware (suggests the owning manager's upgrade command) rather than always suppressed on package-managed installs.
+- **`unity analytics`** — expanded the events recorded when opted in (registered command names only, never arguments/paths/project names; editor uninstalls; project open/create; self-upgrade/uninstall; shell/mcp/doctor/bug), noted that `opt-in`/`opt-out` now permanently answer the first-run prompt, and documented the separate anonymous Sentry crash-reporting pathway.
+- **`unity language --set`** accepts BCP-47 / locale / bare-language / bare-region spellings (resolved case-insensitively when unambiguous); catalog shared with the Hub.
+- **`unity projects`** path resolution documented as tolerant of casing, separator direction, and trailing slash (verified against real filesystem identity).
+- Terminal-hardening note extended to Commander usage errors, the `bug` log-archive warning, and `projects add`/`remove` tsv output; noted that an invalid `--proxy` now fails with exit 2; `UNITY_PROJECT_PATH` now honored by `status` and the cloud commands.
+- Refreshed the latest-version note to `1.0.0-beta.3`.
+
+## CLI `1.0.0-beta.2` (2026-07-21)
+
+Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-beta.2`. The CLI's own `[Unreleased]` changes at the time (e.g. the universal `--json` shorthand) were intentionally not documented in this section — they weren't in the shipped `1.0.0-beta.2` binary (they shipped in `1.0.0-beta.3`, documented above).
 
 ### Added
 

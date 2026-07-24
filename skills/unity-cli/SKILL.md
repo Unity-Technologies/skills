@@ -52,6 +52,7 @@ These work on every command:
 | Flag | Description |
 |---|---|
 | `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`. Also via `UNITY_FORMAT` env var. |
+| `--json` | Global shorthand for `--format json`, accepted on every command (e.g. `unity status --json`, `unity doctor --json`). `--format` takes precedence when both are supplied. |
 | `--no-banner` | Suppress the branded header — use in scripts |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
@@ -74,7 +75,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`). `HUB_FORMAT` is a deprecated alias. |
 | `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
 | `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
-| `UNITY_PROJECT_PATH` | path argument | Project path for the `open` command. |
+| `UNITY_PROJECT_PATH` | path argument | Project path — used by `open`, and also honored by `status` and the cloud commands. |
 | `UNITY_QUIET` | `--quiet` | Suppress non-essential output. |
 | `UNITY_VERBOSE` | `--verbose` | Show full error details on failure. |
 | `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
@@ -86,6 +87,8 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
 | `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
+| `UNITY_NO_CONSENT_PROMPT` | — | Suppress the one-time first-run analytics consent prompt *without* recording a choice — for wrapper scripts on an interactive terminal that must never absorb the prompt. Analytics stay off until you run `unity analytics opt-in`. Unlike `UNITY_NON_INTERACTIVE`, it changes nothing else about command behavior. |
+| `UNITY_NO_CRASH_REPORT` | — | Disable anonymous crash/error reporting (Sentry) entirely. |
 | `UNITY_LOG_PROXY` | `--log-proxy` | Log one redacted entry per outbound request to `proxy-request.json`. Truthy values: `1`, `true`. |
 | `UNITY_NO_ELEVATE` | `--no-elevate` | Windows: skip the elevated (UAC) install helper for `install` / `install-modules` — for user-writable locations and CI shells that can't answer a UAC prompt. |
 | `UNITY_INSTALL_RETRIES` | `--retries` | Number of times `install-modules` retries a module whose download/validation fails. `0` disables retries. |
@@ -132,8 +135,8 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | Commands | Reference file |
 |---|---|
 | `auth` (login / logout / status), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
-| `editors` (list / add / default / path / install-path / info / upgrade / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
-| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin), `releases`, `templates` | [projects-templates.md](references/projects-templates.md) |
+| `editors` (list / running / add / default / path / install-path / info / upgrade / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
+| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / close), `releases`, `templates` | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `upgrade`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
@@ -336,7 +339,8 @@ unity logs --follow --level info
 - `--format json` always produces machine-readable output; prefer it over parsing human text. Error envelopes are pretty-printed with the same 2-space indent as success envelopes.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
-- Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, while SGR color/style codes are preserved.
-- The CLI is currently in **beta** (latest: `1.0.0-beta.2`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
-- As of beta.8 the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
-- Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
+- Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
+- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely.
+- The CLI is currently in **beta** (latest: `1.0.0-beta.3`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
+- Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.

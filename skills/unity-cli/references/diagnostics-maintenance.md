@@ -84,6 +84,8 @@ unity cache clean --yes
 
 The CLI defaults to **opt-out**. On the first interactive run a prompt is shown once before any data is collected; it now requires an explicit `y` or `n` — pressing Enter alone re-asks instead of silently recording the opt-out default, so an accidental keystroke can't lock in an answer. Ctrl-C skips the prompt and keeps the opt-out default. Non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
 
+Running `unity analytics opt-in` or `opt-out` permanently answers the first-run prompt, so a choice recorded from a script (where the prompt never appears) isn't asked again on the next interactive run. To suppress the prompt *without* recording a choice — for a wrapper script on an interactive terminal that must never absorb it — set `UNITY_NO_CONSENT_PROMPT` (analytics stay off until you explicitly opt in).
+
 ```bash
 # Show current consent status
 unity analytics status
@@ -96,7 +98,9 @@ unity analytics opt-in
 unity analytics opt-out
 ```
 
-Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa.
+Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa. When opted **in**, the CLI records which commands run (registered command names only — never your arguments, paths, or project names), editor uninstalls, project open/create (editor version and template id only), CLI self-upgrade/uninstall outcomes, `unity shell` and `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out (the default), no events are sent.
+
+Separately from analytics, the CLI reports **anonymous crashes and errors** via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id so crash-free-user rates can be computed; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable crash reporting entirely.
 
 ---
 
@@ -126,7 +130,7 @@ unity language --set zh-hans
 unity lang --set ko
 ```
 
-On a TTY with no flags, shows an interactive selection prompt. The regional variants Spanish (Latin America), French (Canada), and Portuguese (Portugal) are no longer offered; Spanish, French, and Portuguese (Brazil) remain.
+On a TTY with no flags, shows an interactive selection prompt. `--set` accepts common spellings of a language code — BCP-47 (`ja-JP`), locale (`ja_JP`), a bare language (`ja`), or a bare region (`jp`) — and resolves them case-insensitively when the match is unambiguous (`zh` still asks you to pick `zh_cn` or `zh_tw`). Display names and ordering come from the shared Hub language catalog. The regional variants Spanish (Latin America), French (Canada), and Portuguese (Portugal) are no longer offered; Spanish, French, and Portuguese (Brazil) remain.
 
 ---
 
@@ -149,10 +153,21 @@ unity completion powershell
 Interactive bug reporter that collects system info and recent logs, then submits to Unity:
 
 ```bash
+# Interactive — prompts for each field
 unity bug
+
+# Non-interactive — supply the report through flags (works from scripts, CI, piped shells)
+unity bug \
+  --title "Editor crashes on project open" \
+  --description "Opening MyGame hard-crashes the editor." \
+  --steps "Open the CLI" --steps "Run unity open MyGame" --steps "Editor window closes" \
+  --reproducibility always \
+  --email you@example.com
 ```
 
-Prompts for title, description, email, and reproducibility level. As of beta.8 it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
+Prompts for title, description, email, and reproducibility level. As of `0.1.0-beta.8` it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
+
+The report can also be supplied entirely through flags — `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, and `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask; a non-interactive run submits without prompting. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add.
 
 ---
 
@@ -184,7 +199,13 @@ unity upgrade --dry-run
 unity upgrade --rollback
 ```
 
-`unity upgrade` detects how the CLI was installed: the `curl | sh` install keeps upgrading itself in place, while on a package-manager install it points you at the owning manager instead of replacing the binary (and the background "update available" notice is suppressed there). `--check`, `--changelog`, and `--dry-run` still work everywhere.
+`unity upgrade` detects how the CLI was installed and upgrades accordingly:
+
+- **`curl | sh` install** — keeps upgrading itself in place.
+- **Linux AppImage** — updates in place: downloads the new `.AppImage` artifact, verifies its checksum against the release manifest, and atomically replaces the AppImage you launched (`--rollback` restores the previous one). The embedded zsync update info is preserved, so external updaters (AppImageUpdate, Gear Lever) keep working.
+- **Package-manager install** — points you at the owning manager instead of replacing the binary. The `.deb` and `.rpm` packages are published to Unity's apt and rpm repositories on every beta and GA release (rpm packages are GPG-signed), so a package-managed install stays current through the system package manager: `sudo apt update && sudo apt upgrade unity-cli` on Debian/Ubuntu, `sudo dnf upgrade unity-cli` on Fedora/RHEL.
+
+`--check`, `--changelog`, and `--dry-run` work everywhere. The background "update available" notice is package-manager-aware: when the release manifest says your install's package manager already carries the new version, the notice suggests that manager's exact upgrade command instead of `unity upgrade`; installs whose manager doesn't carry the release yet stay quiet.
 
 ---
 

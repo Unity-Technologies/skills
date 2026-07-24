@@ -14,7 +14,7 @@ environment variables, exit codes, and common workflows. All global flags (`--fo
 unity editors list --format json
 
 # List only installed editors
-# As of beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
+# As of 0.1.0-beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
 unity editors --installed --format json
 
 # List only available releases
@@ -32,6 +32,17 @@ unity editors --installed --watch
 ```
 
 `unity editors` honors `--format tsv` and `--format ndjson` for its default listing. Identifier columns keep their natural width even if the table exceeds the terminal — they are no longer silently truncated.
+
+#### editors running
+
+List the Unity Editor instances currently running and the project each has open, with the editor version and process id per instance:
+
+```bash
+unity editors running
+unity editors running --format json
+```
+
+Detection is cross-platform (process table plus each project's Pipeline lockfile), and the version falls back to a project's `ProjectSettings/ProjectVersion.txt` for editors without the Pipeline package. An empty list is a normal result (exit 0). Honors the global `--format human|json|tsv|ndjson` (and `--json`).
 
 #### editors add
 
@@ -183,6 +194,10 @@ unity install 6000.0.47f1 --resume
 # Dry-run: show what would be installed without doing it
 unity install 6000.0.47f1 --dry-run --format json
 
+# List the editor's available modules and exit without installing
+# (a drop-in alias for `unity modules list <version>`)
+unity install 6000.0.47f1 --list-components --format json
+
 # Space-separated module values after a single -m are equivalent to repeating -m
 unity install 6000.0.47f1 -m android ios          # space-separated
 unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
@@ -196,6 +211,8 @@ unity install 6000.0.47f1 --no-elevate --yes --accept-eula
 When installing an editor with several modules, a failed module no longer aborts the whole batch — `unity install` (and `unity install-modules`) continue with the remaining items and exit non-zero if any failed. Each editor and module is listed as installed (✓), failed (✗), or pending (·); the NDJSON `result` frame carries the same breakdown as an `items` array (each entry has `uid`, `name`, `kind`, `status`), so scripts can tell exactly which modules succeeded even on a non-zero exit.
 
 **NDJSON progress frames** for `unity install` and `unity install-modules` include a `phase: 'download' | 'install'` field so scripts can switch to an indeterminate spinner during the install phase (which is genuinely indeterminate — NSIS on Windows only reports success/failure). During the install phase, `pct` is locked at 50 and only jumps to 100 on completion. Module download/install progress is nested under the parent editor via `parentItemUid`, so consumers see one editor group with its modules rather than one group per module.
+
+On an interactive terminal, `unity install` also reports progress to the terminal application itself via the `OSC 9;4` escape sequence — on Windows Terminal the taskbar icon fills with download/install progress and spinners show as indeterminate, so you don't need to keep the window focused. It's emitted only on a TTY (never in piped or machine-consumed output), always cleared on exit, and ignored by terminals that don't support it.
 
 Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
 

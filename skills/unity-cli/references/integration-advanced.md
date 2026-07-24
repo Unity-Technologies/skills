@@ -91,7 +91,7 @@ unity command editor_play
 unity command log_editor "Hello from CLI"
 unity command editor_status --includeMemory true
 
-# Capture a Scene/Game view screenshot (forwarded to the Editor's screenshot command, new in beta.8)
+# Capture a Scene/Game view screenshot (forwarded to the Editor's screenshot command, new in 0.1.0-beta.8)
 unity command screenshot --output ./shot.png --width 1920 --height 1080
 
 # Target a specific project (the CLI discovers the running Editor itself) or a Player runtime
@@ -148,9 +148,42 @@ unity shell
 - Arguments are tokenized shell-style (single/double quotes; unquoted Windows backslash paths are preserved).
 - Leave with `exit`, `quit`, or Ctrl-D; blank lines and `#` comments are ignored.
 - Ctrl-C cancels a cancellable running command (such as `build`) and returns to the prompt; for a command that doesn't yet support cancellation the first Ctrl-C is held (with a hint) and a second quick press force-quits the session.
-- The prompt shows the previous command's exit code when it was non-zero.
+- The prompt terminator is a heavy angle (`❯`) on Unicode-capable terminals, falling back to `>`; it shows the previous command's exit code when it was non-zero.
+- **Command history** persists across sessions — press ↑/↓ to recall previous commands (stored under the CLI data directory, capped at the most recent 1000 entries). Secret-bearing flag values (`--android-keystore-password`, `--client-secret`, `--serial`, `--git-token`, and the other keystore/token flags) are masked to `***` before being written to disk.
+- **Tab completion** — press Tab to complete command names, subcommands, option flags, and option values (for example `--format`) against the live command tree, plus the shell's own builtins.
 - Interactive prompts (confirmations, sign-in) work inside the shell, and a write in one command (`auth logout`, `config`, `editors default`, …) is visible to the next.
-- Piped/scripted sessions (`… | unity shell`) run every line and always exit 0.
+- Piped/scripted sessions (`… | unity shell`) run every line and exit with the first command that failed (0 when every command succeeds), so a batch is usable in automation with `$?`. Interactive sessions still exit 0.
+
+#### Session context & defaults
+
+Set shell-local defaults so you stop repeating flags. Every setting is per-session and still overridable by a per-command flag:
+
+```bash
+# unity> use project /path/to/MyGame   # active project → seeds UNITY_PROJECT_PATH for later commands
+# unity> use org my-org-id             # active Cloud org → seeds UNITY_CLOUD_ORG
+# unity> set format json               # default output format for the session
+# unity> set verbose on                # default --verbose on|off
+# unity> set banner off                # hide the branded banner for the session
+# unity> context                       # show the current context (bare `use` does the same)
+# unity> unset format                  # clear one setting (format | verbose | banner | project | org)
+```
+
+`UNITY_PROJECT_PATH` and `UNITY_CLOUD_ORG` are also honored as environment variables by the project-path and cloud commands.
+
+#### Machine/agent mode — `--protocol ndjson`
+
+`unity shell --protocol ndjson` runs the same warm process but speaks a framed **request/response** protocol over stdio instead of a human prompt — for automated callers (AI agents, CI, orchestration) that want the startup-amortization benefit without screen-scraping. The caller writes **one JSON request per line** and reads **exactly one JSON result per line**, processed serially:
+
+```text
+$ unity shell --protocol ndjson
+{"id":"1","argv":["editors","--installed"]}
+{"id":"1","exitCode":0,"envelope":{"success":true,"command":"editors","data":[…],"errors":[],"warnings":[]}}
+{"type":"shutdown"}
+```
+
+- **Request:** an optional `id` (echoed back for correlation), plus either `argv` (a pre-tokenized array — preferred) or `command` (a raw string, tokenized like the interactive shell). Do not include the leading `unity`. `{"type":"shutdown"}` ends the session (as does EOF).
+- **Response:** the echoed `id` (or `null`), the in-band `exitCode`, and `envelope` — the same `{ success, command, data, errors, warnings }` shape as `--format json`.
+- Commands run headlessly (an interactive prompt fails fast); malformed lines or unknown commands produce an error frame rather than ending the session.
 
 ---
 
