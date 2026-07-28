@@ -9,7 +9,7 @@ allowed-tools:
 
 ## Drive a running Unity Editor (if one is open)
 
-**If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the Editor's **Pipeline** package. When an Editor is available, drive it instead of hand-editing scene or asset YAML.
+**If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the project's **Pipeline** package (`com.unity.pipeline`). When an Editor is available, drive it instead of hand-editing scene or asset files.
 
 ```bash
 unity status                    # confirm a connected Editor (look for state "ready")
