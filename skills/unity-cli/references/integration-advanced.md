@@ -47,6 +47,61 @@ unity mcp configure vscode --dry-run
 
 > **Promoted to production in `0.1.0-beta.8`.** In earlier betas these were development-only (and the Pipeline package was Unity-internal). They now talk to any running Unity Editor over its Pipeline server, and the supporting Editor-side package (`com.unity.pipeline`) is resolved from the **Unity (UPM) registry** and added to the project's `Packages/manifest.json` — no internal access or manual setup required. The Editor defines each command's parameters, help, and error messages, so the commands a connected Editor exposes are usable without a CLI update.
 
+**Why drive a live Editor instead of a fresh batch job?** `command`, `list`, and `eval` round-trip
+against an already-loaded Editor in roughly **200–600 ms with no script recompile and no domain
+reload** — far cheaper than a cold `unity run` per action. That makes it practical for an agent to
+create GameObjects, edit assets, run a test, or evaluate C# iteratively within a single warm session.
+
+#### Getting an Editor to drive
+
+`command`, `list`, `eval`, and `status` attach to an **already-running** Editor with the Pipeline
+package — they connect to its Pipeline server, they don't start one. One gotcha up front: a bare
+`unity run <project>` (**without** `--command`) is *not* a way to get one — it runs batch mode to
+completion and exits on its own (the log ends `Exiting batchmode successfully now!`). Use one of the
+three patterns below. Any resident Editor (batch or GUI) then answers in ~200–600 ms with no recompile
+and no domain reload, so an agent can iterate in a single session.
+
+**Persistent headless (no GUI) — agent / SSH build box.** Launch the Editor binary directly in batch
+mode and **omit `-quit`** so it stays resident and keeps serving the Pipeline API. The binary lives
+inside the install dir reported by `unity editors --installed` (`location`).
+
+```bash
+unity pipeline install --project-path /path/to/MyProject
+# macOS: the `location` is the .app bundle; the executable is inside it. (Linux: <editor>/Editor/Unity)
+UNITY=/Applications/Unity/Hub/Editor/6000.3.11f1/Unity.app/Contents/MacOS/Unity
+"$UNITY" -batchmode -projectPath /path/to/MyProject -logFile editor.log &   # NO -quit → stays resident
+# Drive it — target the project explicitly (see the status caveat):
+unity command --project-path /path/to/MyProject                            # list what it exposes
+unity list    --project-path /path/to/MyProject                            # discover tools
+unity command eval "return Application.unityVersion;" --project-path /path/to/MyProject
+```
+
+> **`unity status` caveat (verified):** a batch-mode Editor launched this way *does* serve commands,
+> but is **not** listed by `unity status` (its lockfile heartbeat differs from a GUI Editor's). Confirm
+> reachability with `unity command`/`unity list --project-path <project>`, not `unity status`.
+
+**Warm / interactive.** Use an Editor you already have open, or `unity open <project>` (GUI, stays
+resident). Unlike the batch case, its Pipeline server *does* register with `unity status` (state
+`ready`), so `unity status` gates readiness. Drive it the same way (the CLI auto-discovers it; pass
+`--project-path` to disambiguate when several are open).
+
+```bash
+unity open /path/to/MyProject
+unity status --format json                                 # wait until an instance shows state "ready"
+unity command eval "return Application.unityVersion;"
+```
+
+**One-shot (CI).** `unity run <project> --command <name> -- <args>` boots a batch Editor, runs one
+registered command, prints its result, and exits — a fresh boot each time (no warm reuse). Parse with
+`--format ndjson`, since the Editor writes its own log to stdout alongside the result.
+
+```bash
+unity run /path/to/MyProject --command spawn_light --format ndjson -- --name Sun
+```
+
+A resident Editor (headless or GUI) holds a license seat until it exits; the one-shot path releases it
+on exit.
+
 #### pipeline (alias: pipe) — manage the Unity Pipeline package
 
 ```bash
@@ -103,13 +158,20 @@ unity command <command> --runtime-path /path/to/port-file
 unity command editor_play --timeout 60
 ```
 
+Some projects (and Pipeline package versions) register an `eval` — and `eval_file` — command on the
+Editor side, so you can run C# through the connected Editor in a production build:
+`unity command eval "return Application.unityVersion;"` or `unity command eval_file snippet.cs`.
+Availability depends on the Editor/package, so discover it at runtime with `unity command` / `unity list`
+rather than assuming it. This is distinct from the dev-only top-level `unity eval` (below), which is
+absent from production builds.
+
 If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running and its Pipeline server is up).
 
 `unity command` no longer accepts `--instance <host:port>` — the CLI discovers running Editors itself, so run from the project directory or pass `--project-path` to target one.
 
 #### list — discover a connected Editor's tools
 
-`unity list` queries the connected Unity Editor (via the Pipeline package) and prints every registered tool with its name, description, group, and parameter schema. Use it to discover what's callable in the current Editor session without reading source code — especially when the project registers custom `[CliCommand]` tools. Unlike `unity command` (which lists *and* runs), `list` is discovery/introspection only.
+`unity list` queries the connected Unity Editor (via the Pipeline package) and prints every registered tool with its name, description, group, and parameter schema. Use it to discover what's callable in the current Editor session without reading source code — especially when the project registers custom `[CliCommand]` tools (see *Authoring custom `[CliCommand]` tools* below). Unlike `unity command` (which lists *and* runs), `list` is discovery/introspection only.
 
 ```bash
 unity list
@@ -130,6 +192,43 @@ unity status --project megacity
 ```
 
 Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+
+#### Authoring custom `[CliCommand]` tools
+
+The command surface is extensible from the **project** side: tag a `static` method with `[CliCommand]`
+and it becomes callable via `unity command <name>` (warm) or `unity run --command <name>` (one-shot),
+and discoverable via `unity list` — no CLI release required. Parameters, help text, and errors are
+surfaced to the CLI automatically. `[CliCommand]` and `[CliArg]` live in the `Unity.Pipeline.Commands`
+namespace (assembly `Unity.Pipeline`, from `com.unity.pipeline`); `MainThreadRequired` and `RuntimeOnly`
+are **named properties on `[CliCommand]`**, not separate attributes.
+
+```csharp
+using Unity.Pipeline.Commands;   // [CliCommand] / [CliArg] — assembly: Unity.Pipeline
+using UnityEngine;
+
+public static class MyPipelineCommands
+{
+    // Warm:     unity command spawn_light --name Sun
+    // One-shot: unity run <project> --command spawn_light -- --name Sun
+    [CliCommand("spawn_light", "Create a GameObject with a Light component",
+                MainThreadRequired = true /* default true; set false only for thread-safe work */)]
+    public static string SpawnLight([CliArg("name", "GameObject name")] string name = "Light")
+    {
+        var go = new GameObject(name, typeof(Light));
+        return go.name;
+    }
+}
+```
+
+- The method must be `static` (any accessibility works). Place it in an **Editor** assembly (an
+  `Editor/` folder, or an asmdef that references `Unity.Pipeline`) so it loads with the Pipeline server.
+- `MainThreadRequired` defaults to **true** — keep it for anything that reads or mutates engine/editor
+  state (scene graph, assets, serialized objects); set it `false` only for pure, thread-safe work.
+- `RuntimeOnly = true` hides the command from an Editor server's listing (Player/dev-build only); reach
+  such a command with `unity command <command> --runtime <runtime>`. 
+- After adding or changing a command, rebuild with `unity command recompile` (poll
+  `unity command recompile_status` until `completed`), then `unity list` to confirm it registered. The
+  Pipeline package also ships built-in commands, including `eval` / `eval_file` (run C# in the Editor).
 
 ---
 
@@ -193,7 +292,10 @@ The commands below are **absent from the published production CLI** — they onl
 
 ### eval — evaluate a C# expression in a running editor
 
-Requires a connected Editor with the Pipeline package (see *Connected Editors* above).
+Requires a connected Editor with the Pipeline package (see *Connected Editors* above). This is the
+**dev-only top-level** `eval`, absent from production builds; for production, prefer the Editor-side
+`eval` command reachable via `unity command eval` when the connected Editor exposes it (see the
+`command` section above).
 
 ```bash
 unity eval 'Application.version'

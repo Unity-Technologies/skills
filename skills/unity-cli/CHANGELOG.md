@@ -22,6 +22,9 @@ Tracks the CLI's `1.0.0-beta.3` release. The CLI's own `[Unreleased]` changes (d
 - Environment variables **`UNITY_NO_CONSENT_PROMPT`** (suppress the first-run consent prompt without recording a choice) and **`UNITY_NO_CRASH_REPORT`** (disable anonymous crash/error reporting).
 - Global **`--json`** shorthand (accepted on every command) in the global-flags table.
 - OSC 9;4 taskbar progress note for `unity install` on interactive terminals.
+- **Driving a running Editor** — three patterns: **persistent headless** (launch the Editor binary in `-batchmode` *without* `-quit`; it stays resident and serves the Pipeline API — drive it with `unity command`/`list`/`eval --project-path`), **warm/interactive** (`unity open`, which registers with `unity status` as `ready`), and **one-shot CI** (`unity run --command <name>` boots a batch Editor, runs one command, exits). Notes that a bare `unity run` is *not* persistent (batch runs to completion and exits) and — verified — that a batch-mode Editor serves commands but is **not** listed by `unity status`. Closes a gap where the Connected Editors section assumed a running Editor without saying how to get one.
+- **Authoring custom `[CliCommand]` tools** — `[CliCommand]` / `[CliArg]` in the `Unity.Pipeline.Commands` namespace (assembly `Unity.Pipeline`), with `MainThreadRequired` / `RuntimeOnly` as **named properties on `[CliCommand]`** (not separate attributes); worked example, and hot-registration via `unity command recompile` → `unity list`.
+- **Editor-side `eval` / `eval_file`** — noted the runtime-discoverable production path via `unity command eval`, distinct from the dev-only top-level `unity eval`.
 
 ### Changed
 
