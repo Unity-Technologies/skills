@@ -150,8 +150,9 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 ```bash
 unity status                       # is an Editor connected? (look for state "ready")
-unity command                      # list the scene/GameObject commands this Editor exposes
-unity command create_gameobject    # act on the live, active scene (args are Editor-defined)
+unity command                      # discover the scene/GameObject commands THIS Editor exposes
+# then drive it with the commands it lists — for example, if your Editor exposes them:
+unity command create_gameobject    # act on the live, active scene
 unity command save_scene           # persist the active scene
 ```
 
