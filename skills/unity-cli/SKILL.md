@@ -1,11 +1,25 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal — install, upgrade or uninstall editors, create, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation. For a guided idea-to-running-project flow for a brand-new game, use the new-unity-project skill instead.
+description: Use when interacting with Unity CLI from the terminal, or to control a running/connected Unity Editor from the command line — create or modify GameObjects, edit scenes and assets, inspect the hierarchy, and run C# in a live Editor instead of hand-editing scene or asset files. Also: install, upgrade or uninstall editors, create, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation. For a guided idea-to-running-project flow for a brand-new game, use the new-unity-project skill instead.
 allowed-tools:
   - Bash
 ---
 
 # Unity CLI
+
+## Drive a running Unity Editor (if one is open)
+
+**If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the Editor's **Pipeline** package. When an Editor is available, drive it instead of hand-editing scene or asset YAML.
+
+```bash
+unity status                    # confirm a connected Editor (look for state "ready")
+unity command                   # list the commands the Editor exposes
+unity command editor_play       # run one — e.g. enter Play mode
+# Run arbitrary C# — e.g. add a GameObject named "Joe" — when the Editor exposes eval:
+unity command eval 'new UnityEngine.GameObject("Joe");'
+```
+
+Requires the project's `com.unity.pipeline` package (Unity 6.0+) — add it once with `unity pipeline install`. Full details — launching a headless Editor to drive, `unity list` tool discovery, and authoring custom `[CliCommand]` tools — are in [integration-advanced.md](references/integration-advanced.md).
 
 ## Step 1: Install the CLI (if not already installed)
 
