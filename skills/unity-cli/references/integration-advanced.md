@@ -225,7 +225,7 @@ public static class MyPipelineCommands
 - `MainThreadRequired` defaults to **true** — keep it for anything that reads or mutates engine/editor
   state (scene graph, assets, serialized objects); set it `false` only for pure, thread-safe work.
 - `RuntimeOnly = true` hides the command from an Editor server's listing (Player/dev-build only); reach
-  such a command with `unity command <name> --runtime <name>`.
+  such a command with `unity command <command> --runtime <runtime>`. 
 - After adding or changing a command, rebuild with `unity command recompile` (poll
   `unity command recompile_status` until `completed`), then `unity list` to confirm it registered. The
   Pipeline package also ships built-in commands, including `eval` / `eval_file` (run C# in the Editor).
