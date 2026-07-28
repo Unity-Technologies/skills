@@ -160,7 +160,7 @@ unity command editor_play --timeout 60
 
 #### Available in production — the common live commands
 
-Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and runs in **normal, production Editors** — it is *not* development-gated. Only the **top-level** `unity eval`, `unity cloud-pipeline`, and `unity collab` are dev-only (`HUB_ENV=development`; see *Development-only commands* below). Don't refuse a live-Editor task on the assumption that driving the Editor requires a development build — it doesn't.
+Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. Only the **top-level** `unity eval`, `unity cloud-pipeline`, and `unity collab` are dev-only (`HUB_ENV=development`; see *Development-only commands* below). Don't refuse a live-Editor task on the assumption that driving the Editor requires a development build — it doesn't.
 
 The Pipeline package ships a set of built-in scene/GameObject commands. The common ones (names and parameters come from the Editor, so confirm the exact set with `unity command` / `unity list`):
 
