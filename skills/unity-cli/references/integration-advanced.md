@@ -158,6 +158,25 @@ unity command <command> --runtime-path /path/to/port-file
 unity command editor_play --timeout 60
 ```
 
+#### Available in production — the common live commands
+
+Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. Only the **top-level** `unity eval` and `unity collab` are dev-only (`HUB_ENV=development`); `unity cloud-pipeline` is off by default behind the `FEATURE_CLOUD_PIPELINE` env flag and available in production when set (see *Development-only commands* below). Don't refuse a live-Editor task on the assumption that driving the Editor requires a development build — it doesn't.
+
+The Pipeline package ships a set of built-in scene/GameObject commands. The common ones (names and parameters come from the Editor, so confirm the exact set with `unity command` / `unity list`):
+
+| Command | Does |
+|---|---|
+| `create_gameobject` | Create a GameObject in the active scene |
+| `find_gameobjects` | Query the active scene for GameObjects |
+| `get_scene_hierarchy` | Print the active scene's hierarchy |
+| `set_transform` | Set a GameObject's position / rotation / scale |
+| `add_component` | Add a component to a GameObject |
+| `rename_gameobject` / `delete_gameobject` | Rename or delete a GameObject |
+| `save_scene` / `save_all` | Save the active scene, or all dirty scenes and assets |
+| `create_script` → `recompile` → `attach_script` | Add a new C# script, rebuild, then attach it to a GameObject |
+
+The **authoritative** catalog is always `unity command --format json` — every registered command with its full parameter schema. The table above just jump-starts common tasks so you don't have to dump-and-grep first.
+
 Some projects (and Pipeline package versions) register an `eval` — and `eval_file` — command on the
 Editor side, so you can run C# through the connected Editor in a production build:
 `unity command eval "return Application.unityVersion;"` or `unity command eval_file snippet.cs`.
@@ -288,7 +307,7 @@ $ unity shell --protocol ndjson
 
 ## Development-only commands (hidden in production builds)
 
-The commands below are **absent from the published production CLI** — they only register when `HUB_ENV=development`, so they won't appear in `unity --help` for a normal install. Documented here for completeness; if you don't see them, they're not available in your build.
+`eval` and `collab` are **absent from the published production CLI** — they only register when `HUB_ENV=development`, so they won't appear in `unity --help` for a normal install. `cloud-pipeline` is different: it's hidden from the default `--help` but **available in production** when the `FEATURE_CLOUD_PIPELINE` env flag is set (it is not `HUB_ENV`-gated). Documented here for completeness; if you don't see a command, it isn't enabled in your build.
 
 ### eval — evaluate a C# expression in a running editor
 
@@ -312,7 +331,7 @@ Compile failures surface the Roslyn diagnostics and exit non-zero. Targeting opt
 
 ### cloud-pipeline — Unity Cloud Pipeline
 
-Manage Unity Cloud Pipeline resources. Subcommand groups: `status`, `onboard`, `assets` (`list`/`status`/`url`), `branches` (`list`/`show`/`create`/`url`/`enable`/`edit`/`disable`), `pending-changes list`, `files` (`create`/`update`/`delete`/`move`), `pull-request create`. Use `unity cloud-pipeline --help` (development build) for the full flag set.
+Manage Unity Cloud Pipeline resources. Subcommand groups: `status`, `onboard`, `assets` (`list`/`status`/`url`), `branches` (`list`/`show`/`create`/`url`/`enable`/`edit`/`disable`), `pending-changes list`, `files` (`create`/`update`/`delete`/`move`), `pull-request create`. Use `unity cloud-pipeline --help` (with `FEATURE_CLOUD_PIPELINE` set) for the full flag set.
 
 ### collab — Unity collaboration (annotations & attachments)
 
