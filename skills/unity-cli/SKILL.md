@@ -158,6 +158,27 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 ## Common workflows
 
+### Edit a scene, GameObject, or asset — `unity status` first
+
+**Before editing any scene, GameObject, prefab, or asset, run `unity status` to detect a connected Editor.** If one is reachable, drive it with live commands instead of touching project files — the Editor applies changes to the *actual active scene* and keeps its in-memory state in sync.
+
+```bash
+unity status                       # is an Editor connected? (look for state "ready")
+unity command                      # discover the scene/GameObject commands THIS Editor exposes
+# then drive it with the commands it lists — for example, if your Editor exposes them:
+unity command create_gameobject    # act on the live, active scene
+unity command save_scene           # persist the active scene
+```
+
+Command names are defined by the Editor, so run `unity command` (or `unity list`) to see the exact set — don't assume a name.
+
+> **Never hand-edit `.unity`, `.prefab`, or `.asset` YAML while a live Editor is reachable.** Raw-file edits are:
+> - **error-prone** — fileIDs and GUIDs are assigned by hand and easy to get wrong;
+> - **invisible** to the running Editor until a reimport, so the change silently fails to take effect; and
+> - **prone to hitting the wrong file** — e.g. writing to `SampleScene.unity` while the Editor's active scene is actually `Demo2.unity`, producing valid-looking YAML that changes nothing the user sees.
+
+Only fall back to editing files directly when `unity status` shows **no** reachable Editor — and say so explicitly ("no live Editor detected, editing the file directly").
+
 ### Bootstrap a new project from scratch
 
 > For a **guided** end-to-end experience — concept questions, installing the Editor in the
