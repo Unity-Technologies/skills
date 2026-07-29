@@ -143,20 +143,6 @@ unity projects size --all --json
 
 Human output uses readable units; `--json` (and `--format ndjson`) emit raw byte counts.
 
-#### projects close
-
-Close the running editor that has a project open — asks the editor to quit gracefully and reports what happened (project, PID, method):
-
-```bash
-# Ask the editor to quit gracefully (default 30-second wait)
-unity projects close /path/to/MyProject
-
-# Bound the graceful wait, then force-terminate if it won't exit (unsaved changes are lost)
-unity projects close /path/to/MyProject --timeout 15 --force
-```
-
-`--timeout <seconds>` bounds the graceful wait (default 30); `--force` terminates the process when it can't or won't exit — a graceful termination first, then a hard kill (on Unix, SIGTERM then SIGKILL) — and warns that unsaved changes are lost. Closing a project that isn't open is a no-op (exit 0); a close that fails exits non-zero. Honors the global `--format human|json|tsv|ndjson`.
-
 #### projects require
 
 Ensure the editor version required by a project is installed, installing it if needed:
