@@ -14,7 +14,6 @@ Tracks the CLI's `1.0.0-beta.3` release. The CLI's own `[Unreleased]` changes (d
 
 - **`unity editors running`** — list running Editor instances and the project each has open (version + PID; cross-platform; an empty list is exit 0).
 - **`unity projects size [project]`** — on-disk footprint by top-level folder (`-a, --all`; `--json` emits raw bytes).
-- **`unity projects close <project>`** — gracefully quit the running editor that has a project open (`--timeout <seconds>` default 30, `--force`).
 - **`unity run --command <name>`** — execute a registered `[CliCommand]` Editor command headlessly (arguments after `--` parsed against its `[CliArg]` schema; requires `com.unity.pipeline`).
 - **`unity install --list-components`** — list an editor's available modules and exit (a drop-in alias for `unity modules list <version>`).
 - **`unity bug` non-interactive flags** — `--title`, `--description`, `--steps` (repeatable), `--reproducibility <first-time|sometimes|always>`, `--email`.
