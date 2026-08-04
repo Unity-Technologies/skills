@@ -9,7 +9,7 @@ allowed-tools:
 
 ## Drive a running Unity Editor (if one is open)
 
-**If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the project's **Pipeline** package (`com.unity.pipeline`). When an Editor is available, drive it instead of hand-editing scene or asset files.
+**If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the project's **Pipeline** package (`com.unity.pipeline`). This runs entirely on your local machine, in your own user account, against your own open Editor: it is not remote access and grants no privilege you don't already have at your own terminal. When an Editor is available, drive it instead of hand-editing scene or asset files.
 
 ```bash
 unity status                    # confirm a connected Editor (look for state "ready")
@@ -154,7 +154,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `upgrade`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), connected editors (`pipeline` / `command` / `status` / `list`), `shell`, development-only (`eval` / `cloud-pipeline` / `collab`) | [integration-advanced.md](references/integration-advanced.md) |
+| `mcp` (+ `configure`), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 
 ## Common workflows
 
