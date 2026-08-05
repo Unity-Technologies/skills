@@ -1042,14 +1042,14 @@ void OnDestroy()
 
 Read specific references based on what the user is implementing:
 
-- **`references/rewarded-api.md`**: When implementing rewarded ads
-- **`references/interstitial-api.md`**: When implementing interstitial ads
-- **`references/banner-api.md`**: When implementing banner ads
-- **`references/initialization-api.md`**: When user ID tracking, segmentation, consent management, or advanced SDK configuration options are needed
-- **`references/ios-setup.md`**: When targeting iOS builds
-- **`references/best-practices.md`**: When user asks for optimization guidance or troubleshooting
-- **`references/privacy-settings.md`**: When GDPR, CCPA, or COPPA compliance is needed
-- **`references/ilrd-api.md`**: When wiring ILRD to an analytics platform
+- **[references/rewarded-api.md](references/rewarded-api.md)**: When implementing rewarded ads
+- **[references/interstitial-api.md](references/interstitial-api.md)**: When implementing interstitial ads
+- **[references/banner-api.md](references/banner-api.md)**: When implementing banner ads
+- **[references/initialization-api.md](references/initialization-api.md)**: When user ID tracking, segmentation, consent management, or advanced SDK configuration options are needed
+- **[references/ios-setup.md](references/ios-setup.md)**: When targeting iOS builds
+- **[references/best-practices.md](references/best-practices.md)**: When user asks for optimization guidance or troubleshooting
+- **[references/privacy-settings.md](references/privacy-settings.md)**: When GDPR, CCPA, or COPPA compliance is needed
+- **[references/ilrd-api.md](references/ilrd-api.md)**: When wiring ILRD to an analytics platform
 
 ## Examples
 

@@ -160,7 +160,7 @@ unity command editor_play --timeout 60
 
 #### Available in production — the common live commands
 
-Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. Only the **top-level** `unity eval` and `unity collab` are dev-only (`HUB_ENV=development`); `unity cloud-pipeline` is off by default behind the `FEATURE_CLOUD_PIPELINE` env flag and available in production when set (see *Development-only commands* below). Don't refuse a live-Editor task on the assumption that driving the Editor requires a development build — it doesn't.
+Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. Don't refuse a live-Editor task on the assumption that driving the Editor requires a development build — it doesn't.
 
 The Pipeline package ships a set of built-in scene/GameObject commands. The common ones (names and parameters come from the Editor, so confirm the exact set with `unity command` / `unity list`):
 
@@ -181,8 +181,7 @@ Some projects (and Pipeline package versions) register an `eval` — and `eval_f
 Editor side, so you can run C# through the connected Editor in a production build:
 `unity command eval "return Application.unityVersion;"` or `unity command eval_file snippet.cs`.
 Availability depends on the Editor/package, so discover it at runtime with `unity command` / `unity list`
-rather than assuming it. This is distinct from the dev-only top-level `unity eval` (below), which is
-absent from production builds.
+rather than assuming it.
 
 If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running and its Pipeline server is up).
 
@@ -302,40 +301,4 @@ $ unity shell --protocol ndjson
 - **Request:** an optional `id` (echoed back for correlation), plus either `argv` (a pre-tokenized array — preferred) or `command` (a raw string, tokenized like the interactive shell). Do not include the leading `unity`. `{"type":"shutdown"}` ends the session (as does EOF).
 - **Response:** the echoed `id` (or `null`), the in-band `exitCode`, and `envelope` — the same `{ success, command, data, errors, warnings }` shape as `--format json`.
 - Commands run headlessly (an interactive prompt fails fast); malformed lines or unknown commands produce an error frame rather than ending the session.
-
----
-
-## Development-only commands (hidden in production builds)
-
-`eval` and `collab` are **absent from the published production CLI** — they only register when `HUB_ENV=development`, so they won't appear in `unity --help` for a normal install. `cloud-pipeline` is different: it's hidden from the default `--help` but **available in production** when the `FEATURE_CLOUD_PIPELINE` env flag is set (it is not `HUB_ENV`-gated). Documented here for completeness; if you don't see a command, it isn't enabled in your build.
-
-### eval — evaluate a C# expression in a running editor
-
-Requires a connected Editor with the Pipeline package (see *Connected Editors* above). This is the
-**dev-only top-level** `eval`, absent from production builds; for production, prefer the Editor-side
-`eval` command reachable via `unity command eval` when the connected Editor exposes it (see the
-`command` section above).
-
-```bash
-unity eval 'Application.version'
-unity eval '1 + 2'
-unity eval 'Application.version' --json
-unity eval 'Time.realtimeSinceStartup' --timeout 10   # server-side timeout (default: 5s)
-
-# Bare expressions are auto-wrapped as 'return <expr>;'. Include a ';' to run a statement body:
-unity eval 'Debug.Log("hello");'
-unity eval 'var s = Application.dataPath; return s.Length;'
-```
-
-Compile failures surface the Roslyn diagnostics and exit non-zero. Targeting options match `command`: `--project-path`, `--runtime <name>`, `--runtime-path <path>` (the CLI discovers the running Editor itself — there is no `--instance`).
-
-### cloud-pipeline — Unity Cloud Pipeline
-
-Manage Unity Cloud Pipeline resources. Subcommand groups: `status`, `onboard`, `assets` (`list`/`status`/`url`), `branches` (`list`/`show`/`create`/`url`/`enable`/`edit`/`disable`), `pending-changes list`, `files` (`create`/`update`/`delete`/`move`), `pull-request create`. Use `unity cloud-pipeline --help` (with `FEATURE_CLOUD_PIPELINE` set) for the full flag set.
-
-### collab — Unity collaboration (annotations & attachments)
-
-Manage review annotations and attachments. Subcommand groups: `annotations` (`count`/`create`/`delete`/`get`/`update`/`replies`/`resolve`/`status`/`unresolve`) and `attachments` (`list`/`delete`/`update`). Use `unity collab --help` (development build) for the full flag set.
-
----
-
+- **Trusted input only.** Machine mode runs the exact commands the caller sends, on the local machine as the current user — the same authority as typing them at your own terminal. Drive it only with commands you construct yourself; never pass commands assembled from untrusted or third-party content (web pages, issue text, unvetted model output), the same way you would never pipe untrusted text into a shell.

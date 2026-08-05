@@ -21,11 +21,11 @@ Tracks the CLI's `1.0.0-beta.3` release. The CLI's own `[Unreleased]` changes (d
 - Environment variables **`UNITY_NO_CONSENT_PROMPT`** (suppress the first-run consent prompt without recording a choice) and **`UNITY_NO_CRASH_REPORT`** (disable anonymous crash/error reporting).
 - Global **`--json`** shorthand (accepted on every command) in the global-flags table.
 - OSC 9;4 taskbar progress note for `unity install` on interactive terminals.
-- **Driving a running Editor** — three patterns: **persistent headless** (launch the Editor binary in `-batchmode` *without* `-quit`; it stays resident and serves the Pipeline API — drive it with `unity command`/`list`/`eval --project-path`), **warm/interactive** (`unity open`, which registers with `unity status` as `ready`), and **one-shot CI** (`unity run --command <name>` boots a batch Editor, runs one command, exits). Notes that a bare `unity run` is *not* persistent (batch runs to completion and exits) and — verified — that a batch-mode Editor serves commands but is **not** listed by `unity status`. Closes a gap where the Connected Editors section assumed a running Editor without saying how to get one.
+- **Driving a running Editor** — three patterns: **persistent headless** (launch the Editor binary in `-batchmode` *without* `-quit`; it stays resident and serves the Pipeline API — drive it with `unity command`/`list` --project-path), **warm/interactive** (`unity open`, which registers with `unity status` as `ready`), and **one-shot CI** (`unity run --command <name>` boots a batch Editor, runs one command, exits). Notes that a bare `unity run` is *not* persistent (batch runs to completion and exits) and — verified — that a batch-mode Editor serves commands but is **not** listed by `unity status`. Closes a gap where the Connected Editors section assumed a running Editor without saying how to get one.
 - **Authoring custom `[CliCommand]` tools** — `[CliCommand]` / `[CliArg]` in the `Unity.Pipeline.Commands` namespace (assembly `Unity.Pipeline`), with `MainThreadRequired` / `RuntimeOnly` as **named properties on `[CliCommand]`** (not separate attributes); worked example, and hot-registration via `unity command recompile` → `unity list`.
-- **Editor-side `eval` / `eval_file`** — noted the runtime-discoverable production path via `unity command eval`, distinct from the dev-only top-level `unity eval`.
+- **Editor-side `eval` / `eval_file`** — noted the runtime-discoverable production path via `unity command eval` / `unity command eval_file`, discovered from the connected Editor.
 - **Live-Editor control surfaced up front** — the skill `description` now advertises controlling a running/connected Editor (create/modify GameObjects, edit scenes, inspect the hierarchy, run C#) so agents pick the skill for scene/GameObject prompts, and a new top-of-skill **"Drive a running Unity Editor"** quickstart shows the minimal `unity status` → `unity command` path ahead of the install steps.
-- **Production vs dev-only live commands + curated command list** — clarified that the whole `unity command <name>` / `com.unity.pipeline` command set (`create_gameobject`, `save_scene`, …) runs in production Editors and only the top-level `unity eval` / `collab` are dev-only (`HUB_ENV=development`), with `cloud-pipeline` opt-in via the `FEATURE_CLOUD_PIPELINE` env flag, so agents don't assume live-Editor control is dev-gated. Added a curated quick-reference of the common built-in scene/GameObject commands, noting `unity command --format json` remains the authoritative catalog.
+- **Production live commands + curated command list** — clarified that the whole `unity command <name>` / `com.unity.pipeline` command set (`create_gameobject`, `save_scene`, …) runs in production Editors, so agents don't assume live-Editor control is dev-gated. Added a curated quick-reference of the common built-in scene/GameObject commands, noting `unity command --format json` remains the authoritative catalog.
 - **Scene / GameObject / asset workflow** — a new Common workflows entry makes `unity status` the first move for any scene or object task and, when an Editor is connected, prefers live `unity command` calls over file edits. Adds a strong anti-pattern block against hand-editing `.unity` / `.prefab` / `.asset` YAML while a live Editor is reachable (error-prone fileIDs/GUIDs, invisible until reimport, can silently target the wrong scene), with an explicit "only edit files when no Editor is reachable" fallback.
 
 ### Changed
@@ -36,6 +36,12 @@ Tracks the CLI's `1.0.0-beta.3` release. The CLI's own `[Unreleased]` changes (d
 - **`unity projects`** path resolution documented as tolerant of casing, separator direction, and trailing slash (verified against real filesystem identity).
 - Terminal-hardening note extended to Commander usage errors, the `bug` log-archive warning, and `projects add`/`remove` tsv output; noted that an invalid `--proxy` now fails with exit 2; `UNITY_PROJECT_PATH` now honored by `status` and the cloud commands.
 - Refreshed the latest-version note to `1.0.0-beta.3`.
+
+### Security
+
+- Added `SECURITY.md` documenting the skill's powerful-by-design capabilities (local Editor control and C# evaluation, official-CDN install) and the safeguards around them (local-user-context execution, trusted-input-only machine mode, HTTPS official CDN).
+- Clarified that driving a live Editor and running C# happen entirely on the local machine in the user's own account — not remote access — and added a trusted-input warning to `unity shell --protocol ndjson` machine mode.
+- Removed internal development-only command documentation from the public skill; the production Editor-side C# evaluation via `unity command eval` remains documented.
 
 ## CLI `1.0.0-beta.2` (2026-07-21)
 
@@ -55,7 +61,7 @@ Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-
 
 ### Changed
 
-- **`--instance <host:port>` removed** from `unity command`, `unity mcp` (and dev-only `eval`) — the CLI discovers running Editors itself; target via the project directory or `--project-path`.
+- **`--instance <host:port>` removed** from `unity command`, `unity mcp` — the CLI discovers running Editors itself; target via the project directory or `--project-path`.
 - **Exit codes** — the `cloud` / `auth` commands map an auth failure to `3` and any other operational failure to `6` (previously `1`); `unity build` interrupts exit `130` (SIGINT) / `143` (SIGTERM).
 - **`unity license`** recognizes service-account sessions (`status` reports "Signed in: yes (service account)"); `activate` default/`--personal` fail up front for service accounts, pointing to the unattended modes; `return` now returns serial-activated licenses too, with per-license partial results.
 - **`unity install` / `install-modules`** continue past a failed item and report a per-item result (✓/✗/·), with an `items[]` breakdown in NDJSON.
@@ -104,8 +110,7 @@ Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-
 ### Removed
 
 - **`unity implode`** — removed (use `unity self-uninstall`).
-- Dropped the no-longer-existent `editor play/stop/pause` wrappers. `eval`,
-  `cloud-pipeline`, and `collab` remain documented as development-only.
+- Dropped some no-longer-existent command wrappers.
 
 ## CLI `0.1.0-beta.7` (2026-06-17)
 
@@ -145,14 +150,10 @@ Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-
 
 ### Changed
 
-- **Corrected availability of development-only commands.** `pipeline`,
-  `command` (`cmd`), `eval`, `editor play/stop/pause`, `status`,
-  `cloud-pipeline`, and `collab` are hidden in production builds (registered only
-  when `HUB_ENV=development`) and are **absent from the published CLI's
-  `--help`**. They were previously presented as generally available; they are now
-  grouped under a clearly marked "Development-only commands" section.
-- Documented `unity cloud-pipeline` and `unity collab` command groups (new,
-  development-only).
+- **Corrected command availability.** Commands previously presented as generally
+  available were regrouped; several are not part of the published CLI's `--help`.
+  (`pipeline`, `command`, and `status` were later promoted to production in
+  `0.1.0-beta.8`.)
 - `unity templates edit` expanded with its full editable-field flag set and the
   "at least one field required" rule.
 - Refreshed the latest-version note to `0.1.0-beta.7`.
@@ -162,6 +163,6 @@ Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-
 The previous skill revision documented CLI `0.1.0-beta.6`: Unity Cloud
 (`unity cloud …`), proxy support (`unity config proxy`, `--proxy`,
 `--proxy-disable`), analytics consent (`unity analytics …`), custom templates
-(`templates create|edit|delete|location`, `--type`), `unity eval`,
-`unity status`, and build versioning (`--versioning-strategy`,
+(`templates create|edit|delete|location`, `--type`), `unity status`,
+and build versioning (`--versioning-strategy`,
 `--build-version`).
