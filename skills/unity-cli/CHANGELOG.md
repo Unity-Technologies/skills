@@ -110,7 +110,7 @@ Tracks the CLI's move to 1.0 versioning (`1.0.0-beta.1` re-baseline) and `1.0.0-
 ### Removed
 
 - **`unity implode`** — removed (use `unity self-uninstall`).
-- Dropped the no-longer-existent `editor play/stop/pause` wrappers.
+- Dropped some no-longer-existent command wrappers.
 
 ## CLI `0.1.0-beta.7` (2026-06-17)
 
