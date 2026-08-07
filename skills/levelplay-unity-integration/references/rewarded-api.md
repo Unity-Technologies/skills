@@ -68,10 +68,8 @@ public class RewardedAdManager : MonoBehaviour
         }
     }
 
-    // Call this from the trigger point in your game where you want the ad to be available —
-    // for example, from a UI button handler, on entering a scene, or at a natural moment
-    // in gameplay. Unlike the legacy IronSource rewarded video, the SDK does not load
-    // automatically; LoadAd() must always be called explicitly.
+    // Call LoadAd() from a publisher-controlled trigger (e.g. a button or scene entry).
+    // The SDK does not auto-load, so LoadAd() must be called explicitly.
     public void LoadAd()
     {
         Debug.Log("Loading rewarded ad...");
