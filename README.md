@@ -22,6 +22,12 @@ npx skills add Unity-Technologies/skills
 | `ui-uitk` | UI Toolkit (Unity 6.0+) — author UXML/USS, flex layout, custom elements, Painter2D, runtime binding |
 | `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
+| `2d-pixel-perfect` | Pixel-perfect 2D rendering — pipeline detection, filter modes, camera setup, reference resolution |
+| `manage-sprite-atlas` | Sprite atlases via a prebuild pipeline — master and variant atlases, packing and platform settings |
+| `sprite-segment-3x3grid` | Analyzes a sprite into a 3×3 color-match pattern — the input for `tilemap-ruletile-createfromsegment` |
+| `tilemap-palette-create` | Tile Palette assets for rectangular, hexagonal, or isometric grids |
+| `tilemap-ruletile-createempty` | Blank RuleTile, HexagonalRuleTile, or IsometricRuleTile for custom rule configuration |
+| `tilemap-ruletile-createfromsegment` | RuleTile tiling rules built from terrain sprites, using `sprite-segment-3x3grid` output |
 
 ## Usage
 
