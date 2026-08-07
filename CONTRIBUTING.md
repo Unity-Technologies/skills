@@ -28,7 +28,7 @@ allowed-tools:
 ```
 
 - `name`: matches the folder name, in kebab-case.
-- `description`: what the agent reads to decide whether to trigger the skill, so be specific about when it applies. Start with "Use when …".
+- `description`: this is the trigger the agent matches against to decide whether to run the skill, so make it specific about when the skill applies. "Use when …" is a good, clear shape and a fine default, but it's not required — what matters is that the description reads as a precise trigger. If your description is already tuned against real usage, keep it; don't rewrite it just to match a template.
 - `allowed-tools`: optional. List the tools the skill needs, or leave it out if there's no restriction.
 
 A README, CHANGELOG, and reference `.md` files alongside `SKILL.md` are all fine; the installer pulls the whole folder. Keep `SKILL.md` focused on instructions and move long reference material into separate files it links to.
@@ -43,7 +43,7 @@ There's no per-skill release mechanism. Versioning is just the repo's git histor
 
 1. Add your skill folder under `skills/`.
 2. Test it with realistic prompts in your own agent first.
-3. Open a PR. Stick to one skill per PR where you can.
+3. Open a PR. One skill per PR keeps reviews easy and is a fine default, but it's not a hard rule — batching related skills into a single PR, or splitting a large contribution across a few PRs, is equally welcome. Do whatever's easiest to review; if you group several skills together, just say so in the PR description.
 4. A maintainer reviews and merges.
 
 ## Help
