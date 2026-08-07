@@ -1,6 +1,6 @@
 ---
 name: ui
-description: Unity UI expert for menus, HUDs, screens, panels, buttons, labels, and all visual interface elements. Handles questions about UI in scenes or prefabs (how many elements, what exists, structure analysis), styling changes (colors, borders, backgrounds, fonts, spacing, rounded corners), layout adjustments, and UI generation. Supports importing design data from Figma projects as part of the UI creation pipeline. Routes to UI Toolkit, uGUI, or IMGUI based on project context.
+description: Unity UI expert for menus, HUDs, screens, panels, buttons, labels, and all visual interface elements. Handles questions about UI in scenes or prefabs (how many elements, what exists, structure analysis), styling changes (colors, borders, backgrounds, fonts, spacing, rounded corners), layout adjustments, and UI generation. Routes to UI Toolkit, uGUI, or IMGUI based on project context.
 ---
 
 Determine the appropriate UI system for the project and route to the correct specialized skill.
@@ -89,7 +89,7 @@ Route all types to the appropriate specialized skill based on the UI system.
 - **Understands**, **edits**, and **generates** EditorWindow, inspectors, PropertyDrawers built with OnGUI
 - Not for runtime game UI — for new editor tools, use UI Toolkit unless the project already uses IMGUI exclusively
 
-### Figma design import — not available in this plugin
+### Figma design import — not available here
 
 Importing a Figma design requires Unity's Figma integration service, which only exists
 inside Unity AI Assistant. There is no client-side equivalent, so do not promise it.
