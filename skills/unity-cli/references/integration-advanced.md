@@ -231,12 +231,13 @@ first, then fix the compile errors at the source and restart:
    Mode explicitly. The **human** output prints `Editor is in Safe Mode - Pipeline server disabled`, a
    `SafeMode Instances: N detected` summary line, and the hint *"Fix compilation errors and restart
    Unity to exit Safe Mode."* With **`--format json`** those human strings are *not* emitted — read the
-   structured fields instead: `summary.instancesInSafeMode` (> 0), or per instance
-   `instances[].safeMode.detected` (`true`).
+   structured fields instead. The payload sits under the standard envelope's `data` key, so the paths
+   are `data.summary.instancesInSafeMode` (> 0), or per instance
+   `data.instances[].safeMode.detected` (`true`).
 
    ```bash
    unity pipeline list                  # human: reads the Safe Mode warning + "fix and restart" hint
-   unity pipeline list --format json    # machine: check .summary.instancesInSafeMode / .instances[].safeMode.detected
+   unity pipeline list --format json    # machine: check .data.summary.instancesInSafeMode / .data.instances[].safeMode.detected
    ```
 
 3. **Read the compile errors from the Editor log.** Always read the **narrowest** log available, in
@@ -282,11 +283,11 @@ first, then fix the compile errors at the source and restart:
    For a **GUI** Editor, ask the user to save and close it, then `unity open /path/to/MyProject`.
 
    For a headless/agent box, stop the stuck Editor **by PID** and re-run the persistent-batch launch
-   above. `unity pipeline list` reports the PID even in Safe Mode (`instances[].pid` under
+   above. `unity pipeline list` reports the PID even in Safe Mode (`data.instances[].pid` under
    `--format json`):
 
    ```bash
-   unity pipeline list --format json   # read .instances[].pid for the stuck project
+   unity pipeline list --format json   # read .data.instances[].pid for the stuck project
    kill <pid>                          # graceful; escalate only if it does not exit
    ```
 
