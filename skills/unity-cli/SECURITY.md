@@ -14,8 +14,6 @@ Machine/agent mode (`unity shell --protocol ndjson`) runs the exact commands the
 
 ### Install via the official CDN
 
-The documented install downloads and runs an install script from Unity's official CDN, `public-cdn.cloud.unity3d.com`, **over HTTPS (TLS)**. This pipe-to-shell pattern is a deliberate, industry-standard install convenience for a first-party tool. On Linux the installer also configures Unity's official apt/rpm repositories, so subsequent updates are managed by the system package manager (`apt upgrade` / `dnf upgrade`); managed package-manager installs are the preferred path where available.
+The documented install downloads and runs an install script from Unity's official CDN, `public-cdn.cloud.unity3d.com`, **over HTTPS (TLS)**. This pipe-to-shell pattern is a deliberate, industry-standard install convenience for a first-party tool. Beyond TLS, the script verifies the downloaded binary against the SHA-256 published in the channel's release manifest and aborts on mismatch — or when no SHA-256 tool is available — so a tampered payload is rejected rather than executed.
 
-## What this file is
-
-`SECURITY.md` is the machine-readable accepted-risk manifest read by the Tier 1 skill validator. The `skill-security:accept` directive above records that the capabilities scanned as `SEC_POWER_CAP` and `SEC_INSTALL_PIPE` are known and accepted, with the rationale above. A **new** powerful capability or install pattern not covered here fails validation until it is reviewed and added — so acceptance stays explicit and auditable.
+On Linux the script installs a self-contained binary under `~/.local/bin` and does not modify system package sources. Separately, Unity publishes `.deb`/`.rpm` packages (rpm packages GPG-signed) to its official apt/rpm repositories, for users who prefer package-manager-managed updates. Installing those packages **does** change system state: their maintainer scripts add a Unity apt/yum repository entry and install Unity's signing key into the system keyring, so `apt`/`dnf` can verify and deliver subsequent updates.

@@ -21,6 +21,8 @@ unity command eval 'new UnityEngine.GameObject("Joe");'
 
 Requires the project's `com.unity.pipeline` package (Unity 6.0+) — add it once with `unity pipeline install`. Full details — launching a headless Editor to drive, `unity list` tool discovery, and authoring custom `[CliCommand]` tools — are in [integration-advanced.md](references/integration-advanced.md).
 
+> **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command` / `status` / `list` can't connect at all. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+
 ## Step 1: Install the CLI (if not already installed)
 
 First check if the CLI is available:
@@ -178,6 +180,8 @@ Command names are defined by the Editor, so run `unity command` (or `unity list`
 > - **prone to hitting the wrong file** — e.g. writing to `SampleScene.unity` while the Editor's active scene is actually `Demo2.unity`, producing valid-looking YAML that changes nothing the user sees.
 
 Only fall back to editing files directly when `unity status` shows **no** reachable Editor — and say so explicitly ("no live Editor detected, editing the file directly").
+
+**One exception worth ruling out first:** if an Editor *is* running for this project but `unity status` / `unity command` won't connect, it may be stuck in **Safe Mode** from a compile error rather than genuinely absent. Run `unity pipeline list` — if it reports Safe Mode, editing the C# source to fix the compile errors (and then restarting Unity) *is* the correct move, not a fallback. See [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
 ### Bootstrap a new project from scratch
 

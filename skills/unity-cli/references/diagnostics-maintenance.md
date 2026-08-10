@@ -27,6 +27,11 @@ unity logs --level warn
 
 The CLI writes its own `cli-log.json` (separate from the Hub's `info-log.json`) and records its version on every start. `unity logs`, `unity bug`, and `unity doctor` read the CLI's own log.
 
+> **Not the Unity Editor log.** `unity logs` shows the *CLI's* activity, **not** the Editor's
+> `Editor.log`. To read Editor-side output — for example the compile errors that force an Editor into
+> Safe Mode and block the Pipeline connection — read `Editor.log` directly (see
+> [integration-advanced.md → Recovering from Safe Mode](integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors) for its per-platform path and the full recovery loop).
+
 ---
 
 ### Doctor — system diagnostics
