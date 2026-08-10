@@ -12,7 +12,7 @@ allowed-tools:
 Understand existing Unity uGUI, make targeted edits, and generate new Canvas-based hierarchies.
 
 When working with ScrollRect/ScrollView, read the reference file:
-- `references/scrollview-setup.md` — Required hierarchy, setup rules, and common failures
+- [references/scrollview-setup.md](references/scrollview-setup.md) — Required hierarchy, setup rules, and common failures
 
 ## Scope
 
