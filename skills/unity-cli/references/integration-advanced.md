@@ -217,8 +217,8 @@ When a project has **C# compile errors**, the Unity Editor starts in **Safe Mode
 package is a normal package, so it **does not load in Safe Mode** — which means `unity command`,
 `unity list`, `unity status`, and the MCP server **cannot connect** to that Editor. This is a
 deadlock for an agent that wants to fix the compile errors *through* the Editor: the Editor is
-unreachable *because of* the very errors you want to fix. (Deeper package-in-Safe-Mode support is
-on Unity's roadmap post-Unity 7.0; until then, recover with the loop below.)
+unreachable *because of* the very errors you want to fix. Packages do not load in Safe Mode by
+design, so there is no CLI-side workaround — recover with the loop below.
 
 **Don't treat "can't connect" as "no Editor, so hand-edit files blindly."** Diagnose Safe Mode
 first, then fix the compile errors at the source and restart:
