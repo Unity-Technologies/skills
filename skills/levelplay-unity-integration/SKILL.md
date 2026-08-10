@@ -1,9 +1,11 @@
 ---
 name: levelplay-unity-integration
-description: Use when integrating LevelPlay (IronSource) ads into a Unity project — installing the Ads Mediation package, resolving native dependencies, initializing the SDK, or implementing rewarded ads, interstitials, or banners. Also use for LevelPlay-related errors, privacy compliance (GDPR, CCPA, COPPA), iOS setup (ATT, SKAdNetwork), or impression-level revenue tracking (ILRD).
+description: Adds ads and monetization to a Unity game using the LevelPlay Mediation SDK (installed via the Ads Mediation UPM package). Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android.
 ---
 
 # LevelPlay Unity package/SDK Integration
+
+Treat this as an interactive workflow to run with the developer, not as background reference. Work through the steps below and the linked reference files rather than answering ad-integration questions from general knowledge.
 
 The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
 
