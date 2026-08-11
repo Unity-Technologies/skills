@@ -22,6 +22,8 @@ npx skills add Unity-Technologies/skills
 | `ui-uitk` | UI Toolkit (Unity 6.0+) — author UXML/USS, flex layout, custom elements, Painter2D, runtime binding |
 | `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
+| `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
+| `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
 
 ## Usage
 
