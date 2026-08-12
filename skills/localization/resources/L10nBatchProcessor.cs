@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.UI;
+using UnityEditor.Events;
+using UnityEngine.Events;
 using UnityEngine.Localization.Components;
 using System.Collections.Generic;
 
@@ -39,18 +41,27 @@ public static class L10nBatchProcessor
                     ?? text.gameObject.AddComponent<LocalizeStringEvent>();
                 lse.StringReference = new UnityEngine.Localization.LocalizedString(table, kvp.Value);
 
-                // Use SerializedObject to set dynamic binding mode (Mode 0).
-                // UnityEventTools.AddPersistentListener cannot reliably set Mode 0.
-                var so = new SerializedObject(lse);
-                var calls = so.FindProperty("m_UpdateString.m_PersistentCalls.m_Calls");
-                calls.ClearArray();
-                calls.InsertArrayElementAtIndex(0);
-                var call = calls.GetArrayElementAtIndex(0);
-                call.FindPropertyRelative("m_Target").objectReferenceValue = text;
-                call.FindPropertyRelative("m_MethodName").stringValue = "set_text";
-                call.FindPropertyRelative("m_Mode").enumValueIndex = 0;       // Dynamic
-                call.FindPropertyRelative("m_CallState").enumValueIndex = 2;  // EditorAndRuntime
-                so.ApplyModifiedProperties();
+                // Wire the listener through the public UnityEventTools API. The persistent-call
+                // fields could be written directly through SerializedObject instead, but those
+                // are private serialized names with no compatibility guarantee — and it isn't
+                // necessary. A delegate to Text's public `text` setter, handed to
+                // AddPersistentListener, serializes to exactly the same thing: target = the Text
+                // component, method = set_text, mode = EventDefined (dynamic), call state =
+                // EditorAndRuntime. Measured on Unity 6000.5.7f1.
+                //
+                // The setter has no C# method-group name, so the delegate is built by name.
+                // That is reflection over a *public* member, which is fine; reaching for the
+                // private m_* fields would not be.
+                var setText = (UnityAction<string>)System.Delegate.CreateDelegate(
+                    typeof(UnityAction<string>), text, "set_text");
+
+                for (int i = lse.OnUpdateString.GetPersistentEventCount() - 1; i >= 0; i--)
+                {
+                    UnityEventTools.RemovePersistentListener(lse.OnUpdateString, i);
+                }
+                UnityEventTools.AddPersistentListener(lse.OnUpdateString, setText);
+
+                EditorUtility.SetDirty(lse);
                 break;
             }
         }
