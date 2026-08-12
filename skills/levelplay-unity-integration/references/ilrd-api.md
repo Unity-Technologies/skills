@@ -32,7 +32,62 @@ For more information about the Impression Level Revenue (ILR) SDK feature and pr
 
 ## Implementation
 
-### Basic ILR Setup
+ILRD is delivered differently depending on your SDK version. Check your version in **Ads Mediation > Network Manager**.
+
+| SDK version | ILRD delivery | Where you subscribe |
+|-------------|---------------|---------------------|
+| **9.5.0+ (current)** | Per ad instance — `OnAdImpressionDataReady` on each ad object (`LevelPlayRewardedAd`, `LevelPlayInterstitialAd`, `LevelPlayBannerAd`) | When you create each ad |
+| **9.4.x and earlier** | Single global event — `LevelPlay.OnImpressionDataReady` | Once, before `LevelPlay.Init()` |
+
+On SDK 9.5.0+, the global `LevelPlay.OnImpressionDataReady` still exists but is **deprecated and generates a compiler warning** — use the per-instance `OnAdImpressionDataReady` event instead.
+
+### SDK 9.5.0+ (current): Per-Instance Setup
+
+Subscribe to `OnAdImpressionDataReady` on each ad object right after you create it, before you load or show it, so no impression is missed — typically inside the ad manager classes from `rewarded-api.md` / `interstitial-api.md` / `banner-api.md`. There is no "before Init" ordering concern with the per-instance event; you subscribe when the ad is created.
+
+```csharp
+using UnityEngine;
+using Unity.Services.LevelPlay;
+
+public class RewardedAdManager : MonoBehaviour
+{
+    private LevelPlayRewardedAd rewardedAd;
+    private string adUnitId = "YOUR_REWARDED_AD_UNIT_ID";
+
+    void Start()
+    {
+        rewardedAd = new LevelPlayRewardedAd(adUnitId);
+
+        // ILRD (SDK 9.5.0+): subscribe per ad instance.
+        // Fires on a BACKGROUND thread — do not call Unity APIs directly here.
+        rewardedAd.OnAdImpressionDataReady += OnImpressionDataReady;
+
+        // ... register other event listeners and call LoadAd() as usual
+    }
+
+    void OnDestroy()
+    {
+        if (rewardedAd != null)
+        {
+            rewardedAd.OnAdImpressionDataReady -= OnImpressionDataReady;
+            // ... unsubscribe other events
+        }
+    }
+
+    private void OnImpressionDataReady(LevelPlayImpressionData impressionData)
+    {
+        // Runs on a background thread — see "Integration with Third-Party Analytics".
+        if (impressionData == null) return;
+        Debug.Log($"ILRD - {impressionData.AdNetwork} / {impressionData.AdFormat} / ${impressionData.Revenue}");
+    }
+}
+```
+
+Repeat the same `OnAdImpressionDataReady` subscription on your interstitial and banner ad objects. Every ad format reports its own impressions through its own instance event.
+
+### SDK 9.4.x and earlier (legacy): Global Event Setup
+
+On older SDKs, use the single global `LevelPlay.OnImpressionDataReady` event, registered **before** `LevelPlay.Init()`:
 
 ```csharp
 using UnityEngine;
@@ -82,10 +137,11 @@ public class ImpressionRevenueManager : MonoBehaviour
 }
 ```
 
-**Key points:**
+**Key points (global event — SDK 9.4.x and earlier only):**
 - Declare the listener **BEFORE** initializing the LevelPlay SDK to avoid any loss of information
 - Callback runs on a **background thread**
 - Don't call Unity APIs directly in the callback
+- On SDK 9.5.0+ this global event is deprecated — use the per-instance `OnAdImpressionDataReady` shown above instead
 
 ### Accessing Impression Data
 
@@ -104,13 +160,30 @@ private void ImpressionDataReadyEvent(LevelPlayImpressionData impressionData)
 
 ## API Reference
 
-### Event
+### Events
 
-#### `LevelPlay.OnImpressionDataReady`
+#### `adObject.OnAdImpressionDataReady` (SDK 9.5.0+ — current)
 
-Fired when an impression occurs and revenue data is available.
+Per-instance event on each ad object (`LevelPlayRewardedAd`, `LevelPlayInterstitialAd`, `LevelPlayBannerAd`). Fired when that ad reports an impression with revenue data.
 
 **Signature:** `event Action<LevelPlayImpressionData>`
+
+**Usage:**
+```csharp
+// Subscribe after creating the ad object. Fires on a background thread.
+rewardedAd.OnAdImpressionDataReady += ImpressionDataReadyEvent;
+```
+
+**Important:**
+- Subscribe when you create the ad object; unsubscribe in `OnDestroy()`
+- Callback runs on **background thread**
+- Each ad format reports through its own instance event
+
+#### `LevelPlay.OnImpressionDataReady` (SDK 9.4.x and earlier — deprecated in 9.5.0+)
+
+Single global event. Fired when any impression occurs and revenue data is available.
+
+**Signature:** `static event Action<LevelPlayImpressionData>`
 
 **Usage:**
 ```csharp
@@ -122,6 +195,7 @@ LevelPlay.OnImpressionDataReady += ImpressionDataReadyEvent;
 - Register **BEFORE** `LevelPlay.Init()`
 - Callback runs on **background thread**
 - Fires for all ad formats (Rewarded, Interstitial, Banner)
+- **Deprecated in SDK 9.5.0+** (generates a compiler warning) — use the per-instance event above instead
 
 ### Data Type
 
@@ -165,7 +239,7 @@ private void ImpressionDataReadyEvent(LevelPlayImpressionData impressionData)
 
 ## Thread Safety
 
-**CRITICAL:** `OnImpressionDataReady` runs on a background thread. This means:
+**CRITICAL:** the ILRD callback (`OnAdImpressionDataReady` on 9.5.0+, or `OnImpressionDataReady` on 9.4.x and earlier) runs on a background thread. This means:
 
 **❌ DO NOT:**
 - Call Unity APIs directly (e.g., `GameObject.Find()`, `transform.position`)
@@ -217,7 +291,7 @@ After you implement the ImpressionDataListener, you can send the impression data
 
 ## Best Practices
 
-1. **Register before Init**: Always register `OnImpressionDataReady` before calling `LevelPlay.Init()`
+1. **Subscribe correctly for your SDK version**: On SDK 9.5.0+, subscribe to each ad's `OnAdImpressionDataReady` when you create the ad. On SDK 9.4.x and earlier, register the global `LevelPlay.OnImpressionDataReady` before calling `LevelPlay.Init()`
 2. **Handle background thread**: Don't call Unity APIs directly in the callback
 3. **Check for null values**: Revenue and other properties may be null - always check before using
 4. **Protect against crashes**: Add null checks to avoid potential crashes
@@ -228,12 +302,14 @@ After you implement the ImpressionDataListener, you can send the impression data
 ### Issue: Callback never fires
 
 **Possible causes:**
-- Not registered before `LevelPlay.Init()`
+- **SDK 9.5.0+:** not subscribed to the ad instance's `OnAdImpressionDataReady`, or subscribed to a different ad object than the one shown
+- **SDK 9.4.x and earlier:** global `LevelPlay.OnImpressionDataReady` not registered before `LevelPlay.Init()`
 - SDK not initialized successfully
 - No ads shown yet
 
 **Solutions:**
-- Register callback before calling `Init()`
+- On 9.5.0+, subscribe to `OnAdImpressionDataReady` on the same ad object you load/show
+- On 9.4.x and earlier, register the global callback before calling `Init()`
 - Verify `OnInitSuccess` fires
 - Show an ad and check if callback fires
 
@@ -251,7 +327,7 @@ After you implement the ImpressionDataListener, you can send the impression data
 
 ## Testing Checklist
 
-- [ ] `OnImpressionDataReady` registered before `Init()`
+- [ ] Subscribed correctly for your SDK version (9.5.0+: per-instance `OnAdImpressionDataReady`; 9.4.x and earlier: global `OnImpressionDataReady` before `Init()`)
 - [ ] Callback fires when ads are shown
 - [ ] Revenue data is received (check for null)
 - [ ] Null checks added to prevent crashes
