@@ -344,18 +344,44 @@ When the representative Built-in scene uses reflection probes, verify the URP as
 using UnityEditor;
 using UnityEngine.Rendering.Universal;
 
-static void EnableReflectionProbeSettings(UniversalRenderPipelineAsset urpAsset)
+// `urpAsset.reflectionProbeBlending` and `.reflectionProbeBoxProjection` are public but
+// READ-ONLY (assigning either is CS0200), so writing them means going through
+// SerializedObject and the private field names. Those names carry no compatibility
+// guarantee, so this must fail loudly rather than silently: if a name stops resolving,
+// tell the user to tick the two boxes under Lighting → Reflection Probes on the URP asset
+// instead of reporting success. Never leave a setting silently unapplied.
+static bool EnableReflectionProbeSettings(UniversalRenderPipelineAsset urpAsset)
 {
     var serialized = new SerializedObject(urpAsset);
+    // internal-api-ok: the public reflectionProbeBlending / reflectionProbeBoxProjection
+    // properties are get-only (assigning either is CS0200), so there is no public write
+    // path. Guarded below: a null property reports and defers to the user's inspector
+    // rather than claiming success, and the result is read back through the public
+    // properties to confirm the write landed.
     var blending = serialized.FindProperty("m_ReflectionProbeBlending");
     var boxProjection = serialized.FindProperty("m_ReflectionProbeBoxProjection");
 
-    if (blending != null)
-        blending.boolValue = true;
-    if (boxProjection != null)
-        boxProjection.boolValue = true;
+    if (blending == null || boxProjection == null)
+    {
+        Debug.LogWarning(
+            "Could not set Probe Blending / Box Projection programmatically on " +
+            urpAsset.name + ". Ask the user to enable them on the URP asset under " +
+            "Lighting → Reflection Probes, then continue.");
+        return false;
+    }
+
+    blending.boolValue = true;
+    boxProjection.boolValue = true;
 
     serialized.ApplyModifiedProperties();
+    // Read back through the public properties to confirm it actually took.
+    if (!urpAsset.reflectionProbeBlending || !urpAsset.reflectionProbeBoxProjection)
+    {
+        Debug.LogWarning("Probe settings did not apply on " + urpAsset.name +
+                         "; ask the user to set them in the URP asset inspector.");
+        return false;
+    }
+    return true;
     EditorUtility.SetDirty(urpAsset);
     AssetDatabase.SaveAssets();
 }
@@ -396,15 +422,16 @@ report.Add($"Graphics URP Asset: {(urpAsset != null ? urpAsset.name : "NULL")}")
 
 if (urpAsset != null)
 {
-    var serializedUrp = new UnityEditor.SerializedObject(urpAsset);
-    var rendererList = serializedUrp.FindProperty("m_RendererDataList");
-    var defaultRendererIndex = serializedUrp.FindProperty("m_DefaultRendererIndex").intValue;
-    report.Add($"Default Renderer Index: {defaultRendererIndex}, Renderer Count: {rendererList.arraySize}");
-    if (rendererList.arraySize > defaultRendererIndex && defaultRendererIndex >= 0)
+    // `rendererDataList` is public, so no SerializedObject is needed here. The default
+    // renderer's index is not exposed publicly — report every renderer instead, which is
+    // more useful anyway: a missing PostProcessData on any renderer the project switches
+    // to will produce the same symptom.
+    var renderers = urpAsset.rendererDataList;
+    report.Add($"Renderer Count: {renderers.Length}");
+    for (int i = 0; i < renderers.Length; i++)
     {
-        var rendererData = rendererList.GetArrayElementAtIndex(defaultRendererIndex).objectReferenceValue
-            as UnityEngine.Rendering.Universal.UniversalRendererData;
-        report.Add($"Renderer: {(rendererData != null ? rendererData.name : "NULL")}, "
+        var rendererData = renderers[i] as UnityEngine.Rendering.Universal.UniversalRendererData;
+        report.Add($"Renderer[{i}]: {(renderers[i] != null ? renderers[i].name : "NULL")}, "
                  + $"PostProcessData: {rendererData != null && rendererData.postProcessData != null}");
     }
 }
