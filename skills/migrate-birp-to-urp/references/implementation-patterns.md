@@ -144,6 +144,17 @@ If no snapshot was captured, do not claim texture preservation. A post-conversio
 
 Prefer Unity's Render Pipeline Converter when available. Use manual `mat.shader = Shader.Find(...)` only as a fallback, and never after losing the source material data. Before changing a shader, snapshot source properties and restore mapped URP values immediately after assignment. Skip immutable package assets.
 
+**Whichever route you take, read the resulting `shader.name` back.** `MaterialUpgrader.FetchAllUpgradersForPipeline` returns the 2D provider set as well as the 3D one, and two upgraders claim `Standard` at equal priority — so on a 3D project the converter can land a `Standard` material on `Universal Render Pipeline/2D/Mesh2D-Lit-Default` rather than `Universal Render Pipeline/Lit`. It throws nothing and the material does not render magenta, so the only way to catch it is to check the name. Measured on 6000.5.8f1.
+
+If it happens: restore the affected materials from the rollback point and either filter the upgrader list to the 3D providers, or convert them with the manual pattern below, which names its target shader explicitly and so cannot be hijacked.
+
+```csharp
+// Verify, per material, after any conversion route.
+var expected = "Universal Render Pipeline/Lit"; // or the mapped target for this material
+if (mat.shader.name != expected)
+    Debug.LogWarning($"{path}: landed on '{mat.shader.name}', expected '{expected}'");
+```
+
 ```csharp
 using UnityEditor;
 using UnityEngine;

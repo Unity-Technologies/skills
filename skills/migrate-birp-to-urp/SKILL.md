@@ -96,6 +96,17 @@ Two things it can't know for you:
 - **You need `eval` in particular**, not just a reachable Editor. Confirm it appears in the
   catalog. Its presence depends on the Pipeline package version, not on the CLI, so a healthy
   install can still lack it — if it's missing, say so and stop.
+- **On an Editor older than 6000.3, expect the Pipeline package not to work at all**, and read the
+  symptom correctly rather than retrying. `com.unity.pipeline` uses `IPreprocessBuildWithContext`
+  and `BuildCallbackContext`, which Unity introduced in **6000.3**; the package's own manifest
+  declares `"unity": "6000.0"`, so it installs happily and then fails to compile. Measured:
+  present in 6000.3 / 6000.4 / 6000.5, absent in 6000.0 / 6000.1 / 6000.2 and in the 2022 and 2023
+  lines. The symptom is misleading — the server never starts, `unity status` shows no row and no
+  error, and the real cause is `CS0246` on those two types in the Editor log. If you see that,
+  tell the user the Editor is too old for the Pipeline package rather than debugging the CLI.
+
+  **This matters here more than in most skills:** someone migrating a project off the Built-in
+  pipeline is, by definition, often on an older Editor.
 - **A render-pipeline migration is not safely authorable blind.** Assigning a URP asset, converting
   materials, and rebaking lighting all need a live Editor. An unreachable Editor is a stop, not a
   cue to hand-edit `ProjectSettings/GraphicsSettings.asset`.
@@ -298,6 +309,17 @@ For actual conversion work, follow [references/migration-workflow.md](references
 4. **For selected-material conversion,** use the targeted material conversion workflow instead of converting the whole project.
 5. **Review warnings and failures before converting.**
 6. **Run the conversion only after the user confirms the project is safe to change.**
+7. **Verify which shader each material actually landed on** — do not assume the converter chose the 3D
+   target. `MaterialUpgrader.FetchAllUpgradersForPipeline` returns the 2D provider set alongside the 3D
+   one, and both claim `Standard` at equal priority, so on a 3D project a plain `Standard` material can
+   silently convert to `Universal Render Pipeline/2D/Mesh2D-Lit-Default` instead of
+   `Universal Render Pipeline/Lit`. Nothing errors and the material does not go magenta, so this is
+   invisible unless you read the shader name back — measured on 6000.5.8f1.
+
+   Read every converted material's `shader.name` afterwards and confirm it matches the intended target
+   from the mapping table. If any landed on a `2D/` shader in a 3D project, restore those materials from
+   the rollback point and convert them with a 3D-filtered upgrader list, or with the manual pattern in
+   [references/implementation-patterns.md](references/implementation-patterns.md).
 7. **After conversion, verify the saved project state.**
    - Re-open or re-query representative assets instead of trusting command output alone.
    - Save both assets and open scenes after scene-level edits. Changes to scene components, camera data, active lighting settings, reflection probes, and PPv2 enable states are not proven by `AssetDatabase.SaveAssets()` alone.
