@@ -23,6 +23,7 @@ npx skills add Unity-Technologies/skills
 | `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
 | `optimize-audio` | Reduce audio memory and DSP CPU cost through import settings, load types, and mixer topology |
+| `optimize-web` | Shrink and speed up WebGL/WebGPU builds — compression, stripping, memory, frame rate, KTX textures |
 | `setup-game-inputs` | Input System — action maps, bindings, control schemes, rebinding |
 
 ## Usage
