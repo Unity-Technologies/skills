@@ -41,9 +41,16 @@ After any modification (adding keys, updating values), notify the Editor so it c
 
 ### **Localized String Events (Robust Binding)**
 - **Check Component Type:** Identify if the target is `TextMeshPro` or legacy `UnityEngine.UI.Text`.
-- **Bind Correctly:**
-    - **TextMeshPro:** Use reflection to call `UnityEditor.Localization.Plugins.TMPro.LocalizeComponent_TMPro.SetupForLocalization`.
-    - **Legacy Text:** Use reflection to call `UnityEditor.Localization.Plugins.UGUI.LocalizeComponent_UGUI.SetupForLocalization`.
+- **Bind Correctly:** add the public `UnityEngine.Localization.Components.LocalizeStringEvent`
+  component and wire it yourself — set `StringReference` to the table entry, then add an
+  `OnUpdateString` listener that assigns the value to the text component (`TMP_Text.text` for
+  TextMeshPro, `UnityEngine.UI.Text.text` for legacy Text).
+
+  Do **not** reflect into `UnityEditor.Localization.Plugins.TMPro.LocalizeComponent_TMPro` or its
+  UGUI counterpart. Those are `internal` (measured on Localization 1.5.12), so reaching them means
+  routing around access control to reach an API Unity makes no stability commitment about — it can
+  change or disappear in any package release. `LocalizeStringEvent` is public and does the same job
+  with the wiring made explicit.
 - **Layout Rebuild:** After setting localized text or populating a list, call `UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(parentTransform)` to ensure dimensions update.
 
 ## 4. Asian Language Font Support (CJK)
