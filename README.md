@@ -25,7 +25,6 @@ npx skills add Unity-Technologies/skills
 | `optimize-audio` | Reduce audio memory and DSP CPU cost through import settings, load types, and mixer topology |
 | `setup-game-inputs` | Input System — action maps, bindings, control schemes, rebinding |
 | `android-add-adaptive-performance` | Android thermal and power signals mapped to dynamic quality tiers |
-| `asset-transformer-toolkit` | 3D model and point-cloud import, RuleSets and Actions, LOD generation |
 
 ## Usage
 
