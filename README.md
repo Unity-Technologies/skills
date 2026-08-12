@@ -24,7 +24,6 @@ npx skills add Unity-Technologies/skills
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
 | `optimize-audio` | Reduce audio memory and DSP CPU cost through import settings, load types, and mixer topology |
 | `setup-game-inputs` | Input System — action maps, bindings, control schemes, rebinding |
-| `android-add-adaptive-performance` | Android thermal and power signals mapped to dynamic quality tiers |
 
 ## Usage
 
