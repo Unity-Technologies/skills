@@ -196,7 +196,7 @@ Implication:
 
 Safer migration path:
 
-1. Identify the purpose of the replacement pass: outlines, selection, depth, normals, masks, etc.
+1. Identify the purpose of the replacement pass — outlines, selection, depth, normals, masks, and so on.
 2. Determine whether URP already exposes a better path through renderer configuration, depth/normal textures, or a custom pass.
 3. If a custom shader is still required, port the shader with explicit URP pass/tag expectations instead of assuming Built-in tags still drive the same behavior.
 
