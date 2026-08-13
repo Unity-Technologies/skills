@@ -202,9 +202,11 @@ unity install 6000.0.47f1 --list-components --format json
 unity install 6000.0.47f1 -m android ios          # space-separated
 unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 
-# Windows: skip the elevated (UAC) install helper — for user-writable install locations
-# and CI shells where a UAC prompt can't be answered (installing into a protected path then
-# fails with a permission error instead of prompting). Also via UNITY_NO_ELEVATE=1.
+# Windows: keep the install service unelevated. The Editor's NSIS installer is manifested
+# `highestAvailable`, so it runs unelevated for a STANDARD user (the supported unprivileged
+# install — it reports any dependencies an admin must finish) but still asks for elevation on
+# demand under an administrator account. In CI, where a prompt can't be answered, run the
+# agent elevated instead. Also via UNITY_NO_ELEVATE=1.
 unity install 6000.0.47f1 --no-elevate --yes --accept-eula
 ```
 

@@ -1,0 +1,76 @@
+# ============================================================
+# WORKFLOW: Init + Login — correct order and re-init guard
+# ============================================================
+
+- description: "Cold-start init: UGS Core -> Auth -> Vivox Init -> Vivox Login, in order"
+  vars:
+    user_message: |
+      I'm adding Vivox to a fresh Unity project. Walk me through
+      the initialization from an empty MonoBehaviour Start method.
+    reference_content: file://../references/init-and-login.md
+  assert:
+    - type: icontains
+      value: "UnityServices.InitializeAsync"
+    - type: icontains
+      value: "AuthenticationService.Instance.SignInAnonymouslyAsync"
+    - type: icontains
+      value: "VivoxService.Instance.InitializeAsync"
+    - type: icontains
+      value: "VivoxService.Instance.LoginAsync"
+    - type: llm-rubric
+      value: |
+        The response MUST describe the four initialization calls in this
+        exact order:
+        1. UnityServices.InitializeAsync
+        2. AuthenticationService.Instance.SignInAnonymouslyAsync
+        3. VivoxService.Instance.InitializeAsync
+        4. VivoxService.Instance.LoginAsync
+        Any other ordering (e.g. Vivox init before UGS init, or Login
+        before Vivox init) is a failure.
+        The response MUST NOT use v4 legacy patterns (Client.Instance,
+        ILoginSession, AccountId, ChannelId) as callable code. It is
+        fine — even helpful — to mention those names in a "don't use
+        these" warning or migration note; a failure is only when the
+        code samples or step-by-step instructions actually invoke them.
+
+- description: "Login with display name: LoginOptions.DisplayName"
+  vars:
+    user_message: |
+      After Vivox is initialized, sign the player in with the display name
+      "Sunbeam" and enable text-to-speech.
+    reference_content: file://../references/init-and-login.md
+  assert:
+    - type: icontains
+      value: "LoginOptions"
+    - type: icontains
+      value: "DisplayName"
+    - type: icontains
+      value: "EnableTTS"
+    - type: icontains
+      value: "VivoxService.Instance.LoginAsync"
+    - type: llm-rubric
+      value: |
+        The response must construct a LoginOptions with DisplayName set to
+        "Sunbeam" and EnableTTS set to true, then pass it to
+        VivoxService.Instance.LoginAsync. It must not USE the v4 AccountId
+        or ILoginSession types as callable code (mentioning them in a
+        "don't use" warning is acceptable — failure is only when the code
+        actually invokes them).
+
+- description: "Double-init must warn about VxErrorAlreadyInitialized (5041)"
+  vars:
+    user_message: |
+      My Start method runs every time the main scene reloads and I'm
+      seeing Vivox errors. How do I stop it from re-initializing?
+    reference_content: file://../references/init-and-login.md
+  assert:
+    - type: icontains
+      value: "5041"
+    - type: llm-rubric
+      value: |
+        The response must identify the underlying issue as
+        VivoxService.Instance.InitializeAsync being called more than once,
+        cite the 5041 VxErrorAlreadyInitialized error, and propose a fix
+        such as guarding with IsInitialized or making the bootstrap
+        object DontDestroyOnLoad. The fix must NOT be to catch and
+        swallow the exception.

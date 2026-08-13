@@ -1,9 +1,11 @@
 ---
 name: levelplay-unity-integration
-description: Use when integrating LevelPlay (IronSource) ads into a Unity project — installing the Ads Mediation package, resolving native dependencies, initializing the SDK, or implementing rewarded ads, interstitials, or banners. Also use for LevelPlay-related errors, privacy compliance (GDPR, CCPA, COPPA), iOS setup (ATT, SKAdNetwork), or impression-level revenue tracking (ILRD).
+description: Adds ads and monetization to a Unity game using the LevelPlay Mediation SDK (installed via the Ads Mediation UPM package). Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android.
 ---
 
 # LevelPlay Unity package/SDK Integration
+
+Treat this as an interactive workflow to run with the developer, not as background reference. Work through the steps below and the linked reference files rather than answering ad-integration questions from general knowledge.
 
 The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
 
@@ -248,7 +250,7 @@ Verify these are working before proceeding."
 - Do not provide C# code until they confirm all steps are complete
 
 **If they answer YES:**
-- **Optional — Analytics: ILRD Wiring.** Ask this question verbatim — do not summarize or rephrase it: "Do you use an analytics or attribution platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend) that needs ad revenue data? If yes, the init script will include a logging stub for Impression Level Revenue (ILRD) — 3 lines of code, no analytics platform setup required yet. (Yes / No / Not sure — defaults to yes)" Record the answer.
+- **Optional — Analytics: ILRD Wiring.** Ask this question verbatim — do not summarize or rephrase it: "Do you use an analytics or attribution platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend) that needs ad revenue data? If yes, the integration will include a logging stub for Impression Level Revenue (ILRD) — a few lines of code, no analytics platform setup required yet. (Yes / No / Not sure — defaults to yes)" Record the answer.
 - Proceed with initialization code.
 
 LevelPlay SDK must be initialized before loading or showing any ads. Initialization should happen early in the application lifecycle.
@@ -313,10 +315,17 @@ public class LevelPlayInitializer : MonoBehaviour
 2. In Unity Inspector, find the "App Key" field
 3. Paste your App Key from Step 5 into that field
 
-**If the user answered Yes or Not Sure to ILRD in Step 7**, also subscribe before Init. Add these lines inside `Start()` (before `LevelPlay.Init(appKey)`):
+**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up impression-level revenue. How you subscribe depends on the SDK version — check it in **Ads Mediation > Network Manager**:
+
+- **SDK 9.5.0+ (current):** subscribe per ad instance using `OnAdImpressionDataReady` on each ad object (rewarded, interstitial, banner) when you create it — not here in the initializer. The global event below is deprecated on 9.5.0+ and generates a compiler warning. See `references/ilrd-api.md` for the per-instance setup, then skip the snippet below.
+- **SDK 9.4.x and earlier:** use the global event below, registered before `LevelPlay.Init()`.
+
+For **SDK 9.4.x and earlier**, add these lines inside `Start()` (before `LevelPlay.Init(appKey)`):
 
 ```csharp
-// MUST be registered BEFORE LevelPlay.Init() to avoid losing early impressions.
+// SDK 9.4.x and earlier only. On 9.5.0+ use per-instance OnAdImpressionDataReady instead.
+// Recommended: register as early as possible, before LevelPlay.Init(). Subscribing in
+// OnInitSuccess also works, since impressions only fire after an ad is shown.
 // Callback fires on a BACKGROUND thread — see references/ilrd-api.md for
 // thread-safe forwarding patterns and a Firebase example.
 LevelPlay.OnImpressionDataReady += OnImpressionDataReady;
@@ -389,7 +398,7 @@ void OnDestroy()
 }
 ```
 
-**If the user answered Yes or Not Sure to ILRD in Step 7**, add the same ILRD subscription code shown in Option 1 above: subscribe before `LevelPlay.Init(...)`, add the stub handler method, and unsubscribe in `OnDestroy()`.
+**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up ILRD following the version-aware guidance in Option 1 above — per ad instance via `OnAdImpressionDataReady` on SDK 9.5.0+, or the global event before `LevelPlay.Init(...)` (with a stub handler and unsubscribe in `OnDestroy()`) on SDK 9.4.x and earlier.
 
 Replace `"YOUR_APP_KEY_HERE"` with your actual App Key from Step 5 (the alphanumeric string copied from the LevelPlay dashboard).
 
@@ -423,7 +432,7 @@ This keeps ad code isolated in `LevelPlayInitializer.cs` while `GameManager` con
 
 **Note:** `LevelPlayInitializer.Awake()` calls `DontDestroyOnLoad(gameObject)`, which will mark this entire GameObject — including your GameManager and any other components on it — as persistent across scenes. Ensure this is compatible with your scene management strategy.
 
-**If the user answered Yes or Not Sure to ILRD in Step 7**, add the ILRD subscription to `LevelPlayInitializer.cs` as shown in Option 1 above. No changes needed in `GameManager`.
+**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up ILRD following the version-aware guidance in Option 1 above (on SDK 9.5.0+ the per-instance subscriptions live in the ad manager classes, not `LevelPlayInitializer.cs`). No changes needed in `GameManager`.
 
 Before testing, ensure you've entered your actual App Key in the Unity Inspector's App Key field on the LevelPlayInitializer component (see Option 1's After Creating steps above).
 
@@ -665,9 +674,9 @@ Example (skipped):
 rewardedAd = new LevelPlayRewardedAd(adUnitId);
 ```
 
-**Impression Level Revenue Tracking:** If the user answered Yes or Not Sure to ILRD in Step 7, the ILRD callback was wired up in the init script. See `references/ilrd-api.md` to forward the data to the analytics platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend).
+**Impression Level Revenue Tracking:** If the user answered Yes or Not Sure to ILRD in Step 7, the ILRD callback was wired up during setup (per ad instance on SDK 9.5.0+, or globally in the init script on SDK 9.4.x and earlier). See `references/ilrd-api.md` to forward the data to the analytics platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend).
 
-If the user said "No" to ILRD and wants to add it now, see `references/ilrd-api.md` — subscribe to `LevelPlay.OnImpressionDataReady` **before** the existing `LevelPlay.Init()` call.
+If the user said "No" to ILRD and wants to add it now, see `references/ilrd-api.md` — how you subscribe depends on the SDK version: per ad instance via `OnAdImpressionDataReady` on SDK 9.5.0+, or the global `LevelPlay.OnImpressionDataReady` (before `LevelPlay.Init()`) on SDK 9.4.x and earlier.
 
 ### 10. Testing and Validation
 
@@ -734,7 +743,7 @@ Mock ads in Unity Editor fire most callbacks, but not all:
 - `OnAdExpanded` / `OnAdCollapsed` - Banner expand/collapse not simulated
 - `OnAdLeftApplication` - No real ad redirect in Editor
 - `OnAdInfoChanged` - Mock ads don't update ad info dynamically
-- `LevelPlay.OnImpressionDataReady` (ILRD) - No impression data generated in Editor
+- ILRD impression callback (`OnAdImpressionDataReady` on 9.5.0+, or global `LevelPlay.OnImpressionDataReady` on 9.4.x and earlier) - No impression data generated in Editor
 
 This means you can test your happy-path flow in Editor, but must test error handling on real devices.
 
@@ -895,9 +904,9 @@ Your existing ad formats will continue to work while you add new ones. You can a
 ### Loading Strategy
 
 **Rewarded Ads:**
-- Load immediately after SDK initialization (load proactively means load early and keep ads preloaded)
-- Reload immediately after showing or when ad fails to load
-- Always keep a rewarded ad ready to show
+- `LoadAd()` must be called explicitly — the SDK no longer auto-manages loading as it did in the legacy IronSource API
+- Create the ad object and subscribe events in `OnInitSuccess`; trigger `LoadAd()` from a publisher-controlled point (a button, scene entry, or gameplay moment)
+- Reloading after close is optional and publisher-controlled, not automatic; see `references/rewarded-api.md` for both the explicit and eager preload patterns
 
 **Interstitial Ads:**
 - Load proactively before natural break points

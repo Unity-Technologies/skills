@@ -22,9 +22,9 @@ npx skills add Unity-Technologies/skills
 | `ui-uitk` | UI Toolkit (Unity 6.0+) — author UXML/USS, flex layout, custom elements, Painter2D, runtime binding |
 | `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
-| `optimize-audio` | Reduce audio memory and DSP CPU cost through import settings, load types, and mixer topology |
-| `optimize-web` | Shrink and speed up WebGL/WebGPU builds — compression, stripping, memory, frame rate, KTX textures |
-| `setup-game-inputs` | Input System — action maps, bindings, control schemes, rebinding |
+| `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
+| `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
+| `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
 
 ## Usage
 
