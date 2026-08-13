@@ -18,7 +18,6 @@ npx skills add Unity-Technologies/skills
 | `build-live-game` | Build and operate a live game with Unity Gaming Services — auth, cloud save, cloud code, economy, remote config, leaderboards, and more |
 | `implement-in-app-purchases` | Implement, configure, and debug Unity In-App Purchases (IAP) |
 | `levelplay-unity-integration` | Integrate LevelPlay (IronSource) ad mediation — rewarded, interstitial, and banner ads |
-| `migrate-birp-to-urp` | Plan, execute, and troubleshoot a Built-in Render Pipeline to URP migration — materials, shaders, lighting, and post-processing |
 | `ui` | Router for Unity UI work — detects the project's UI system and routes to `ui-uitk`, `ui-ugui`, or `ui-imgui` |
 | `ui-uitk` | UI Toolkit (Unity 6.0+) — author UXML/USS, flex layout, custom elements, Painter2D, runtime binding |
 | `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
