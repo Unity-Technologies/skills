@@ -27,6 +27,11 @@ unity logs --level warn
 
 The CLI writes its own `cli-log.json` (separate from the Hub's `info-log.json`) and records its version on every start. `unity logs`, `unity bug`, and `unity doctor` read the CLI's own log.
 
+> **Not the Unity Editor log.** `unity logs` shows the *CLI's* activity, **not** the Editor's
+> `Editor.log`. To read Editor-side output — for example the compile errors that force an Editor into
+> Safe Mode and block the Pipeline connection — read `Editor.log` directly (see
+> [integration-advanced.md → Recovering from Safe Mode](integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors) for its per-platform path and the full recovery loop).
+
 ---
 
 ### Doctor — system diagnostics
@@ -162,12 +167,20 @@ unity bug \
   --description "Opening MyGame hard-crashes the editor." \
   --steps "Open the CLI" --steps "Run unity open MyGame" --steps "Editor window closes" \
   --reproducibility always \
-  --email you@example.com
+  --email you@example.com \
+  --attachments ./crash.log ./notes.txt \
+  --share-project .
 ```
 
 Prompts for title, description, email, and reproducibility level. As of `0.1.0-beta.8` it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
 
 The report can also be supplied entirely through flags — `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, and `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask; a non-interactive run submits without prompting. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add.
+
+Use `--attachments <paths...>` (repeatable) to attach extra files — for example a crash log or a zipped copy of a subset of assets. Each path must be an existing, readable file; a folder is rejected (zip it yourself first), and a missing or unreadable path fails fast with a usage error (exit 2) naming the offending path.
+
+Use `--share-project <path>` (use `.` for the current directory) to attach a copy of the Unity project the bug is about — the same stripped-project packaging the Editor's bug reporter uses. It sends the source folders plus a slimmed `Library`, excluding the regenerable caches and build output (`Library` caches, `Temp`, `Build`, `Logs`, VCS/IDE metadata, `MemoryCaptures`, `CrashReports`), so you don't have to zip the project yourself. A path that isn't a Unity project fails fast with exit 2. The archive is streamed from disk during upload, so there's no size limit — even a multi-gigabyte project copy uploads without being buffered in memory.
+
+Interactively, when you don't pass `--attachments` or `--share-project`, the reporter asks whether to attach files and whether to include a project copy. Everything — attachments and the project copy — is bundled into the same archive as the auto-collected logs.
 
 ---
 
