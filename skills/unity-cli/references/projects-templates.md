@@ -40,6 +40,14 @@ unity 6000.0.47f1 /path/to/MyProject
 
 The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. Path matching is tolerant of casing, separator direction, and a trailing slash — resolved against real filesystem path identity — so a registered project is found even when the path is spelled differently, while two genuinely distinct case-variant folders on a case-sensitive volume stay distinct. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
 
+**Reserved flags — do NOT pass these via `--args`.** `-projectPath` is managed by the command (Unity's parser is last-wins, so forwarding it would silently redirect the open to a different project), and `-useHub`/`-hubIPC` are deliberately never passed — they tell the Editor a Unity Hub manages its session, which the CLI is not. Passing any of them fails fast, before launch, with exit code 6:
+
+```
+Error: Forwarded argument '-useHub' conflicts with a reserved Unity flag managed by this command. Remove it from `--args`.
+```
+
+All three spellings Unity accepts are rejected (`-useHub`, `--useHub`, `-useHub=1`, case-insensitively). Everything else — `-logFile <path>`, `-nographics`, custom flags your project reads — is forwarded verbatim.
+
 #### projects create
 
 Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template). In CI, pass `--non-interactive` or pipe stdin to suppress prompts and rely on stored defaults. The first positional argument is the project **name**; `--path` sets the parent directory:
@@ -172,6 +180,47 @@ unity projects export -o projects.json
 unity projects import projects.json
 unity projects import --input projects.json
 ```
+
+#### projects exec — run a command across every registered project
+
+Run one command in each registered project. The command runs in that project's own directory, with `UNITY_PROJECT_PATH` and `UNITY_EDITOR_VERSION` set in its environment. Everything after `--` is the command:
+
+```bash
+# Every registered project
+unity projects exec -- git status --short
+
+# Only pinned projects
+unity projects exec --filter pinned -- git pull
+
+# Only Unity 6 projects, four at a time, without stopping on failures
+unity projects exec --filter 'version:6000.*' --parallel 4 --continue-on-error -- npm test
+
+# See what would run, without running it
+unity projects exec --dry-run --filter 'name:My*' -- ./build.sh
+
+# Machine-readable per-project results
+unity projects exec --json -- git rev-parse HEAD
+```
+
+`--filter` is repeatable and every term must match (AND):
+
+| Term | Matches |
+|---|---|
+| `name:<glob>` | project name or path — a bare glob (`My*`) is shorthand for this |
+| `version:<glob>` | the project's required editor version (`6000.*`) |
+| `pinned` / `pinned:false` | pin state; bare `pinned` means pinned |
+
+Globs are path-aware, so use `**/` to match inside a path: `name:My*` matches by project name, `name:**/work/*` by location.
+
+Behavior worth knowing:
+
+- Projects run **one at a time** and the run **stops at the first failure**. Raise `--parallel <n>` for concurrency, or pass `--continue-on-error` to run the whole fleet regardless. With `--parallel > 1`, each project's output is buffered and flushed when it finishes so runs can't interleave; "stop" then means no *new* projects start — those already running finish.
+- Buffered output is capped at **4 MiB per project**, after which it is cut short and the run warns. Sequential mode (`--parallel 1`) streams live and is never capped, so use it when you need the full output of a chatty command.
+- **Ctrl-C** stops scheduling *and* terminates the projects already running, then exits **130**.
+- Exit code is **6** if any project failed, **2** for a usage error (unknown filter key, bad `--parallel`, a command not on your `PATH`), **0** otherwise. No matching projects is a success (exit 0) with a warning.
+- Arguments are passed to the command **verbatim, not through a shell** — pipes, `&&`, and shell globbing are not available. Put that logic in a script and exec the script.
+- In `--json` / `--format ndjson` / `--format tsv`, the child's own output goes to **stderr** so stdout stays machine-parseable.
+- `--format ndjson` streams one `{"type":"project",…}` frame per project as it settles and always closes with the standard `{"type":"result",…}` envelope (`success`, `command`, `data`, `errors`, `warnings`) — including under `--dry-run`.
 
 #### projects open / link / unlink
 
