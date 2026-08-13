@@ -24,6 +24,7 @@ npx skills add Unity-Technologies/skills
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
 | `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
 | `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
+| `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
 
 ## Usage
 
