@@ -25,19 +25,19 @@ When using Addressables, you MUST create all three scripts:
 
 ## Script 1: Prebuild Atlas Generator with Addressables
 
-See [references/spriteatlasprebuildgenerator.cs](resources/spriteatlasprebuildgenerator.cs).
+See [resources/spriteatlasprebuildgenerator.cs](../resources/spriteatlasprebuildgenerator.cs).
 
 ## Script 2: Build Addressables Content (REQUIRED)
 
 This script runs AFTER atlas generation to build the Addressables content bundle.
 
-See [references/buildaddressablespostprocess.cs](resources/buildaddressablespostprocess.cs).
+See [resources/buildaddressablespostprocess.cs](../resources/buildaddressablespostprocess.cs).
 
 ## Script 3: Late-Binding Runtime Loader (REQUIRED)
 
 This script handles automatic on-demand loading of atlases via SpriteAtlasManager callbacks.
 
-See [references/spriteatlaslatebinding.cs](resources/spriteatlaslatebinding.cs).
+See [resources/spriteatlaslatebinding.cs](../resources/spriteatlaslatebinding.cs).
 
 ## Setup Instructions
 

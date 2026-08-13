@@ -53,81 +53,81 @@ Optimization tips, common pitfalls, and recommended patterns for SpriteAtlas V2.
 
 ### Always Use SpriteAtlasImporter for Configuration
 
-See [resources/editorconfiguration.cs](resources/editorconfiguration.cs).
+See [resources/editorconfiguration.cs](../resources/editorconfiguration.cs).
 
 ### Save SpriteAtlasAsset Properly
 
-See [resources/savespriteatlasasset.cs](resources/savespriteatlasasset.cs).
+See [resources/savespriteatlasasset.cs](../resources/savespriteatlasasset.cs).
 
 ### Clean Up After Batch Operations
 
-See [resources/cleanupbatchoperations.cs](resources/cleanupbatchoperations.cs).
+See [resources/cleanupbatchoperations.cs](../resources/cleanupbatchoperations.cs).
 
 ### Handle Null Cases
 
-See [resources/handlenullcases.cs](resources/handlenullcases.cs).
+See [resources/handlenullcases.cs](../resources/handlenullcases.cs).
 
 ### Use Correct Platform Names
 
-See [resources/platformnames.cs](resources/platformnames.cs).
+See [resources/platformnames.cs](../resources/platformnames.cs).
 
 ## Runtime Code Best Practices
 
 ### Register Callbacks Early
 
-See [resources/registercallbacks.cs](resources/registercallbacks.cs).
+See [resources/registercallbacks.cs](../resources/registercallbacks.cs).
 
 ### Cache Loaded Atlases
 
-See [resources/cacheloadedatlases.cs](resources/cacheloadedatlases.cs).
+See [resources/cacheloadedatlases.cs](../resources/cacheloadedatlases.cs).
 
 ### Handle Late Binding Properly
 
-See [resources/handlelatebinding.cs](resources/handelatebinding.cs).
+See [resources/handlelatebinding.cs](../resources/handlelatebinding.cs).
 
 ### Query Sprites Efficiently
 
-See [resources/queryspritesefficiently.cs](resources/queryspritesefficiently.cs).
+See [resources/queryspritesefficiently.cs](../resources/queryspritesefficiently.cs).
 
 ## Performance Best Practices
 
 ### Optimize Texture Settings
 
-See [resources/optimizetexturesettings.cs](resources/optimizetexturesettings.cs).
+See [resources/optimizetexturesettings.cs](../resources/optimizetexturesettings.cs).
 
 ### Enable Tight Packing
 
-See [resources/enablespritepacking.cs](resources/enablespritepacking.cs).
+See [resources/enablespritepacking.cs](../resources/enablespritepacking.cs).
 
 ### Use Variants Wisely
 
-See [resources/usevariantswisely.cs](resources/usevariantswisely.cs).
+See [resources/usevariantswisely.cs](../resources/usevariantswisely.cs).
 
 ### Set includeInBuild Appropriately
 
-See [resources/setincludeinbuild.cs](resources/setincludeinbuild.cs).
+See [resources/setincludeinbuild.cs](../resources/setincludeinbuild.cs).
 
 ## Common Pitfalls
 
 ### Don't Script SpriteAtlas in Editor
 
-See [resources/dontscriptspriteatlasineditor.cs](resources/dontscriptspriteatlasineditor.cs).
+See [resources/dontscriptspriteatlasineditor.cs](../resources/dontscriptspriteatlasineditor.cs).
 
 ### Don't Use Deprecated SpriteAtlasAsset Methods
 
-See [resources/deprecatedmethods.cs](resources/deprecatedmethods.cs).
+See [resources/deprecatedmethods.cs](../resources/deprecatedmethods.cs).
 
 ### Don't Pack in Runtime Builds
 
-See [resources/dontpackinruntimebuilds.cs](resources/dontpackinruntimebuilds.cs).
+See [resources/dontpackinruntimebuilds.cs](../resources/dontpackinruntimebuilds.cs).
 
 ### Don't Modify Importer Without Saving
 
-See [resources/dontmodifywithoutsaving.cs](resources/dontmodifywithoutsaving.cs).
+See [resources/dontmodifywithoutsaving.cs](../resources/dontmodifywithoutsaving.cs).
 
 ### Don't Confuse Authoring vs Runtime
 
-See [resources/authoringvsruntime.cs](resources/authoringvsruntime.cs).
+See [resources/authoringvsruntime.cs](../resources/authoringvsruntime.cs).
 
 ## Migration from V1 to V2
 
@@ -135,15 +135,15 @@ If migrating from V1 code:
 
 ### Replace Direct SpriteAtlas Scripting
 
-See [resources/migratev1tov2.cs](resources/migratev1tov2.cs).
+See [resources/migratev1tov2.cs](../resources/migratev1tov2.cs).
 
 ### Update Settings Configuration
 
-See [resources/updatesettingsconfiguration.cs](resources/updatesettingsconfiguration.cs).
+See [resources/updatesettingsconfiguration.cs](../resources/updatesettingsconfiguration.cs).
 
 ### Update Build Scripts
 
-See [resources/updatebuildscripts.cs](resources/updatebuildscripts.cs).
+See [resources/updatebuildscripts.cs](../resources/updatebuildscripts.cs).
 
 ## Checklist
 

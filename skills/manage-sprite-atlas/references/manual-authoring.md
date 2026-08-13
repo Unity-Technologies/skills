@@ -22,18 +22,18 @@
 
 > 🚨 **REMINDER**: Only use this if explicitly requested. Default is prebuild with `IPreprocessBuildWithReport`.
 
-See [references/createandconfiguremasteratlas.cs](resources/createandconfiguremasteratlas.cs).
+See [resources/createandconfiguremasteratlas.cs](../resources/createandconfiguremasteratlas.cs).
 
 ## Create Variant Atlas (Manual Pattern)
 
 > 🚨 **REMINDER**: Only use this if explicitly requested. Default is prebuild with `IPreprocessBuildWithReport`.
 
-See [references/variantatlas.cs](resources/variantatlas.cs).
+See [resources/variantatlas.cs](../resources/variantatlas.cs).
 
 ## Runtime Dynamic Loading
 
-See [references/runtimeatlasloader.cs](resources/runtimeatlasloader.cs).
+See [resources/runtimeatlasloader.cs](../resources/runtimeatlasloader.cs).
 
 ## Runtime Sprite Access
 
-See [references/runtimespriteaccess.cs](resources/runtimespriteaccess.cs).
+See [resources/runtimespriteaccess.cs](../resources/runtimespriteaccess.cs).
