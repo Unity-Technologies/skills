@@ -1,0 +1,74 @@
+# ============================================================
+# WORKFLOW: Voice channels — group, positional, join lifecycle
+# ============================================================
+
+- description: "Join a lobby group channel with voice and text"
+  vars:
+    user_message: |
+      The player is logged into Vivox. Have them join a non-positional
+      channel called "lobby" with both voice and text enabled.
+    reference_content: file://../references/voice-channels.md
+  assert:
+    - type: icontains
+      value: "VivoxService.Instance.JoinGroupChannelAsync"
+    - type: icontains
+      value: "ChatCapability.TextAndAudio"
+    - type: not-icontains
+      value: "JoinPositionalChannelAsync"
+    - type: not-icontains
+      value: "IChannelSession"
+    - type: llm-rubric
+      value: |
+        The response must call VivoxService.Instance.JoinGroupChannelAsync
+        with the channel name "lobby" and ChatCapability.TextAndAudio. It
+        must NOT use the positional or echo join methods, and must not
+        use any v4 IChannelSession API.
+
+- description: "Join a 3D positional channel with Channel3DProperties"
+  vars:
+    user_message: |
+      Set up proximity voice: players near each other in the world should
+      hear each other, and voices fall off with distance. Name the
+      channel "world-proximity".
+    reference_content: file://../references/voice-channels.md
+  assert:
+    - type: icontains
+      value: "Channel3DProperties"
+    - type: icontains
+      value: "Set3DPosition"
+    - type: not-icontains
+      value: "JoinGroupChannelAsync"
+    - type: llm-rubric
+      value: |
+        This is a planning eval: judge the plan's correctness, not whether
+        it names APIs literally or includes runnable code. The plan must:
+        (a) identify positional (3D) channels as the mechanism — mentioning
+        "positional channel", "3D channel", or JoinPositionalChannelAsync
+        all count, since positional channels have exactly one join method;
+        (b) use the channel name "world-proximity";
+        (c) configure Channel3DProperties (naming at least the audible/
+        conversational distance concept, and ideally the fade model);
+        (d) state that each player's 3D position needs a per-frame update
+        via Set3DPosition (or an equivalent per-frame transform sync) so
+        distance attenuation actually works;
+        (e) make clear that awaiting the join call is not sufficient —
+        ChannelJoined must be subscribed to first for the join to be
+        observable.
+
+- description: "Subscribe to ChannelJoined BEFORE calling JoinGroupChannelAsync"
+  vars:
+    user_message: |
+      When I call JoinGroupChannelAsync my UI never activates for the
+      newly joined channel. What am I doing wrong?
+    reference_content: file://../references/voice-channels.md
+  assert:
+    - type: icontains
+      value: "ChannelJoined"
+    - type: llm-rubric
+      value: |
+        The response must diagnose the problem as the ChannelJoined event
+        being subscribed AFTER the join call, and instruct the user to
+        subscribe to VivoxService.Instance.ChannelJoined BEFORE calling
+        JoinGroupChannelAsync. It must clearly state that awaiting the
+        JoinGroupChannelAsync call does NOT mean the join is complete —
+        the join completes when the ChannelJoined event fires.

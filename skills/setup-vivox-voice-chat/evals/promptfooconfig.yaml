@@ -1,0 +1,32 @@
+description: "Vivox Voice & Text Chat Skill Eval Suite"
+
+providers:
+  # Evaluated model: used by the test itself
+  - id: openai:chat:claude-sonnet-4-5
+    config:
+      max_tokens: 2048
+
+prompts:
+  - id: eval-prompt
+    label: "Eval prompt"
+    raw: "{{skill_content}}\n\n{{reference_content}}\n\n{{custom_instructions}}\n\n## User Request\n\n{{user_message}}"
+
+defaultTest:
+  options:
+    # Assertion judge: used by llm-rubric
+    provider: openai:chat:claude-sonnet-4-6
+  vars:
+    skill_content: file://../SKILL.md
+    reference_content: ""
+    custom_instructions: |
+      IMPORTANT:
+      - This is a planning eval. Do not emit MCP XML/tool-call tags.
+      - Refer to APIs with their exact names as documented in the provided skill and references. Do not invent or paraphrase symbol names.
+      - Do not mention tool names you will not call. If a step is inapplicable, explain the behavior without naming the omitted API.
+      - Always present the complete plan up front. If a step requires a user action, describe what you will do after it succeeds and what happens if it fails, in a single response.
+      - Answer only the step or phase requested by the user message. Do not include unrelated setup or migration content that was not asked for.
+
+tests:
+  - file://tests/init-and-login.yaml
+  - file://tests/voice-channels.yaml
+  - file://tests/text-chat.yaml
