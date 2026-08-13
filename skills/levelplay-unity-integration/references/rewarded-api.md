@@ -35,7 +35,10 @@ public class RewardedAdManager : MonoBehaviour
 
     void Start()
     {
-        // Create the rewarded ad object using constructor
+        // Create the rewarded ad object and register event listeners.
+        // Do not call LoadAd() here — load is triggered explicitly by a publisher-controlled
+        // action (e.g. a button press, scene entry, or a point in gameplay where the ad
+        // should be available). See LoadAd() below.
         rewardedAd = new LevelPlayRewardedAd(adUnitId);
 
         // Register event listeners
@@ -47,9 +50,6 @@ public class RewardedAdManager : MonoBehaviour
         rewardedAd.OnAdClosed += OnAdClosed;
         rewardedAd.OnAdClicked += OnAdClicked;
         rewardedAd.OnAdInfoChanged += OnAdInfoChanged;   // Fires when the loaded ad updates after a new auction result
-
-        // Load the ad
-        LoadAd();
     }
 
     void OnDestroy()
@@ -68,6 +68,8 @@ public class RewardedAdManager : MonoBehaviour
         }
     }
 
+    // Call LoadAd() from a publisher-controlled trigger (e.g. a button or scene entry).
+    // The SDK does not auto-load, so LoadAd() must be called explicitly.
     public void LoadAd()
     {
         Debug.Log("Loading rewarded ad...");
@@ -122,8 +124,9 @@ public class RewardedAdManager : MonoBehaviour
     private void OnAdClosed(LevelPlayAdInfo adInfo)
     {
         Debug.Log("Rewarded ad closed");
-        // Load the next ad
-        LoadAd();
+        // LoadAd() is not called here automatically. If your game preloads rewarded ads
+        // eagerly (so one is always ready), call LoadAd() here. If load is triggered by
+        // a player action, wait for that action instead.
     }
 
     private void OnAdClicked(LevelPlayAdInfo adInfo)
@@ -466,7 +469,7 @@ if (LevelPlayRewardedAd.IsPlacementCapped("extra_lives"))
 
 All events are properties of the `LevelPlayRewardedAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when a rewarded ad is successfully loaded.
@@ -558,12 +561,10 @@ Fired when the rewarded ad is closed.
 rewardedAd.OnAdClosed += (adInfo) =>
 {
     Debug.Log("Rewarded ad closed");
-    // Resume game, load next ad
-    rewardedAd.LoadAd();
+    // Resume game. Whether to call LoadAd() here depends on your load strategy:
+    // call it if you preload eagerly; otherwise wait for the player's next load trigger.
 };
 ```
-
-**Best practice:** Load the next ad immediately in this callback.
 
 #### `OnAdClicked`
 Fired when the user clicks on the rewarded ad.
@@ -602,7 +603,7 @@ rewardedAd.OnAdInfoChanged += (adInfo) =>
 
 **Why it matters:** The updated `LevelPlayAdInfo` contains the latest revenue estimates and network information, which directly impacts your monetization. Always use the most recent `adInfo` when logging or analyzing ad performance.
 
-**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in `OnImpressionDataReady` already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
+**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in the ILRD impression callback already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
 
 ## Data Types
 
@@ -664,21 +665,40 @@ Contains error information when ad operations fail.
 
 ### Loading Strategy
 
-**Always keep a rewarded ad ready:**
+Unlike the legacy IronSource rewarded video (where the SDK managed loading automatically), the MADU rewarded API requires `LoadAd()` to be called explicitly. The ad object is created in `OnInitSuccess`, but loading is a separate step triggered by the publisher.
+
+**Explicit load pattern (matches official sample):**
 ```csharp
-// Load immediately after init
+// In OnInitSuccess: create the object and subscribe events only — do not load yet.
 void OnInitSuccess(LevelPlayConfiguration config)
 {
     rewardedAd = new LevelPlayRewardedAd(adUnitId);
     rewardedAd.OnAdLoaded += OnAdLoaded;
     rewardedAd.OnAdClosed += OnAdClosed;
-    rewardedAd.LoadAd();
+    // LoadAd() is called later, from a publisher-controlled trigger.
 }
 
-// Reload immediately after showing
-void OnAdClosed(LevelPlayAdInfo adInfo)
+// Example trigger: called from a UI button or a scene entry point.
+public void OnPlayerReachesRewardedAdOpportunity()
 {
     rewardedAd.LoadAd();
+}
+```
+
+**Eager preload pattern (optional):** If the game always needs a rewarded ad ready the moment the player reaches certain screens, call `LoadAd()` immediately in `OnInitSuccess` after creating the object, and optionally again in `OnAdClosed`. This is a valid choice but makes the manual load requirement less visible — use it consciously, not as a default.
+
+```csharp
+void OnInitSuccess(LevelPlayConfiguration config)
+{
+    rewardedAd = new LevelPlayRewardedAd(adUnitId);
+    rewardedAd.OnAdLoaded += OnAdLoaded;
+    rewardedAd.OnAdClosed += OnAdClosed;
+    rewardedAd.LoadAd(); // Eager preload — conscious choice, not automatic legacy behavior.
+}
+
+void OnAdClosed(LevelPlayAdInfo adInfo)
+{
+    rewardedAd.LoadAd(); // Reload immediately so one is ready for the next opportunity.
 }
 ```
 

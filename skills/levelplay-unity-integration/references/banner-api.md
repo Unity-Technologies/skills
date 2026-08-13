@@ -612,7 +612,7 @@ LevelPlayBannerPosition.Center
 
 All events are properties of the `LevelPlayBannerAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when a banner ad is loaded.

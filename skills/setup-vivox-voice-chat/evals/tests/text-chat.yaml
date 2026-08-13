@@ -1,0 +1,65 @@
+# ============================================================
+# WORKFLOW: Text chat — channel messages, directed messages, history
+# ============================================================
+
+- description: "Send a channel message and receive channel messages"
+  vars:
+    user_message: |
+      Send the text "gg" into the "lobby" channel from a UI button, and
+      log every message received in that channel to the console.
+    reference_content: file://../references/text-chat.md
+  assert:
+    - type: icontains
+      value: "VivoxService.Instance.SendChannelTextMessageAsync"
+    - type: icontains
+      value: "VivoxService.Instance.ChannelMessageReceived"
+    - type: icontains
+      value: "VivoxMessage"
+    - type: llm-rubric
+      value: |
+        The response must call VivoxService.Instance.SendChannelTextMessageAsync
+        with channelName "lobby" and message "gg", AND subscribe to
+        VivoxService.Instance.ChannelMessageReceived with a handler that
+        takes a VivoxMessage and logs at least MessageText and
+        SenderDisplayName. It must NOT wire the send path to the
+        DirectedMessageReceived event.
+
+- description: "Send a directed (direct) message — must use SendDirectTextMessageAsync, not SendDirected..."
+  vars:
+    user_message: |
+      Whisper "meet me at the north gate" to the player whose PlayerId
+      is "abc123".
+    reference_content: file://../references/text-chat.md
+  assert:
+    - type: icontains
+      value: "VivoxService.Instance.SendDirectTextMessageAsync"
+    - type: llm-rubric
+      value: |
+        The response must call VivoxService.Instance.SendDirectTextMessageAsync
+        with playerId "abc123" and the exact message
+        "meet me at the north gate". The method name must be
+        SendDirectTextMessageAsync (with "Direct", no "ed" before "Text").
+        SendDirectedTextMessageAsync does not exist in the SDK and MUST
+        NOT be USED as callable code — but mentioning it in a "common
+        hallucination, don't use this" warning is fine and even helpful.
+        The response may also mention subscribing to the
+        DirectedMessageReceived event on the recipient side.
+
+- description: "Fetch the most recent channel chat history"
+  vars:
+    user_message: |
+      Fetch the last 25 messages from the "lobby" channel and print them
+      to the console in oldest-to-newest order.
+    reference_content: file://../references/text-chat.md
+  assert:
+    - type: icontains
+      value: "GetChannelTextMessageHistoryAsync"
+    - type: llm-rubric
+      value: |
+        The response must call
+        VivoxService.Instance.GetChannelTextMessageHistoryAsync with
+        channelName "lobby" and requestSize 25 (or equivalent). It must
+        note that the returned collection is newest-first and must
+        reverse the collection (or iterate in reverse) before printing to
+        achieve oldest-to-newest ordering. It should reference
+        VivoxMessage.SenderDisplayName and VivoxMessage.MessageText.

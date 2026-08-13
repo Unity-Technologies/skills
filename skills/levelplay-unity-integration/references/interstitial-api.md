@@ -513,7 +513,7 @@ if (LevelPlayInterstitialAd.IsPlacementCapped("level_complete"))
 
 All events are properties of the `LevelPlayInterstitialAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when an interstitial ad is successfully loaded.
@@ -626,7 +626,7 @@ interstitialAd.OnAdInfoChanged += (adInfo) =>
 
 **Why it matters:** The updated `LevelPlayAdInfo` contains the latest revenue estimates and network information, which directly impacts your monetization. Always use the most recent `adInfo` when logging or analyzing ad performance.
 
-**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in `OnImpressionDataReady` already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
+**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in the ILRD impression callback already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
 
 ## Data Types
 
