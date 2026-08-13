@@ -24,8 +24,7 @@ npx skills add Unity-Technologies/skills
 | `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
 | `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
 | `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
-| `optimize-text-mesh-pro` | TextMeshPro font stacks, dynamic atlases, SDF quality, CJK fallback, and text memory |
-| `localization` | Unity Localization: locales, String and Asset Tables, CJK fonts, Addressables |
+| `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
 
 ## Usage
 
