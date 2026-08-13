@@ -32,7 +32,7 @@ unity mcp configure --list
 unity mcp configure claude
 unity mcp configure claude-code
 
-# Project-local config for clients that support it (e.g. cursor, vscode, kiro, codex)
+# Project-local config for clients that support it (cursor, vscode, vscode-insiders, kiro, codex)
 unity mcp configure cursor --local
 
 # Pin to a project; skip the "already exists, update?" prompt; preview without writing
