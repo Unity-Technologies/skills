@@ -42,7 +42,7 @@ back on the Editor's main-loop pump, so a blocking `while (!req.IsCompleted)` bu
 deadlocks it). The Editor must **stay alive** after `-executeMethod` returns, until the request
 finishes.
 
-`unity run` **cannot** be used for the installer: it always injects `-quit` (see the reserved
+`unity run` **cannot** be used for the installer: its default path injects `-quit` (see the reserved
 flags in the **`unity-cli`** skill). With `-quit`, the Editor quits the instant the method
 returns — before UPM resolves — so packages never install and the callback never runs.
 
@@ -229,8 +229,8 @@ case "$(uname)" in
   Darwin) if [ -d "$ED/Unity.app" ]; then UNITY_BIN="$ED/Unity.app/Contents/MacOS/Unity";
           elif [[ "$ED" == *.app ]]; then UNITY_BIN="$ED/Contents/MacOS/Unity";
           else UNITY_BIN="$ED/Unity"; fi ;;
-  Linux)  UNITY_BIN="$ED/Unity" ;;
-  *)      UNITY_BIN="$ED/Unity.exe" ;;   # Windows (Git Bash / MSYS); use Unity.exe in PowerShell
+  Linux)  UNITY_BIN="$ED/Editor/Unity" ;;
+  *)      UNITY_BIN="$ED/Editor/Unity.exe" ;;   # Windows (Git Bash / MSYS); use Editor\Unity.exe in PowerShell
 esac
 
 "$UNITY_BIN" -batchmode -projectPath "$PROJECT" -executeMethod "$METHOD" -logFile -

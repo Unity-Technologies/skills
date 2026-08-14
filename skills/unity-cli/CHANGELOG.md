@@ -8,7 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — aligned to CLI `1.0.0-beta.5` (2026-08-13)
 
-Tracks the CLI's `1.0.0-beta.4` release. Coverage is the full `1.0.0-beta.3` surface plus the beta.4 additions an automation or CI caller reaches for first: `unity test --report-format`/`--coverage`, `unity build --profile` and the zero-code build strategies, `unity projects exec`, `unity bug --attachments`/`--share-project`, and the rule that a failure is readable from stdout. The rest of beta.4 lands in the next skill pass and is **not** documented here yet: `unity skill install`/`refresh`, `unity projects clean`, `unity editors prune`/`verify`, `unity templates pack`, the `unity command` listing-query flags, multi-account auth (`unity auth list`/`switch`/`default`), and the output pager. Documenting a subset of the shipped surface is safe; the stamp exists to stop the reverse (publishing surface that isn't in the shipped binary).
+Tracks the CLI's `1.0.0-beta.5` release. That release is fixes only — it adds no command, flag, or exit code — so the documented surface is unchanged from the previous pass: the full `1.0.0-beta.3` surface plus the beta.4 additions an automation or CI caller reaches for first (`unity test --report-format`/`--coverage`, `unity build --profile` and the zero-code build strategies, `unity projects exec`, `unity bug --attachments`/`--share-project`, and the rule that a failure is readable from stdout). The rest of beta.4 lands in a later skill pass and is **not** documented here yet: `unity skill install`/`refresh`, `unity projects clean`, `unity editors prune`/`verify`, `unity templates pack`, the `unity command` listing-query flags, multi-account auth (`unity auth list`/`switch`/`default`), and the output pager. Documenting a subset of the shipped surface is safe; the stamp exists to stop the reverse (publishing surface that isn't in the shipped binary).
+
+The `unity projects create` cloud-link interview is **not** part of this stamp. It merged after the `cli-v1.0.0-beta.5` tag was cut, so it is absent from the shipped beta.5 binary and ships in the next release. The authoritative copy of the skill documents it in `references/projects-templates.md` ahead of that release; the published copy keeps the pre-interview text until the release lands. That one reference file is therefore expected to differ between the two copies, and is the only expected difference.
 
 ### Added
 
@@ -46,7 +48,7 @@ Tracks the CLI's `1.0.0-beta.4` release. Coverage is the full `1.0.0-beta.3` sur
 - **Reserved forwarded flags** — matching is spelling-insensitive, so `-projectPath`, `--projectPath`, and `-projectPath=<value>` are all rejected, on every command that forwards user arguments (`unity run`, `unity test`, `unity build --args`, `unity open --args`). Also clarified that `unity run` deliberately never passes `-useHub`/`-hubIPC`, because the CLI runs no Hub IPC server and those flags would make the Editor launch the Unity Hub.
 - **`unity mcp configure --local`** — corrected the client list. The clients with a project-local config are `cursor`, `vscode`, `vscode-insiders`, `kiro`, and `codex`. Windsurf reads one global file and has no project-local variant.
 - **`UNITY_NO_ELEVATE` / `--no-elevate`** — corrected to say it keeps the install service unelevated. The Editor's NSIS installer is manifested `highestAvailable`, so it still asks for elevation on demand under an administrator account and never does for a standard user; in CI, run the agent elevated instead.
-- Refreshed the latest-version note to `1.0.0-beta.4`.
+- Refreshed the latest-version note to `1.0.0-beta.5`.
 
 ### Security
 
