@@ -43,6 +43,42 @@ unity mcp configure vscode --dry-run
 
 ---
 
+### Skill — install this skill into an AI client
+
+`unity mcp configure` gives a client the Unity **tools**; `unity skill install` gives it these **docs**. The skill tree is embedded in the CLI binary at build time, so it always matches the installed CLI and needs no network access.
+
+```bash
+# See the supported clients, their install paths, and current install status
+unity skill install --list
+
+# Install into a client's user-global skills directory
+unity skill install claude-code
+
+# Install into the current project instead of the user-global location
+unity skill install cursor --local
+
+# Overwrite an existing install without prompting; preview without writing
+unity skill install claude-code --yes
+unity skill install codex --dry-run
+```
+
+Supported clients: `claude-code`, `claude-desktop`, `grok`, `cursor`, `windsurf`, `vscode`, `cline`, `codex`. Each is written in the format that client expects, at its platform-correct location. Not every client supports both scopes — some are user-global only, others project-local only — and `--list` reports which, so check there rather than guessing.
+
+```bash
+# Re-render every tracked install against the embedded skill tree
+unity skill refresh
+
+# Non-interactive / preview
+unity skill refresh --yes
+unity skill refresh --dry-run
+```
+
+Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity upgrade`** — the embedded skill ships with the binary, so an upgraded CLI leaves previously-installed copies stale until they're refreshed.
+
+Two safety behaviors: writing through a symlink is refused rather than followed, and `--local` from your home directory warns first, since for most clients that either duplicates the global install or writes somewhere the client never reads.
+
+---
+
 ### Connected Editors — pipeline / command / status
 
 > **Promoted to production in `0.1.0-beta.8`.** In earlier betas these were development-only (and the Pipeline package was Unity-internal). They now talk to any running Unity Editor over its Pipeline server, and the supporting Editor-side package (`com.unity.pipeline`) is resolved from the **Unity (UPM) registry** and added to the project's `Packages/manifest.json` — no internal access or manual setup required. The Editor defines each command's parameters, help, and error messages, so the commands a connected Editor exposes are usable without a CLI update.
@@ -157,6 +193,47 @@ unity command <command> --runtime-path /path/to/port-file
 # Set a timeout (default: 30 seconds)
 unity command editor_play --timeout 60
 ```
+
+#### Querying the command list
+
+A mature project's Pipeline catalog gets long, so the **listing** form of `unity command` (no command name) accepts query flags that filter, group, sort, and page it — the fastest way for an agent to find the right command without pulling the whole catalog:
+
+```bash
+# Filter by substring across name, description, and tag
+unity command --query screenshot
+
+# Filter to a tag subtree
+unity command --tag assets
+unity command --tag assets/import
+
+# Compact rows instead of full detail
+unity command --detail compact
+
+# Group the results
+unity command --group_by package        # flat | package | tag
+
+# Sort and page
+unity command --sort package --order desc
+unity command --offset 20 --limit 20
+
+# Combine, with machine output
+unity command --query import --group_by tag --limit 10 --format json
+```
+
+| Flag | Values | Default |
+|---|---|---|
+| `--detail [level]` | `compact`, `full` | `full` |
+| `--query [term]` | substring on name, description, or tag | — |
+| `--tag [tag]` | a tag or tag subtree (`assets`, `assets/import`) | — |
+| `--group_by [mode]` | `flat`, `package`, `tag` | `flat` |
+| `--sort [key]` | `name`, `package` | `name` |
+| `--order [direction]` | `asc`, `desc` | `asc` |
+| `--offset [n]` / `--limit [n]` | integers | — |
+
+Two traps worth knowing:
+
+- **`--group_by` is spelled with an underscore**, unlike every other flag on the CLI. That is deliberate and load-bearing, so don't "correct" it to `--group-by`.
+- **These flags only mean "listing" when no command name is given.** With a command name they are forwarded to that Pipeline command as ordinary parameters — `unity command my_cmd --query foo` passes `query: foo` to `my_cmd`. That is why each takes an *optional* value: a bare `--query` forwards boolean `true` to the command, while the listing path rejects a bare flag with a clear error rather than guessing.
 
 #### Available in production — the common live commands
 
