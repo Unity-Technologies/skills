@@ -30,9 +30,46 @@ unity auth login --client-id <id> --secret-from-stdin --no-store
 # Logout (clears both service-account and OAuth credential slots)
 unity auth logout
 
+# Log a specific stored account out, rather than the active one
+unity auth logout user@example.com
+
 # Skip the confirmation prompt
 unity auth logout --yes
 ```
+
+#### Multiple accounts
+
+The CLI stores more than one signed-in account and keeps one of them *active*. `unity auth login` adds an account; these three manage the set.
+
+```bash
+# List stored accounts; "*" marks the active one
+unity auth list
+unity auth ls              # alias
+unity auth list --format json
+
+# Make a stored account active (by email or id) — no browser round-trip
+unity auth switch user@example.com
+
+# Show the account a project uses for cloud commands
+unity auth default
+
+# Pin this project to an account, regardless of which one is active
+unity auth default user@example.com
+
+# Target a project other than the current directory
+unity auth default user@example.com --project ./MyGame
+
+# Remove the pin; the project follows the active account again
+unity auth default --clear
+```
+
+Three behaviors worth knowing before scripting these:
+
+- **A project pin beats the active account.** If a project has a default set, commands run inside it keep using that account even after `unity auth switch` — the switch reports this rather than failing silently. Use `auth default --clear` to hand the project back to the active account.
+- **Service-account credentials outrank both.** When `UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET` are set (or a service account is signed in), they take precedence over every stored account and `auth switch` says so instead of appearing to work. Unset them, or `unity auth logout`, before switching.
+- **`auth switch` is ambiguity-aware.** Given a string matching several stored accounts it fails rather than guessing, and under `--format json` carries the candidates in `data.candidates` so a script can disambiguate. Pass the full email or the account id.
+
+`unity auth default` resolves the project from the current directory unless `--project` is given, and errors if that path isn't a Unity project. Passing both an account and `--clear` is rejected.
 
 **Separate sign-in from Hub.** As of `0.1.0-beta.8`, the CLI and the GUI Hub store their sign-in credentials **separately** — signing in to one no longer signs you out of (or overwrites the account of) the other, so each can stay signed in as a different account. (In earlier betas they shared a single keyring session.)
 

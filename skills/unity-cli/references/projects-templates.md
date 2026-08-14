@@ -151,6 +151,32 @@ unity projects size --all --json
 
 Human output uses readable units; `--json` (and `--format ndjson`) emit raw byte counts.
 
+#### projects clean
+
+The counterpart to `projects size`: deletes the **regenerable** folders (`Library`, `Temp`, `Logs`, …) to reclaim disk space. Unity rebuilds them on the next open — at the cost of a slow first import.
+
+```bash
+# Preview: what would be deleted, with sizes — deletes nothing
+unity projects clean --dry-run
+
+# Clean the current project (prompts to confirm)
+unity projects clean
+
+# Clean a project by path or registered name
+unity projects clean ./MyGame
+
+# Non-interactive: --yes is REQUIRED in a script or CI
+unity projects clean MyGame --yes
+```
+
+The project argument defaults to the current directory and accepts a path or a registered project name. Guardrails worth relying on:
+
+- **It refuses while the project is open in a running editor**, naming the PID — cleaning `Library` under a live editor corrupts the session. If the CLI cannot determine whether an editor has it open, it warns and proceeds, so close editors first in automation.
+- **It refuses to delete unprompted.** In a non-interactive shell without `-y, --yes` it stops rather than deleting.
+- A path that isn't a Unity project (no `ProjectVersion.txt`) is rejected outright, so a mistyped path can't delete anything.
+
+`--dry-run` is the safe way to size the win first; it reports what it *would* reclaim and exits without touching the filesystem.
+
 #### projects require
 
 Ensure the editor version required by a project is installed, installing it if needed:
@@ -334,6 +360,31 @@ unity templates create /path/to/MyProject \
 - `--overwrite` replaces an existing archive of the same name without error
 - On success, prints the path to the created `.tgz` archive
 - Created templates appear in `unity templates list --editor <v> --custom`
+
+**`templates pack` — portable archive, not a registered template.** `create` installs into the Hub-configured user templates directory so the template shows up in `templates list --custom`; `pack` writes a standalone `.tgz` to a file path you choose and registers nothing. Reach for `pack` when the archive is an artifact to check in, attach to a release, or hand to someone else.
+
+```bash
+# Pack a project into a portable template archive (--output is REQUIRED)
+unity templates pack ./MyProject \
+  --output ./my-template.tgz \
+  --name com.myorg.template.mytemplate \
+  --display-name "My Template"
+
+# Minimal form — prompts for name and display name on a TTY
+unity templates pack ./MyProject --output ./my-template.tgz
+
+# Replace an existing archive, with machine output
+unity templates pack ./MyProject --output ./my-template.tgz --overwrite --json
+```
+
+**`templates pack` key notes:**
+- `--output <file>` is a **file path**, not a directory, and is required
+- `--name` and `--display-name` are required; on a TTY they're prompted for when omitted, so pass both in CI
+- Use `--template-version`, **not** `--version` — the latter collides with the global `-V, --version` flag
+- The output path may not be **inside** the project being packed; that's rejected, so the archive can't include itself
+- An existing output file is an error unless `--overwrite` is passed
+- `--keep-embedded-packages` and `--keep-project-settings` retain content that is otherwise stripped
+- Consumable directly by project creation: `unity projects create MyGame --template ./my-template.tgz`
 
 ```bash
 # Delete a user-generated custom template (prompts for confirmation)

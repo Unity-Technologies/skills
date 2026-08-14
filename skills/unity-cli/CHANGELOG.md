@@ -12,15 +12,27 @@ alongside the CLI change itself, not here.
 
 ## CLI `1.0.0-beta.5` (2026-08-13)
 
-Aligned to the CLI's `1.0.0-beta.5` release. That release is fixes only — it adds no command, flag, or exit code — so no documented surface changed in this pass, and the coverage described under `1.0.0-beta.4` below still stands.
+Aligned to the CLI's `1.0.0-beta.5` release. That release is fixes only — it adds no command, flag, or exit code. This pass instead closes the documentation gap the previous one left open: every item the `1.0.0-beta.4` note listed as deferred is now documented, so the skill covers the full shipped surface of both releases.
+
+### Added
+
+- **`unity editors prune`** — find editors no registered project uses and optionally uninstall them. Report-only by default; `--remove` uninstalls, and `-y, --yes` is required to do so non-interactively. Notes that "unused" is judged against the project registry, so an unregistered project's editor counts as unused.
+- **`unity editors verify <version>`** — structurally verify an installed editor's files and modules, reporting each component as `ok` / `missing` / `skipped` with the exact repair command. Documented as a structural check (presence, not integrity or signing), and that `--architecture` is inherited from the `editors` parent.
+- **`unity projects clean`** — delete a project's regenerable folders (`Library`, `Temp`, `Logs`, …). Documents `--dry-run`, that `--yes` is required non-interactively, and the two guardrails: it refuses while an editor has the project open (naming the PID) and rejects a path that isn't a Unity project.
+- **`unity templates pack`** — pack a project into a portable `.tgz`, with the distinction from `templates create` stated up front (`pack` writes a standalone archive and registers nothing; `create` installs into the user templates directory). Covers the required `--output` file path, the `--template-version` spelling that avoids the global `--version` collision, and the rejection of an output path inside the project being packed.
+- **`unity command` listing-query flags** — `--detail`, `--query`, `--tag`, `--group_by`, `--sort`, `--order`, `--offset`, `--limit` as a table with values and defaults, plus the two traps: `--group_by` is deliberately underscored, and the flags only mean "listing" when no command name is given (with a name they forward to that Pipeline command as parameters, which is why each takes an optional value).
+- **Multi-account auth** — `unity auth list` (with its `ls` alias), `switch`, and `default` (`--project`, `--clear`), plus `auth logout <account>`. Documents the precedence that makes these predictable: a project default beats the active account, and service-account credentials beat both; `switch` fails on an ambiguous match rather than guessing, carrying candidates in `data.candidates`.
+- **The output pager** — documented in the global flags and environment tables (`--no-pager`, `UNITY_NO_PAGER`, `UNITY_PAGER`) with the `git log` model spelled out: which commands page, the `$UNITY_PAGER` → `$PAGER` → `less -RFX` → `more.com` resolution chain, and the conditions under which paging never happens (non-TTY, machine formats, `--quiet`, `TERM=dumb`, inside `unity shell`) so scripts need no special handling.
+- **`unity skill install` / `refresh`** — install this skill into an AI client from the copy embedded in the binary, framed against `mcp configure` (tools vs. docs). Covers the client list, `--list` as the authority on which scopes each client supports, and that `refresh` should follow `unity upgrade` because installed copies otherwise go stale.
 
 ### Changed
 
 - Refreshed the latest-version note to `1.0.0-beta.5`.
+- Command index: added `editors prune`/`verify`, `projects clean`, `templates pack`, `auth list`/`switch`/`default`, and `skill install`/`refresh`. Also dropped one listed subcommand that is not part of the public surface.
 
 ## CLI `1.0.0-beta.4` (2026-08-06)
 
-Tracks the CLI's `1.0.0-beta.4` release. Coverage is the full `1.0.0-beta.3` surface plus the beta.4 additions an automation or CI caller reaches for first: `unity test --report-format`/`--coverage`, `unity build --profile` and the zero-code build strategies, `unity projects exec`, `unity bug --attachments`/`--share-project`, and the rule that a failure is readable from stdout. The rest of beta.4 is **not** documented yet: `unity skill install`/`refresh`, `unity projects clean`, `unity editors prune`/`verify`, `unity templates pack`, the `unity command` listing-query flags, multi-account auth (`unity auth list`/`switch`/`default`), and the output pager. Documenting a subset of the shipped surface is safe; the stamp exists to stop the reverse (publishing surface that isn't in the shipped binary).
+Tracks the CLI's `1.0.0-beta.4` release. Coverage is the full `1.0.0-beta.3` surface plus the beta.4 additions an automation or CI caller reaches for first: `unity test --report-format`/`--coverage`, `unity build --profile` and the zero-code build strategies, `unity projects exec`, `unity bug --attachments`/`--share-project`, and the rule that a failure is readable from stdout. The rest of beta.4 was deferred to a later pass and is documented under `1.0.0-beta.5` above: `unity skill install`/`refresh`, `unity projects clean`, `unity editors prune`/`verify`, `unity templates pack`, the `unity command` listing-query flags, multi-account auth (`unity auth list`/`switch`/`default`), and the output pager. Documenting a subset of the shipped surface is safe; the stamp exists to stop the reverse (publishing surface that isn't in the shipped binary).
 
 ### Added
 

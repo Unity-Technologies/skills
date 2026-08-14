@@ -70,6 +70,7 @@ These work on every command:
 | `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`. Also via `UNITY_FORMAT` env var. |
 | `--json` | Global shorthand for `--format json`, accepted on every command (e.g. `unity status --json`, `unity doctor --json`). `--format` takes precedence when both are supplied. |
 | `--no-banner` | Suppress the branded header — use in scripts |
+| `--no-pager` | Disable the pager for long human output. Also via `UNITY_NO_PAGER` (presence-based — any value, including `0`, disables it). |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
 | `--verbose` | Print full error details (stack trace + cause chain) on failure. Also via `UNITY_VERBOSE`. |
@@ -79,6 +80,10 @@ These work on every command:
 | `--no-log-proxy` | Opt a single invocation out of proxy request logging when it's enabled globally. |
 
 **Always use `--format json` when you need to parse output programmatically.**
+
+**Long human output is paged, on the `git log` model.** The long listing surfaces — `unity command`, `unity releases`, `unity editors`, `unity changelog`, `unity logs` — route stdout through a pager. The default is `less -RFX`, which quits immediately when the content fits one screen, so short output shows no pager UI at all. Resolution order is `$UNITY_PAGER` → `$PAGER` → `less -RFX` → `more.com` on Windows; when none can be spawned, output falls back to a direct write.
+
+**It never pages when output isn't a human reading a terminal**, so scripts need no special handling: paging is off for non-TTY stdout (pipes, redirects), for every machine format (`json`, `tsv`, `ndjson`), under `--quiet`, under `--no-pager` / `UNITY_NO_PAGER`, when `TERM=dumb`, and inside `unity shell`. Quitting the pager early (`q`) is silent and leaves the command's exit code untouched.
 
 A branded Unity header (logo, wordmark, CLI version) renders on the landing surfaces — bare `unity`, `unity --help` / `-h`, `unity help`, and above the first-run consent prompt. It's shown only on a TTY, prints at most once, and degrades to compact, uncolored text on narrow terminals, without Unicode, or under `NO_COLOR`. Piped output is unaffected. Use `--no-banner` to suppress it in scripts. Bare `unity` prints usage and exits 0.
 
@@ -96,6 +101,8 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_VERBOSE` | `--verbose` | Show full error details on failure. |
 | `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
 | `UNITY_NO_BANNER` | `--no-banner` | Suppress the branded banner. |
+| `UNITY_NO_PAGER` | `--no-pager` | Disable the pager for long human output. Presence-based: any value disables it, including `0`. |
+| `UNITY_PAGER` | — | Pager command to use, taking precedence over `$PAGER` (e.g. `less -S`). Honors flags and quoting; falls back to `less -RFX`, then `more.com` on Windows. |
 | `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
 | `UNITY_TEST_TIMEOUT` | `--timeout` | Timeout for `unity test` in seconds. |
 | `UNITY_CLOUD_ORG` | `--cloud-org` | Active Unity Cloud organization id or name for a single call. |
@@ -150,13 +157,13 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 | Commands | Reference file |
 |---|---|
-| `auth` (login / logout / status), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
-| `editors` (list / running / add / default / path / install-path / info / upgrade / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
-| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / exec / close), `releases`, `templates` | [projects-templates.md](references/projects-templates.md) |
+| `auth` (login / logout / status / list / switch / default), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
+| `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
+| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `releases`, `templates` (list / info / create / pack / delete) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `upgrade`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `mcp` (+ `configure`), `skill` (install / refresh), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 
 ## Common workflows
 
