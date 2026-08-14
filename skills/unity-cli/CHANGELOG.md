@@ -6,7 +6,7 @@ each entry notes the CLI version the skill was aligned to.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — aligned to CLI `1.0.0-beta.4` (2026-08-06)
+## [Unreleased] — aligned to CLI `1.0.0-beta.5` (2026-08-13)
 
 Tracks the CLI's `1.0.0-beta.4` release. Coverage is the full `1.0.0-beta.3` surface plus the beta.4 additions an automation or CI caller reaches for first: `unity test --report-format`/`--coverage`, `unity build --profile` and the zero-code build strategies, `unity projects exec`, `unity bug --attachments`/`--share-project`, and the rule that a failure is readable from stdout. The rest of beta.4 lands in the next skill pass and is **not** documented here yet: `unity skill install`/`refresh`, `unity projects clean`, `unity editors prune`/`verify`, `unity templates pack`, the `unity command` listing-query flags, multi-account auth (`unity auth list`/`switch`/`default`), and the output pager. Documenting a subset of the shipped surface is safe; the stamp exists to stop the reverse (publishing surface that isn't in the shipped binary).
 
