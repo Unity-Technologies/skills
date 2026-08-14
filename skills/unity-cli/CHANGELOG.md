@@ -4,11 +4,11 @@ All notable changes to the `unity-cli` skill documentation are recorded here. Th
 skill documents the published [`unity` CLI](https://public-cdn.cloud.unity3d.com/hub/prod/cli/);
 each entry notes the CLI version the skill was aligned to.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-
-## [Unreleased]
-
-Documented ahead of its release: the `unity projects create` cloud-link interview, in `references/projects-templates.md`. It merged after the `cli-v1.0.0-beta.5` tag was cut, so it is absent from the shipped beta.5 binary and ships in the next CLI release. The authoritative copy of the skill carries that text now; the published copy keeps the pre-interview wording until the release lands, which makes that one reference file the only expected difference between the two copies.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with one
+deliberate departure: there is no `Unreleased` section. Sections are cut per CLI release, and
+documentation for a CLI version that has not shipped publicly is not recorded here until that
+release is out — so this file never names unreleased surface. Pending skill work is tracked
+alongside the CLI change itself, not here.
 
 ## CLI `1.0.0-beta.5` (2026-08-13)
 
