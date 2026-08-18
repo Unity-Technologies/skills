@@ -832,11 +832,8 @@ void OnDestroy()
 ```csharp
 void Update()
 {
-    // WRONG - Don't call LoadAd() repeatedly!
-    if (!bannerAd.IsAdReady())
-    {
-        bannerAd.LoadAd();
-    }
+    // WRONG - Don't call LoadAd() in Update(); it runs every frame
+    bannerAd.LoadAd();
 }
 ```
 
