@@ -7,8 +7,8 @@ Adds guided migration to the LevelPlay 9.x SDK and the current Ad Unit (MADU) AP
 **New:**
 - "New Integration or Migration?" routing step at the start of the workflow
 - Migration reference guide covering five scenarios: SDK upgrade (.unitypackage or UPM, including switching from .unitypackage to UPM), init API migration (IronSource.Agent to LevelPlay.Init), ad unit API migration (rewarded, interstitial, banner, and the ILRD handler), Maven Central dependency build failures, and Unity Ads (Advertisement Legacy) migration
-- Upgrade safety flow: Developer Settings values and installed adapters are inventoried, and the user confirms, before any folder deletion; post-upgrade steps cover adapter reinstall, settings re-entry, and removal of the stale LEVELPLAY_DEPENDENCIES_INSTALLED scripting define
-- Migration completeness checklist covering requirements that a line-by-line translation misses: placement capping checks in show paths, an explicit rewarded load trigger, the version API mappings, correct ILRD event names, preserved logging, HideAd vs DestroyAd intent for legacy destroyBanner calls, and removal of onApplicationPause
+- Upgrade safety flow: Developer Settings values and installed adapters are inventoried, and the user confirms, before any folder deletion; post-upgrade steps cover adapter reinstall, settings re-entry, and removal of the stale LEVELPLAY_DEPENDENCIES_INSTALLED scripting define when switching from .unitypackage to UPM
+- Migration completeness checklist covering requirements that a line-by-line translation misses: placement capping checks when dashboard placements are used, an explicit rewarded load trigger, the version API mappings, correct ILRD event names, preserved logging, HideAd vs DestroyAd intent for legacy destroyBanner calls, and removal of onApplicationPause
 - Compilation check after migration edits, with errors fixed before presenting results
 - Skill description now also triggers on SDK upgrades, deprecated IronSource.Agent APIs, and Unity Ads migration
 
