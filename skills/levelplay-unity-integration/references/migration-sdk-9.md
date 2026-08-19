@@ -59,7 +59,7 @@ SDK 9.0.0 introduced breaking changes: the new `LevelPlay.Init()` API replaces `
 After upgrading:
 
 1. Reinstall the recorded network adapters via **Ads Mediation > Network Manager** and re-enter the recorded Developer Settings values. Do not repeat the backup warning at this point — it is only useful before deletion.
-2. If the project was upgraded from a .unitypackage install: remove the stale `LEVELPLAY_DEPENDENCIES_INSTALLED` entry from **Project Settings > Player > Scripting Define Symbols** if present. Legacy versions added it automatically; 9.x does not use it.
+2. Only if the project switched from .unitypackage to UPM (A3): remove the `LEVELPLAY_DEPENDENCIES_INSTALLED` entry from **Project Settings > Player > Scripting Define Symbols**. The .unitypackage's Editor integration sets and uses this define on all versions, including 9.x — do NOT remove it while still on a .unitypackage install. The UPM package does not use it, so after switching it is stale.
 3. Check for deprecated API warnings in the Unity console. Then:
    - Migrate Init API → see [Scenario B](#scenario-b-migrate-init-api)
    - Migrate ad unit code → see [Scenario C](#scenario-c-migrate-ad-unit-apis)
@@ -208,8 +208,8 @@ rewardedAd.OnAdInfoChanged += OnAdInfoChanged; // optional
 
 void ShowRewardedAd(string placementName = null)
 {
-    // Always check both IsAdReady() AND IsPlacementCapped() before showing.
-    // Skipping the capping check causes show failures when a placement has reached its cap.
+    // Check IsAdReady() before showing. If the game uses dashboard placements, also
+    // check IsPlacementCapped(placementName) — showing a capped placement fails.
     if (rewardedAd.IsAdReady() && !LevelPlayRewardedAd.IsPlacementCapped(placementName))
         rewardedAd.ShowAd(placementName);
 }
@@ -226,7 +226,7 @@ void OnAdRewarded(LevelPlayAdInfo adInfo, LevelPlayReward reward)
 }
 
 // OnAdDisplayFailed — note the correct parameter types: LevelPlayAdInfo + LevelPlayAdError.
-// Using LevelPlayAdDisplayInfoError (which does not exist) will cause a CS0246 compile error.
+// Using LevelPlayAdDisplayInfoError (which existed in 8.x but was removed in 9.x) will cause a CS0246 compile error.
 void OnAdDisplayFailed(LevelPlayAdInfo adInfo, LevelPlayAdError error)
 {
     Debug.LogError($"Rewarded ad failed to display: {error.ErrorMessage}");
@@ -280,8 +280,8 @@ interstitialAd.LoadAd();
 
 void ShowInterstitialAd(string placementName = null)
 {
-    // Always check both IsAdReady() AND IsPlacementCapped() before showing.
-    // Skipping the capping check causes show failures when a placement has reached its cap.
+    // Check IsAdReady() before showing. If the game uses dashboard placements, also
+    // check IsPlacementCapped(placementName) — showing a capped placement fails.
     if (interstitialAd.IsAdReady() && !LevelPlayInterstitialAd.IsPlacementCapped(placementName))
         interstitialAd.ShowAd(placementName);
 }
@@ -458,7 +458,7 @@ Both log lines should be preserved. Migrations that keep only the `ToString()` l
 
 A faithful line-by-line translation is not enough. Several 9.x requirements have no counterpart line in the legacy code, so translating only what is there will silently miss them. After migrating, verify each item against the new code:
 
-- [ ] **Show paths check both `IsAdReady()` and `IsPlacementCapped()`** — add the capping check even though the legacy code only checked availability. Placement capping is configured in the LevelPlay dashboard; without this check, `ShowAd()` fails once a placement reaches its cap.
+- [ ] **Show paths check `IsAdReady()`, plus `IsPlacementCapped(placementName)` when the game uses dashboard placements** — the legacy code only checked availability. If placements are in use, add the capping check (showing a capped placement fails); if the game does not use placements, note that and move on.
 - [ ] **A rewarded load trigger exists and is publisher-controlled** — the legacy SDK auto-loaded rewarded video internally, so legacy code has no load call to translate; the migration must ADD one (for example a Load Rewarded Video button mirroring the interstitial's, or a scene-entry call). Without it the rewarded ad can never become ready. No auto-load in `OnInitSuccess` and no auto-reload in `OnAdClosed` unless the publisher deliberately chooses a preload pattern — when repairing or choosing, ask which the publisher prefers.
 - [ ] **Version APIs map one-to-one** — `IronSource.unityVersion()` → `LevelPlay.UnityVersion`, and `IronSource.pluginVersion()` → `LevelPlay.PluginVersion`. They return different values; do not swap or merge them.
 - [ ] **Logging is preserved, not expanded** — keep the legacy code's log lines (renamed as needed), but do not add new log statements the legacy code did not have.
