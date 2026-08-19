@@ -59,7 +59,7 @@ SDK 9.0.0 introduced breaking changes: the new `LevelPlay.Init()` API replaces `
 After upgrading:
 
 1. Reinstall the recorded network adapters via **Ads Mediation > Network Manager** and re-enter the recorded Developer Settings values. Do not repeat the backup warning at this point — it is only useful before deletion.
-2. Only if the project switched from .unitypackage to UPM (A3): remove the `LEVELPLAY_DEPENDENCIES_INSTALLED` entry from **Project Settings > Player > Scripting Define Symbols**. The .unitypackage's Editor integration sets and uses this define on all versions, including 9.x — do NOT remove it while still on a .unitypackage install. The UPM package does not use it, so after switching it is stale.
+2. Only if the project switched from .unitypackage to UPM (A3): remove the `LEVELPLAY_DEPENDENCIES_INSTALLED` entry from **Project Settings > Player > Scripting Define Symbols**. Both distributions use this define, so do NOT remove it in any other situation. Removing it once after the switch is a safe reset: the stale flag from the old install would otherwise skip the UPM package's dependency verification, and the UPM installer re-verifies and re-adds the define automatically.
 3. Check for deprecated API warnings in the Unity console. Then:
    - Migrate Init API → see [Scenario B](#scenario-b-migrate-init-api)
    - Migrate ad unit code → see [Scenario C](#scenario-c-migrate-ad-unit-apis)
@@ -74,8 +74,10 @@ Replaces the legacy `IronSource.Agent.init()` call with the new `LevelPlay.Init(
 ### Namespace Change
 
 ```csharp
-// Old
-using IronSource.Runtime;  // or no specific LevelPlay namespace
+// Old (8.x): the classic IronSource classes (IronSource.Agent, IronSourceEvents, ...)
+// live in the GLOBAL namespace — no using directive needed or possible for them.
+// The 8.x LevelPlay ad-unit classes (LevelPlayRewardedAd, ...) live in:
+using com.unity3d.mediation;
 
 // New
 using Unity.Services.LevelPlay;
@@ -423,7 +425,7 @@ interstitialAd.OnAdImpressionDataReady += ImpressionDataReadyEvent;
 bannerAd.OnAdImpressionDataReady += ImpressionDataReadyEvent;
 ```
 
-The new global event has NO "Event" suffix: `LevelPlay.OnImpressionDataReadyEvent` does not exist and will not compile. Unsubscribe in `OnDestroy()` using the same event names. For forwarding the data to an analytics platform, see `references/ilrd-api.md`.
+The new global event has NO "Event" suffix: `LevelPlay.OnImpressionDataReadyEvent` has never existed and will not compile. Beware: the 8.x SDK's own deprecation message on the legacy event misnames the replacement as `LevelPlay.OnImpressionDataReadyEvent` — do not follow that message; the correct member is `LevelPlay.OnImpressionDataReady`. Unsubscribe in `OnDestroy()` using the same event names. For forwarding the data to an analytics platform, see `references/ilrd-api.md`.
 
 **Handler — preserve both log lines and apply the property rename:**
 
@@ -617,7 +619,7 @@ Only after verifying all ads work correctly:
 
 | | Legacy (IronSource) | New (LevelPlay) |
 |--|---------------------|-----------------|
-| Namespace | `IronSource.Runtime` | `Unity.Services.LevelPlay` |
+| Namespace | global namespace (classic IronSource classes) / `com.unity3d.mediation` (8.x ad-unit classes) | `Unity.Services.LevelPlay` |
 | Init method | `IronSource.Agent.init(appKey)` | `LevelPlay.Init(appKey)` |
 | User ID | `IronSource.Agent.setUserId(id)` | `LevelPlay.Init(appKey, userId)` |
 | Success callback | `onSdkInitializationCompletedEvent` | `LevelPlay.OnInitSuccess` |
