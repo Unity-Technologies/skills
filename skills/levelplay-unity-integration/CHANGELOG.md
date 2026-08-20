@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.0 — 2026-08-17 — SDK 9.x migration support
+
+Adds guided migration to the LevelPlay 9.x SDK and the current Ad Unit (MADU) APIs.
+
+**New:**
+- "New Integration or Migration?" routing step at the start of the workflow
+- Migration reference guide covering five scenarios: SDK upgrade (.unitypackage or UPM, including switching from .unitypackage to UPM), init API migration (IronSource.Agent to LevelPlay.Init), ad unit API migration (rewarded, interstitial, banner, and the ILRD handler), Maven Central dependency build failures, and Unity Ads (Advertisement Legacy) migration
+- Upgrade safety flow: Developer Settings values and installed adapters are inventoried, and the user confirms, before any folder deletion; post-upgrade steps cover adapter reinstall, settings re-entry, and removal of the stale LEVELPLAY_DEPENDENCIES_INSTALLED scripting define when switching from .unitypackage to UPM
+- Migration completeness checklist covering requirements that a line-by-line translation misses: placement capping checks when dashboard placements are used, an explicit rewarded load trigger, the version API mappings, correct ILRD event names, preserved logging, HideAd vs DestroyAd intent for legacy destroyBanner calls, and removal of onApplicationPause
+- Compilation check after migration edits, with errors fixed before presenting results
+- Skill description now also triggers on SDK upgrades, deprecated IronSource.Agent APIs, and Unity Ads migration
+
+**Fixed:**
+- Banner adaptive-size example used a constructor form that does not compile on any 9.x version; now configured through Config.Builder (verified against 9.0.0, 9.4.0, and 9.5.0 source)
+- API mapping corrections: validateIntegration maps to LevelPlay.ValidateIntegration (not LaunchTestSuite); pluginVersion maps to LevelPlay.PluginVersion (distinct from UnityVersion); onApplicationPause is removed in 9.x with no replacement; the legacy ILRD subscription maps to LevelPlay.OnImpressionDataReady on SDK 9.4.x and earlier or per-instance OnAdImpressionDataReady on 9.5.0+
+- Unity Ads migration now surfaces that LevelPlay.Init has no test-mode parameter (Test Suite or dashboard test mode are the equivalents) instead of dropping the flag silently
+- Package edits during upgrades touch only manifest.json; packages-lock.json is never hand-edited
+- Maven Central migration is mentioned only when the project actually needs it
+- Corrected a consent-callback name mismatch in the privacy reference, and a banner troubleshooting example that called a method banners do not have
+
 ## v0.8.0 — 2026-08-05 — Version-aware ILRD (SDK 9.5.0), rewarded load lifecycle, and improved activation
 
 Accuracy and activation updates reflecting current LevelPlay SDK behavior.

@@ -826,21 +826,18 @@ void OnDestroy()
 
 ### Issue: Repeated LoadAd() calls
 
-**Cause:** Calling `LoadAd()` repeatedly in `Update()` or other high-frequency loops.
+**Cause:** Calling `LoadAd()` more than once on the same banner object — in `Update()`, on scene re-entry, or to manually refresh the creative.
 
 **Common mistake:**
 ```csharp
 void Update()
 {
-    // WRONG - Don't call LoadAd() repeatedly!
-    if (!bannerAd.IsAdReady())
-    {
-        bannerAd.LoadAd();
-    }
+    // WRONG - Don't call LoadAd() in Update(); it runs every frame
+    bannerAd.LoadAd();
 }
 ```
 
-**Why to avoid:** While banner ads don't throw errors for repeated loads like interstitial/rewarded ads do, calling `LoadAd()` multiple times per second wastes resources and can cause unexpected behavior.
+**Why to avoid:** A banner object takes exactly one `LoadAd()` call for its lifetime, whether or not auto-refresh is enabled. New creatives come from auto-refresh (based on your platform settings), and visibility is controlled with `ShowAd()`/`HideAd()` — never by reloading. Banner ads don't throw errors for repeated loads like interstitial/rewarded ads do, but extra `LoadAd()` calls waste resources and can cause unexpected behavior.
 
 **Solution:** Call `LoadAd()` once after creating the banner:
 ```csharp
@@ -849,7 +846,7 @@ void Start()
     bannerAd = new LevelPlayBannerAd(adUnitId);
     bannerAd.OnAdLoaded += OnAdLoaded;
     bannerAd.OnAdLoadFailed += OnAdLoadFailed;
-    bannerAd.LoadAd(); // Call once
+    bannerAd.LoadAd(); // The only LoadAd() for this object's lifetime
 }
 
 void OnAdLoadFailed(LevelPlayAdError error)
@@ -864,7 +861,7 @@ void RetryLoad()
 }
 ```
 
-**Note:** Banner ads auto-refresh based on platform settings, so you typically only need to call `LoadAd()` once at initialization.
+**Note:** The failure retry above is the only case where calling `LoadAd()` again on the same object is correct. After `DestroyAd()`, create a new banner object and give it its own single `LoadAd()`.
 
 ### Issue: Banner overlaps UI elements
 

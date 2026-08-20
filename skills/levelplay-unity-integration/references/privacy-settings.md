@@ -443,7 +443,7 @@ public class PrivacyComplianceManager : MonoBehaviour
 
     private void ShowGDPRConsentDialog()
     {
-        // Show your consent UI, then call OnGDPRConsentsReceived()
+        // Show your consent UI, then call OnGDPRConsentReceived()
     }
 
     private void OnGDPRConsentReceived(bool userConsented)

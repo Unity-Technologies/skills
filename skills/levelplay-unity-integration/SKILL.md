@@ -1,6 +1,6 @@
 ---
 name: levelplay-unity-integration
-description: Adds ads and monetization to a Unity game using the LevelPlay Mediation SDK (installed via the Ads Mediation UPM package). Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android.
+description: Adds ads and monetization to a Unity game using the LevelPlay Mediation SDK (installed via the Ads Mediation UPM package). Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android. Also use when upgrading the LevelPlay or IronSource SDK version, migrating from deprecated IronSource.Agent APIs, or migrating a game from Unity Ads to LevelPlay.
 ---
 
 # LevelPlay Unity package/SDK Integration
@@ -14,6 +14,14 @@ Follow the integration workflow sequentially, one step at a time. Ask only the q
 LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and runs a unified auction across multiple ad networks and bidders to maximize competition for each impression. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
 
 ## Integration Workflow
+
+### 0. New Integration or Migration?
+
+Ask: "Are you starting a new LevelPlay integration, migrating an existing one (from an older SDK version or from Unity Ads), or troubleshooting an existing setup?"
+
+- **New integration**: proceed to Step 1.
+- **Migration** (SDK upgrade, replacing IronSource.Agent APIs, migrating from Unity Ads, or fixing a Maven Central Android build failure): Read `references/migration-sdk-9.md`. Ask which of the five scenarios applies — A = SDK upgrade, B = init API migration, C = ad unit API migration, D = Maven Central build failure, E = Unity Ads migration — then follow the matching scenario. After applying all code changes, work through the Migration Completeness Checklist (section C5 of the reference) — it catches requirements that a line-by-line translation misses because the legacy code had no equivalent line. Then run a compilation check if the environment allows (`dotnet build`, or ask the user to check the Unity console). If compilation errors appear, diagnose and fix them before presenting results. If no compilation check is possible, do not block or keep retrying — list the files you changed, ask the user to check the Unity console, and continue.
+- **Troubleshooting or adding to an existing setup** (ATT, GDPR, ILRD, Test Suite, build errors on a fresh integration, or adding a feature to an already-working integration): Identify what the user needs and go directly to the relevant step or reference from "When to Read Detailed References."
 
 ### 1. Verify Unity Environment
 
@@ -650,6 +658,7 @@ Adapt output based on the user's chosen organization approach:
 - All manager classes must inherit from `MonoBehaviour` — required for Unity lifecycle methods (`Start()`, `OnDestroy()`) and to attach the script to a GameObject
 - After generating any manager script, instruct the user to attach it to a persistent GameObject in their scene (the same one as the initializer, with `DontDestroyOnLoad`)
 - For banner and interstitial managers, call `DestroyAd()` in `OnDestroy()` so ads are destroyed and memory is freed when the manager is destroyed
+- Rewarded and interstitial show paths check `IsAdReady()` before `ShowAd()`. If the game uses dashboard placements, also check the static `IsPlacementCapped(placementName)` — capping is configured per placement in the LevelPlay dashboard, and showing a capped placement fails
 - Proper event subscription and unsubscription (to avoid memory leaks)
 - Null checks and defensive programming
 - Debug logs for troubleshooting
@@ -1059,6 +1068,7 @@ Read specific references based on what the user is implementing:
 - **[references/best-practices.md](references/best-practices.md)**: When user asks for optimization guidance or troubleshooting
 - **[references/privacy-settings.md](references/privacy-settings.md)**: When GDPR, CCPA, or COPPA compliance is needed
 - **[references/ilrd-api.md](references/ilrd-api.md)**: When wiring ILRD to an analytics platform
+- **[references/migration-sdk-9.md](references/migration-sdk-9.md)**: When migrating from IronSource or older LevelPlay APIs, upgrading SDK to 9.x.x, migrating from Unity Ads, or fixing Maven Central dependency build failures
 
 ## Examples
 

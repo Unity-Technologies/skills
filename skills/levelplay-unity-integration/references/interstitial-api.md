@@ -63,6 +63,9 @@ public class InterstitialAdManager : MonoBehaviour
             interstitialAd.OnAdClicked -= OnAdClicked;
             interstitialAd.OnAdClosed -= OnAdClosed;
             interstitialAd.OnAdInfoChanged -= OnAdInfoChanged;
+
+            // Destroy the ad to free its native resources
+            interstitialAd.DestroyAd();
         }
     }
 
@@ -172,6 +175,9 @@ public class FrequencyCappedInterstitialManager : MonoBehaviour
             interstitialAd.OnAdDisplayed -= OnAdDisplayed;
             interstitialAd.OnAdClosed -= OnAdClosed;
             interstitialAd.OnAdDisplayFailed -= OnAdDisplayFailed;
+
+            // Destroy the ad to free its native resources
+            interstitialAd.DestroyAd();
         }
     }
 
@@ -282,6 +288,9 @@ public class MultiPlacementInterstitialManager : MonoBehaviour
             interstitialAd.OnAdDisplayed -= OnAdDisplayed;
             interstitialAd.OnAdClosed -= OnAdClosed;
             interstitialAd.OnAdDisplayFailed -= OnAdDisplayFailed;
+
+            // Destroy the ad to free its native resources
+            interstitialAd.DestroyAd();
         }
     }
 
@@ -785,6 +794,9 @@ void OnDestroy()
         interstitialAd.OnAdClicked -= OnAdClicked;
         interstitialAd.OnAdClosed -= OnAdClosed;
         interstitialAd.OnAdInfoChanged -= OnAdInfoChanged;
+
+        // Destroy the ad to free its native resources
+        interstitialAd.DestroyAd();
     }
 }
 ```
