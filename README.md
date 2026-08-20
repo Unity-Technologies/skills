@@ -25,6 +25,7 @@ npx skills add Unity-Technologies/skills
 | `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
 | `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
 | `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
+| `create-multiplayer-game` | Scaffold a co-op / competitive / event-driven multiplayer game by adapting Unity's official Multiplayer getting-started samples (Netcode for GameObjects + Multiplayer Services) rather than writing netcode from scratch |
 
 ## Usage
 
