@@ -1,15 +1,15 @@
 # Changelog
 
-## v0.10.0 — 2026-08-21 — Aligned with the plugin copy
+## v0.10.0 — 2026-08-21 — Workflow spine, and a hard install gate
 
-Brings this skill in line with the copy shipped in Unity's agent plugin, so the same content is maintained in one place instead of drifting in two.
+Moves reference material out of `SKILL.md` and makes the SDK install a verified step rather than an assumed one.
 
 **Changed:**
-- `SKILL.md` is now the workflow spine only. The dependency-resolution, testing-and-validation, and troubleshooting material that was inlined in it moves into `references/`, which is what `CONTRIBUTING.md` asks for and what keeps the always-loaded part of the skill small. `SKILL.md` goes from about 1,100 lines to about 430; nothing was dropped, it is read on demand instead.
+- `SKILL.md` is now the workflow spine only, going from about 1,100 lines to 435. The dependency-resolution, testing-and-validation and troubleshooting material that was inlined in it moves into `references/`. Nothing was dropped; it is read on demand instead. `SKILL.md` is loaded in full on every invocation while a reference file is read only when a step links it, so this is a saving on every run that does not need the detail.
 - The reference set grows from nine files to twelve: `dependency-resolution.md`, `testing-and-validation.md` and `troubleshooting.md` are now separate files.
 
 **Added:**
-- **A hard install-verification gate at Step 3.** No LevelPlay code is written until `com.unity.services.levelplay` is confirmed present in `Packages/packages-lock.json`, read from the project rather than taken from the Package Manager window or a previous turn. Evaluation of this skill found that the right APIs get chosen but the SDK install is skipped, which produces code that looks correct and fails with `CS0246` on every LevelPlay symbol. The gate also distinguishes "the install never happened" from "Unity has not resolved it yet", because the fix differs.
+- **A hard install-verification gate at Step 3.** No LevelPlay code is written until `com.unity.services.levelplay` is confirmed present in `Packages/packages-lock.json`, read from the project rather than taken from the Package Manager window or an earlier turn. The package is easy to believe is installed: its display name is **Ads Mediation** while the recorded id is `com.unity.services.levelplay`, two similarly named packages are the wrong ones, and the install prompts for a second package partway through. Code written before the id resolves fails with `CS0246` on every LevelPlay symbol, which reads as a code problem rather than an install problem. The gate also distinguishes "the install never happened" from "Unity has not resolved it yet", because the fix differs.
 - The deprecated-APIs section now states explicitly that `SetGDPRConsents(Dictionary)` is **not** deprecated on SDK 9.4.x, where it is the correct call, and only becomes `[Obsolete]` on 9.5.0+. It is kept out of the deprecated list rather than listed with a caveat, so it cannot be read the wrong way round.
 
 ## v0.9.0 — 2026-08-17 — SDK 9.x migration support
