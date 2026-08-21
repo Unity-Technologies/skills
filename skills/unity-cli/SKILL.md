@@ -67,7 +67,7 @@ These work on every command:
 
 | Flag | Description |
 |---|---|
-| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`. Also via `UNITY_FORMAT` env var. |
+| `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`, `github`. Also via `UNITY_FORMAT` env var. |
 | `--json` | Global shorthand for `--format json`, accepted on every command (e.g. `unity status --json`, `unity doctor --json`). `--format` takes precedence when both are supplied. |
 | `--no-banner` | Suppress the branded header — use in scripts |
 | `--no-pager` | Disable the pager for long human output. Also via `UNITY_NO_PAGER` (presence-based — any value, including `0`, disables it). |
@@ -93,7 +93,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 
 | Variable | Mirrors flag | Description |
 |---|---|---|
-| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`). `HUB_FORMAT` is a deprecated alias. |
+| `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`, `github`). `HUB_FORMAT` is a deprecated alias. |
 | `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
 | `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
 | `UNITY_PROJECT_PATH` | path argument | Project path — used by `open`, and also honored by `status` and the cloud commands. |
@@ -141,6 +141,7 @@ This works at every level of the command hierarchy.
 | 3 | Authentication failure |
 | 4 | Precondition not met (e.g. no license active, floating server not configured) |
 | 6 | Command-specific failure |
+| 8 | `unity test` only — the tests ran and one or more **failed**. Every other way a test run fails (compile error, unavailable license, editor crash, `--timeout`) keeps `6`, so CI can retry an infrastructure failure and never retry a failing test. |
 | 130 | Interrupted — Ctrl+C / SIGINT (128 + 2) |
 | 143 | Terminated by SIGTERM (128 + 15) — e.g. `kill` or a CI/runner timeout. Emitted by long-running commands that install a signal handler to clean up first (currently `unity build`, which scrubs the temporary Android keystore). |
 
@@ -164,6 +165,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `upgrade`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
 | `mcp` (+ `configure`), `skill` (install / refresh), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
 ## Common workflows
 
@@ -254,7 +256,17 @@ unity projects create "MyGame" --path ~/UnityProjects \
 
 Feed the token to `--git-token-stdin` from a secret store, never a literal — e.g.
 `… --git-token-stdin <<<"$GIT_TOKEN"` where `$GIT_TOKEN` comes from your CI/secret manager
-(UVCS uses your Unity sign-in, so no token is needed). See
+(UVCS uses your Unity sign-in, so no token is needed).
+
+**Git tokens belong to the user's credential manager, not the CLI.** When no token flag or env var
+is given, the CLI asks `git credential fill` and uses whatever the configured helper returns; it
+stores nothing it is passed or told. Don't suggest the CLI can save a Git token, and don't reach for
+a token flag when the user already has a working credential helper. If they want a different token
+per organization, that is `git config --global credential.useHttpPath true` plus a multi-account
+helper such as [Git Credential Manager](https://github.com/git-ecosystem/git-credential-manager).
+The CLI passes the full repo URL so the helper can discriminate, but it never installs or
+reconfigures a helper. `UNITY_GITHUB_TOKEN` / `UNITY_GITLAB_TOKEN` are one token per provider, so a
+CI job spanning several orgs should pass `--git-token-stdin` per invocation instead. See
 [references/projects-templates.md](references/projects-templates.md) for the full
 source-control flag set. For a purely local Git repository instead, initialize git with a
 Unity-appropriate ignore so the multi-GB `Library/` and other generated folders are never committed:
@@ -365,8 +377,14 @@ unity test /path/to/MyProject \
   --output ./test-results.xml \
   --allow-install \
   --timeout 600
-echo "Exit code: $?"   # 0 = pass, 6 = test failures
+case $? in
+  0) echo "All tests passed" ;;
+  8) echo "Tests failed — report to developers, do not retry" ;;
+  *) echo "Run did not complete — infrastructure failure, safe to retry" ;;
+esac
 ```
+
+Exit `8` means the run finished and reported failing tests; any other non-zero code means it never produced a verdict. Under `--format json` the same split is `errors[0].code`: `TESTS_FAILED` versus `TEST_RUN_ERROR` / `TEST_TIMED_OUT`.
 
 `--report-format junit` makes `--output` a JUnit-schema report, which GitHub Actions and GitLab ingest as native test results with no converter step. It is written even when tests fail. Drop the flag for the NUnit3 default, or use `--report-format nunit,junit` to get both from one run. Add `--coverage` to collect coverage via the Unity Code Coverage package — it warns and carries on if the project doesn't have the package. See [build-run-test.md](references/build-run-test.md).
 
@@ -391,6 +409,6 @@ unity logs --follow --level info
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
 - The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely.
-- The CLI is currently in **beta** (latest: `1.0.0-beta.5`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- The CLI is currently in **beta** (latest: `1.0.0-beta.6`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.

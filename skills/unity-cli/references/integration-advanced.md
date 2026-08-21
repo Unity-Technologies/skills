@@ -64,6 +64,8 @@ unity skill install codex --dry-run
 
 Supported clients: `claude-code`, `claude-desktop`, `grok`, `cursor`, `windsurf`, `vscode`, `cline`, `codex`. Each is written in the format that client expects, at its platform-correct location. Not every client supports both scopes — some are user-global only, others project-local only — and `--list` reports which, so check there rather than guessing.
 
+`codex` installs a real skill directory (`~/.agents/skills/unity-cli`, or `.agents/skills/unity-cli` with `--local`), which is where Codex looks for skills. Earlier CLI versions instead merged the whole skill into a shared `AGENTS.md`, which Codex reads at the start of every session, so the entire skill was charged to sessions that had nothing to do with Unity. Installing or refreshing now removes that leftover block and reports the file it cleaned. If it finds more than one such block it leaves the file alone and says so, rather than guessing which block is Unity's.
+
 ```bash
 # Re-render every tracked install against the embedded skill tree
 unity skill refresh
@@ -76,6 +78,8 @@ unity skill refresh --dry-run
 Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity upgrade`** — the embedded skill ships with the binary, so an upgraded CLI leaves previously-installed copies stale until they're refreshed.
 
 Two safety behaviors: writing through a symlink is refused rather than followed, and `--local` from your home directory warns first, since for most clients that either duplicates the global install or writes somewhere the client never reads.
+
+If you last installed the Codex skill with an older CLI, `unity skill refresh` migrates it: it writes the skill directory, strips the old `AGENTS.md` block, and replaces the tracking entry.
 
 ---
 
