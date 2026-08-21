@@ -38,6 +38,9 @@ public class BannerAdManager : MonoBehaviour
         // Create the banner ad object using constructor
         bannerAd = new LevelPlayBannerAd(adUnitId);
 
+        // ILRD (SDK 9.5.0+): if impression-revenue tracking is enabled, also subscribe here —
+        //   bannerAd.OnAdImpressionDataReady += OnImpressionDataReady;   // see references/ilrd-api.md
+
         // Register event listeners
         bannerAd.OnAdLoaded += OnAdLoaded;
         bannerAd.OnAdLoadFailed += OnAdLoadFailed;
@@ -65,6 +68,7 @@ public class BannerAdManager : MonoBehaviour
             bannerAd.OnAdExpanded -= OnAdExpanded;
             bannerAd.OnAdCollapsed -= OnAdCollapsed;
             bannerAd.OnAdLeftApplication -= OnAdLeftApplication;
+            // ILRD (9.5.0+): bannerAd.OnAdImpressionDataReady -= OnImpressionDataReady;
         }
 
         // Destroy banner
@@ -102,7 +106,7 @@ public class BannerAdManager : MonoBehaviour
     // Event Callbacks
     private void OnAdLoaded(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad loaded");
+        Debug.Log($"Banner ad loaded - network: {adInfo.AdNetwork}, revenue: ${adInfo.Revenue}");
         // Banner is ready, can call ShowAd() if needed
     }
 
@@ -115,7 +119,7 @@ public class BannerAdManager : MonoBehaviour
 
     private void OnAdDisplayed(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad displayed");
+        Debug.Log($"Banner ad displayed - network: {adInfo.AdNetwork}, placement: {adInfo.PlacementName}");
     }
 
     private void OnAdDisplayFailed(LevelPlayAdInfo adInfo, LevelPlayAdError error)
@@ -127,24 +131,24 @@ public class BannerAdManager : MonoBehaviour
 
     private void OnAdClicked(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad clicked");
+        Debug.Log($"Banner ad clicked - network: {adInfo.AdNetwork}");
     }
 
     private void OnAdExpanded(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad expanded");
+        Debug.Log($"Banner ad expanded - network: {adInfo.AdNetwork}");
         // Optionally pause game if banner expands to full screen
     }
 
     private void OnAdCollapsed(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad collapsed");
+        Debug.Log($"Banner ad collapsed - network: {adInfo.AdNetwork}");
         // Resume game if paused
     }
 
     private void OnAdLeftApplication(LevelPlayAdInfo adInfo)
     {
-        Debug.Log("Banner ad left application");
+        Debug.Log($"Banner ad left application - network: {adInfo.AdNetwork}");
     }
 }
 ```
@@ -612,7 +616,7 @@ LevelPlayBannerPosition.Center
 
 All events are properties of the `LevelPlayBannerAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when a banner ad is loaded.
@@ -832,10 +836,13 @@ void OnDestroy()
 ```csharp
 void Update()
 {
-    // WRONG - Don't call LoadAd() in Update(); it runs every frame
+    // WRONG - never call LoadAd() every frame.
+    // Banners load once and then auto-refresh on their own.
     bannerAd.LoadAd();
 }
 ```
+
+**Note:** Banner ads have no `IsAdReady()` method (unlike Rewarded and Interstitial ads) — a banner is ready to show once `OnAdLoaded` fires, so there is nothing to poll for here.
 
 **Why to avoid:** A banner object takes exactly one `LoadAd()` call for its lifetime, whether or not auto-refresh is enabled. New creatives come from auto-refresh (based on your platform settings), and visibility is controlled with `ShowAd()`/`HideAd()` — never by reloading. Banner ads don't throw errors for repeated loads like interstitial/rewarded ads do, but extra `LoadAd()` calls waste resources and can cause unexpected behavior.
 

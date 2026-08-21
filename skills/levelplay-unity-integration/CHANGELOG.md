@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.10.0 — 2026-08-21 — Aligned with the plugin copy
+
+Brings this skill in line with the copy shipped in Unity's agent plugin, so the same content is maintained in one place instead of drifting in two.
+
+**Changed:**
+- `SKILL.md` is now the workflow spine only. The dependency-resolution, testing-and-validation, and troubleshooting material that was inlined in it moves into `references/`, which is what `CONTRIBUTING.md` asks for and what keeps the always-loaded part of the skill small. `SKILL.md` goes from about 1,100 lines to about 430; nothing was dropped, it is read on demand instead.
+- The reference set grows from nine files to twelve: `dependency-resolution.md`, `testing-and-validation.md` and `troubleshooting.md` are now separate files.
+
+**Added:**
+- **A hard install-verification gate at Step 3.** No LevelPlay code is written until `com.unity.services.levelplay` is confirmed present in `Packages/packages-lock.json`, read from the project rather than taken from the Package Manager window or a previous turn. Evaluation of this skill found that the right APIs get chosen but the SDK install is skipped, which produces code that looks correct and fails with `CS0246` on every LevelPlay symbol. The gate also distinguishes "the install never happened" from "Unity has not resolved it yet", because the fix differs.
+- The deprecated-APIs section now states explicitly that `SetGDPRConsents(Dictionary)` is **not** deprecated on SDK 9.4.x, where it is the correct call, and only becomes `[Obsolete]` on 9.5.0+. It is kept out of the deprecated list rather than listed with a caveat, so it cannot be read the wrong way round.
+
 ## v0.9.0 — 2026-08-17 — SDK 9.x migration support
 
 Adds guided migration to the LevelPlay 9.x SDK and the current Ad Unit (MADU) APIs.

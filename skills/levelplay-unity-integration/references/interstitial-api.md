@@ -38,6 +38,9 @@ public class InterstitialAdManager : MonoBehaviour
         // Create the interstitial ad object using constructor
         interstitialAd = new LevelPlayInterstitialAd(adUnitId);
 
+        // ILRD (SDK 9.5.0+): if impression-revenue tracking is enabled, also subscribe here —
+        //   interstitialAd.OnAdImpressionDataReady += OnImpressionDataReady;   // see references/ilrd-api.md
+
         // Register event listeners
         interstitialAd.OnAdLoaded += OnAdLoaded;
         interstitialAd.OnAdLoadFailed += OnAdLoadFailed;
@@ -63,8 +66,9 @@ public class InterstitialAdManager : MonoBehaviour
             interstitialAd.OnAdClicked -= OnAdClicked;
             interstitialAd.OnAdClosed -= OnAdClosed;
             interstitialAd.OnAdInfoChanged -= OnAdInfoChanged;
+            // ILRD (9.5.0+): interstitialAd.OnAdImpressionDataReady -= OnImpressionDataReady;
 
-            // Destroy the ad to free its native resources
+            // Free the native ad and its resources when this manager is destroyed
             interstitialAd.DestroyAd();
         }
     }
@@ -87,6 +91,10 @@ public class InterstitialAdManager : MonoBehaviour
             Debug.LogWarning("Interstitial ad is not ready yet");
         }
     }
+
+    // True once an interstitial ad has finished loading and can be shown.
+    // Use this to decide whether to show opportunistically before calling ShowAd().
+    public bool IsAdReady() => interstitialAd != null && interstitialAd.IsAdReady();
 
     // Event Callbacks
     private void OnAdLoaded(LevelPlayAdInfo adInfo)
@@ -522,7 +530,7 @@ if (LevelPlayInterstitialAd.IsPlacementCapped("level_complete"))
 
 All events are properties of the `LevelPlayInterstitialAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when an interstitial ad is successfully loaded.
@@ -635,7 +643,7 @@ interstitialAd.OnAdInfoChanged += (adInfo) =>
 
 **Why it matters:** The updated `LevelPlayAdInfo` contains the latest revenue estimates and network information, which directly impacts your monetization. Always use the most recent `adInfo` when logging or analyzing ad performance.
 
-**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in the ILRD impression callback already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
+**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in `OnImpressionDataReady` already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
 
 ## Data Types
 

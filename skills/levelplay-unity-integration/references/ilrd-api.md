@@ -43,7 +43,7 @@ On SDK 9.5.0+, the global `LevelPlay.OnImpressionDataReady` still exists but is 
 
 ### SDK 9.5.0+ (current): Per-Instance Setup
 
-Subscribe to `OnAdImpressionDataReady` on each ad object right after you create it, before you load or show it, so no impression is missed — typically inside the ad manager classes from `rewarded-api.md` / `interstitial-api.md` / `banner-api.md`. There is no "before Init" ordering concern with the per-instance event; you subscribe when the ad is created.
+Subscribe to `OnAdImpressionDataReady` on each ad object right after you create it — typically inside the ad manager classes from `rewarded-api.md` / `interstitial-api.md` / `banner-api.md`. There is no "before Init" ordering concern with the per-instance event; you subscribe when the ad is created.
 
 ```csharp
 using UnityEngine;
@@ -239,7 +239,7 @@ private void ImpressionDataReadyEvent(LevelPlayImpressionData impressionData)
 
 ## Thread Safety
 
-**CRITICAL:** the ILRD callback (`OnAdImpressionDataReady` on 9.5.0+, or `OnImpressionDataReady` on 9.4.x and earlier) runs on a background thread. This means:
+**CRITICAL:** `OnImpressionDataReady` runs on a background thread. This means:
 
 **❌ DO NOT:**
 - Call Unity APIs directly (e.g., `GameObject.Find()`, `transform.position`)

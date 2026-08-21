@@ -13,6 +13,7 @@
 - [Platform-Specific Considerations](#platform-specific-considerations)
 - [Success Metrics by Strategy](#success-metrics-by-strategy)
 - [Final Recommendations](#final-recommendations)
+- [Code Generation Guidelines (Step 9)](#code-generation-guidelines-step-9)
 
 ## Overview
 
@@ -64,8 +65,8 @@ Every ad implementation involves a fundamental trade-off between revenue generat
 
 **Expected Outcomes:** *(Industry benchmarks, not LevelPlay-specific)*
 - ✅ 30-50% higher ad revenue
-- ⚠ 5-15% increase in early abandonment
-- ⚠ Lower user satisfaction scores
+- ⚠️ 5-15% increase in early abandonment
+- ⚠️ Lower user satisfaction scores
 - ✅ Strong monetization from engaged users
 
 ### UX-Focused Implementation
@@ -89,7 +90,7 @@ Every ad implementation involves a fundamental trade-off between revenue generat
 - Hide during any active user engagement
 
 **Expected Outcomes:** *(Industry benchmarks, not LevelPlay-specific)*
-- ⚠ 40-60% lower ad revenue vs revenue-focused
+- ⚠️ 40-60% lower ad revenue vs revenue-focused
 - ✅ Better user retention and satisfaction
 - ✅ Higher organic growth and word-of-mouth
 - ✅ Premium brand perception
@@ -155,6 +156,8 @@ Every ad implementation involves a fundamental trade-off between revenue generat
 
 ## Implementation Patterns
 
+> **Note:** These patterns build on the manager classes defined in `rewarded-api.md` and `interstitial-api.md` (`RewardedAdManager`, `InterstitialAdManager`). They use only those managers' public members — `LoadAd()`, `ShowAd()`, `IsAdReady()`, and (for rewarded) the `OnRewardGranted` hook. Generate the manager classes from those references first so these examples compile.
+
 ### Pattern 1: Rewarded Hints System
 
 **Use case**: Puzzle or strategy games where hints add value
@@ -176,7 +179,7 @@ public class HintSystem : MonoBehaviour
         else
         {
             // Offer ad-based hint
-            if (adManager.IsRewardedAdAvailable())
+            if (adManager.IsAdReady())
             {
                 ShowHintAdOffer();
             }
@@ -190,17 +193,15 @@ public class HintSystem : MonoBehaviour
     private void ShowHintAdOffer()
     {
         // Show dialog: "Watch an ad to get a hint?"
-        // If user accepts:
-        adManager.ShowRewardedAd(OnHintAdCompleted);
+        // If user accepts, subscribe to the reward hook and show the ad.
+        adManager.OnRewardGranted = OnHintAdRewardEarned;
+        adManager.ShowAd();
     }
 
-    private void OnHintAdCompleted(LevelPlayAdInfo adInfo, LevelPlayReward reward)
+    private void OnHintAdRewardEarned()
     {
-        if (reward != null && !string.IsNullOrEmpty(reward.Name))
-        {
-            // User completed ad, grant hint
-            UseHint();
-        }
+        // RewardedAdManager invokes this only after the user earns the reward
+        UseHint();
     }
 
     private void UseHint()
@@ -250,9 +251,9 @@ public class LevelTransitionAds : MonoBehaviour
     private void ShowInterstitialOpportunistically()
     {
         // Try to show, but don't wait if not ready
-        if (adManager.IsInterstitialReady())
+        if (adManager.IsAdReady())
         {
-            adManager.ShowInterstitialAd();
+            adManager.ShowAd();
         }
     }
 
@@ -526,6 +527,73 @@ public void OnRewardedAdShowFailed()
 5. **Be transparent**: Users appreciate honesty about ad-supported models
 6. **Reward patience**: Give users free options before pushing ads
 7. **Optimize continuously**: Ad strategy should evolve with your product
+
+## Code Generation Guidelines (Step 9)
+
+Read this before generating ad implementation code in Step 9. It contains the general ad lifecycle,
+per-organization-approach guidance, the always-include requirements, and bid-floor wiring.
+
+### General Implementation Pattern
+
+All ad formats follow a similar lifecycle:
+
+1. **Load**: Request an ad from LevelPlay
+2. **Listen**: Register callbacks for ad events (loaded, failed, shown, clicked, closed)
+3. **Check readiness**: Verify ad is ready before showing
+4. **Show**: Display the ad to the user
+5. **Handle callbacks**: Respond to user interactions and ad lifecycle events
+
+### Adapt Output to the Chosen Organization Approach
+
+**If the user mentions they have existing code**, ask to see it before providing implementation
+guidance. This allows you to provide targeted fixes rather than generating new code from scratch.
+
+**Option 1: Separate manager scripts**
+- Create complete, production-ready `.cs` files for each ad format
+- Name them clearly: `RewardedAdManager.cs`, `InterstitialAdManager.cs`, `BannerAdManager.cs`
+- Include full class structure with proper namespaces
+- Each manager handles one ad format completely
+
+**Option 2: Unified AdManager**
+- Create a single `AdManager.cs` file
+- Include methods and callbacks for all requested ad formats in one class
+- Use clear method naming to distinguish between formats (e.g., `LoadRewardedAd()`, `LoadInterstitial()`)
+- Keep code organized with regions or comments separating each ad format
+
+**Option 3: Code snippets only**
+- Provide focused code blocks without full class wrappers
+- Clearly label each snippet (e.g., "Rewarded Ad Initialization", "Interstitial Event Callbacks")
+- Explain where/how to integrate each snippet
+- Note any dependencies between snippets
+
+### Regardless of Chosen Approach, Always Include
+- All manager classes must inherit from `MonoBehaviour` — required for Unity lifecycle methods (`Start()`, `OnDestroy()`) and to attach the script to a GameObject
+- After generating any manager script, instruct the user to attach it to a persistent GameObject in their scene (the same one as the initializer, with `DontDestroyOnLoad`)
+- For banner and interstitial managers, call `DestroyAd()` in `OnDestroy()` so ads are destroyed and memory is freed when the manager is destroyed
+- Rewarded and interstitial show paths check `IsAdReady()` before `ShowAd()`. If the game uses dashboard placements, also check the static `IsPlacementCapped(placementName)` — capping is configured per placement in the LevelPlay dashboard, and showing a capped placement fails (error codes 524/526)
+- Proper event subscription and unsubscription (to avoid memory leaks)
+- Null checks and defensive programming
+- Debug logs for troubleshooting
+- Clear variable names that match LevelPlay conventions
+- Error handling and graceful degradation
+
+### Bid Floor Handling (per-format)
+- If the user provided a bid floor value for a format, wrap construction in `Config.Builder().SetBidFloor(value).Build()` and pass the config to the constructor.
+- If the user said 'skip' for that format, use the basic constructor (`new LevelPlayRewardedAd(adUnitId)`).
+- Apply per-format: a publisher may set a floor on rewarded but skip banner.
+
+Example (with bid floor):
+```csharp
+var config = new LevelPlayRewardedAd.Config.Builder()
+    .SetBidFloor(0.80)
+    .Build();
+rewardedAd = new LevelPlayRewardedAd(adUnitId, config);
+```
+
+Example (skipped):
+```csharp
+rewardedAd = new LevelPlayRewardedAd(adUnitId);
+```
 
 ## Additional Resources
 
