@@ -10,6 +10,20 @@ documentation for a CLI version that has not shipped publicly is not recorded he
 release is out — so this file never names unreleased surface. Pending skill work is tracked
 alongside the CLI change itself, not here.
 
+## CLI `1.0.0-beta.6` (2026-08-19)
+
+Aligned to the CLI's `1.0.0-beta.6` release. Most of this release's surface — `unity doctor --ci`, `unity cache key`, `--format github`, `unity test --shard`, and `unity collaboration` — landed already documented in `1.0.0-beta.5`'s reference files ahead of that release's stamp bump. This pass adds the two pieces that were still outstanding: the `unity build` stall heartbeat and `--timeout`, and the `unity open` background identity server plus the new git-credential interactivity gating.
+
+### Added
+
+- **`unity build --timeout <seconds>` (env `UNITY_BUILD_TIMEOUT`) and the stall heartbeat** — documented in the build options table and as its own note: a long build now prints a periodic "Still building — Nm elapsed, last log output Nm ago" heartbeat (on stderr for the human path, as progress frames under `--format json`/`ndjson`), and `--timeout` aborts a build that runs past the given number of seconds, exit 6.
+- **`unity open`'s background identity server** — a small helper that answers the Editor's account lookup from the stored `unity auth login` session, so a Hub-less machine gets a signed-in Editor. Documents that it steps aside for a real Hub, exits on its own, and can be disabled with `UNITY_NO_EDITOR_IDENTITY_SERVER`.
+- **Git credential interactivity gating** — the CLI now decides up front whether anyone is there to answer a credential prompt. Documented alongside the existing token-resolution order: on a real terminal a configured helper (including Git Credential Manager's browser/device-code flows) runs and is relayed; without one — CI, machine `--format`, `--non-interactive` — the command fails immediately with exit 4 instead of hanging, naming the missing credential.
+
+### Changed
+
+- Refreshed the latest-version note to `1.0.0-beta.6`.
+
 ## CLI `1.0.0-beta.5` (2026-08-13)
 
 Aligned to the CLI's `1.0.0-beta.5` release. That release is fixes only — it adds no command, flag, or exit code. This pass instead closes the documentation gap the previous one left open: every item the `1.0.0-beta.4` note listed as deferred is now documented, so the skill covers the full shipped surface of both releases.
