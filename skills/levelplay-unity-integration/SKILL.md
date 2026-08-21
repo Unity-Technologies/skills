@@ -1,6 +1,6 @@
 ---
 name: levelplay-unity-integration
-description: Integrates the LevelPlay Mediation SDK via the Ads Mediation UPM package. Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android.
+description: Integrates the LevelPlay Mediation SDK via the Ads Mediation UPM package. Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android. Also use when upgrading the LevelPlay or IronSource SDK version, migrating from deprecated IronSource.Agent APIs, or migrating a game from Unity Ads to LevelPlay.
 ---
 
 # LevelPlay Unity package/SDK Integration
@@ -83,6 +83,13 @@ user. Read them.
 > LevelPlay symbol. If the id is missing from `manifest.json`, the install never happened. If it is
 > in `manifest.json` but not `packages-lock.json`, Unity has not resolved it yet: the Editor may
 > still be importing, or resolution failed. Say which of the two you found, and stop.
+>
+> **If you added the id to `manifest.json` yourself and no Editor has run since, the lock file will
+> not show it yet. That is expected, not a failure.** Never write the entry into
+> `packages-lock.json` yourself: that file is Unity's resolution output, hand-editing it is what the
+> migration guide forbids, and an entry you wrote is a false "resolved" signal rather than a passed
+> gate. Ask the user to open the Unity Editor so resolution runs, then re-read the file. If no
+> Editor is available at all, say so and stop there rather than manufacturing the evidence.
 
 Report the resolved version you found. Do not report "installed" on the strength of the Package
 Manager window, a previous turn, or a user's recollection.
