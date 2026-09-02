@@ -10,6 +10,14 @@ documentation for a CLI version that has not shipped publicly is not recorded he
 release is out — so this file never names unreleased surface. Pending skill work is tracked
 alongside the CLI change itself, not here.
 
+## CLI `1.0.0-beta.8` (2026-09-01)
+
+Aligned to the CLI's `1.0.0-beta.8` release, which supersedes the withdrawn `1.0.0-beta.7`. That release reached the production beta channel and was pulled the same day, so beta.8 is what actually carries its surface to users, and this stamp moves on from `1.0.0-beta.6`, which is what the channel served in between. Everything the skill already documents stays accurate. Two additions extend the `unity vcs` provider layer that the beta.7 note below recorded as public but not yet documented: repository creation and readiness reporting through Bitbucket's `bkt` and Azure DevOps' `az`. Both are deferred to that same alignment pass rather than documented piecemeal here. Also deferred, for the same reason: `unity skill install <client> --local` now mirroring the agent skill a project's `com.unity.pipeline` package ships, and `unity install --format json` printing on success the same result envelope the NDJSON `result` frame already carried. The rest of the release is Windows elevation and install fixes that change no flag or exit code this skill documents.
+
+## CLI `1.0.0-beta.7` (2026-08-25)
+
+Aligned to the CLI's `1.0.0-beta.7` release. The surface this release ships that the skill already documents landed with the feature PRs themselves: `unity vcs uvcs locks` and `unity vcs uvcs changesets`, the per-organization default cloud project (`unity cloud project set-default` / `current` / `clear-default` and the project-resolution fallback), the long-output pager, and `unity plugin install` / `remove` / `upgrade`. The release's new `unity vcs` verb family (`setup`, `status`, `sync`, `doctor`, `merge-setup`, `conflicts` / `explain` / `resolve`, `diff`, `summarize`, `hooks`, `git worktree`, `git migrate-lfs`, `providers`, `affected`, `switch`) is now public but not yet documented by this skill — that coverage follows as its own alignment pass.
+
 ## CLI `1.0.0-beta.6` (2026-08-19)
 
 Aligned to the CLI's `1.0.0-beta.6` release. Most of this release's surface — `unity doctor --ci`, `unity cache key`, `--format github`, `unity test --shard`, and `unity collaboration` — landed already documented in `1.0.0-beta.5`'s reference files ahead of that release's stamp bump. This pass adds the two pieces that were still outstanding: the `unity build` stall heartbeat and `--timeout`, and the `unity open` background identity server plus the new git-credential interactivity gating.
@@ -23,6 +31,7 @@ Aligned to the CLI's `1.0.0-beta.6` release. Most of this release's surface — 
 ### Changed
 
 - Refreshed the latest-version note to `1.0.0-beta.6`.
+- **Corrected the pager documentation** to describe the one surface that actually pages. The `git log`-style external pager recorded under Added in the `1.0.0-beta.5` notes below was never ported to the shipped binary — nothing spawns `less`, `more.com`, `$PAGER`, or `$UNITY_PAGER` — so the resolution chain, the `TERM=dumb` and `unity shell` conditions, and the five paging listings (`unity command`, `releases`, `editors`, `changelog`, `logs`) never applied; those listings print in full every time. What does page is `unity projects list`, in-process and on a terminal only, ten projects per screen, and off for redirected stdout, `--format json`/`ndjson`, `--all`, `--watch`, and `--no-pager` / `UNITY_NO_PAGER` — but not `--format tsv` or `--format github`, which on a terminal fall through to the human table and page, so the tables no longer claim that every machine format bypasses the pager. The global flags and environment tables now say that, and `UNITY_PAGER` is documented as having no effect.
 
 ## CLI `1.0.0-beta.5` (2026-08-13)
 

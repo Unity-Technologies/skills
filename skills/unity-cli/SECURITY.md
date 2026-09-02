@@ -2,9 +2,21 @@
 
 This skill documents the official first-party [`unity` CLI](https://public-cdn.cloud.unity3d.com/hub/prod/cli/). A few of its capabilities are powerful by design and are flagged by automated skill scanners. They are intentional, first-party functionality with the safeguards described below.
 
-<!-- skill-security:accept SEC_POWER_CAP, SEC_INSTALL_PIPE -->
+## Accepted risks
+
+These capabilities are accepted by design. Each is documented in full in the sections below; this table is the explicit, human-readable acknowledgment.
+
+| Risk | Capability | Why it is accepted |
+|---|---|---|
+| `SEC_POWER_CAP` | Local Editor control and C# evaluation | Runs entirely on the local machine, as the current user, against the user’s own Editor — no remote access and no privilege the user lacks at their own terminal. |
+| `SEC_INSTALL_PIPE` | Install one-liners piped to a shell | HTTPS to Unity’s first-party CDN only; the installer verifies a SHA-256 pin against a same-origin manifest before executing anything. |
+| `SEC_AGENT_CONFIG_WRITE` | Writing agent skill files into AI clients’ configuration directories | Runs only on an explicit user command, is the command’s documented purpose, and is fenced by an ownership ledger — a copy this CLI did not write is never overwritten without `--force` — plus symlink refusals and a warning before project-local installs from the home directory. |
 
 ## Accepted, by-design capabilities
+
+### Installing skills into AI clients
+
+`unity skill install` and `unity skill refresh` write skill files — this skill, and the `unity-pipeline` skill a project's `com.unity.pipeline` package ships — into AI clients' configuration directories, which automated scanners flag as an agent-persistence pattern. The writes happen only when the user runs the command (nothing installs at load or in the background), the capability is the command's advertised purpose, and it is fenced: an install ledger records every write and a directory this CLI did not write is reported, never overwritten, without explicit `--force` consent; targets that resolve through a symlinked path component are refused; a package-shipped tree is read with file-count, per-file, and aggregate size bounds and never through symbolic links; and `--local` from the home directory warns first.
 
 ### Local Editor control and C# evaluation
 

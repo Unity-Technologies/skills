@@ -185,7 +185,7 @@ unity analytics opt-in
 unity analytics opt-out
 ```
 
-Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa. When opted **in**, the CLI records which commands run (registered command names only — never your arguments, paths, or project names), editor uninstalls, project open/create (editor version and template id only), CLI self-upgrade/uninstall outcomes, `unity shell` and `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out (the default), no events are sent.
+Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa. When opted **in**, the CLI records which commands run (registered command names only — never your arguments, paths, or project names), editor uninstalls, project open/create (editor version and template id only), CLI self-update/uninstall outcomes, `unity shell` and `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out (the default), no events are sent.
 
 Separately from analytics, the CLI reports **anonymous crashes and errors** via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id so crash-free-user rates can be computed; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable crash reporting entirely.
 
@@ -266,41 +266,41 @@ Interactively, when you don't pass `--attachments` or `--share-project`, the rep
 
 ---
 
-### Upgrade — update the CLI itself
+### Self-update — update the CLI itself
 
 ```bash
 # Check for available updates
-unity upgrade --check --format json
+unity self-update --check --format json
 
 # Show changelog for the new version
-unity upgrade --changelog
+unity self-update --changelog
 
-# Upgrade (interactive confirmation)
-unity upgrade
+# Update (interactive confirmation)
+unity self-update
 
-# Upgrade without prompts
-unity upgrade --yes
+# Update without prompts
+unity self-update --yes
 
 # Install a specific version
-unity upgrade --target 0.2.0
+unity self-update --target 0.2.0
 
 # Select update channel (stable or beta)
-unity upgrade --channel beta
+unity self-update --channel beta
 
 # Dry-run: show what would change
-unity upgrade --dry-run
+unity self-update --dry-run
 
 # Rollback to previous version
-unity upgrade --rollback
+unity self-update --rollback
 ```
 
-`unity upgrade` detects how the CLI was installed and upgrades accordingly:
+`unity self-update` detects how the CLI was installed and updates accordingly (`unity upgrade` is still accepted as an alias):
 
-- **`curl | sh` install** — keeps upgrading itself in place.
+- **`curl | sh` install** — keeps updating itself in place.
 - **Linux AppImage** — updates in place: downloads the new `.AppImage` artifact, verifies its checksum against the release manifest, and atomically replaces the AppImage you launched (`--rollback` restores the previous one). The embedded zsync update info is preserved, so external updaters (AppImageUpdate, Gear Lever) keep working.
 - **Package-manager install** — points you at the owning manager instead of replacing the binary. The `.deb` and `.rpm` packages are published to Unity's apt and rpm repositories on every beta and GA release (rpm packages are GPG-signed), so a package-managed install stays current through the system package manager: `sudo apt update && sudo apt upgrade unity-cli` on Debian/Ubuntu, `sudo dnf upgrade unity-cli` on Fedora/RHEL.
 
-`--check`, `--changelog`, and `--dry-run` work everywhere. The background "update available" notice is package-manager-aware: when the release manifest says your install's package manager already carries the new version, the notice suggests that manager's exact upgrade command instead of `unity upgrade`; installs whose manager doesn't carry the release yet stay quiet.
+`--check`, `--changelog`, and `--dry-run` work everywhere. The background "update available" notice is package-manager-aware: when the release manifest says your install's package manager already carries the new version, the notice suggests that manager's exact upgrade command instead of `unity self-update`; installs whose manager doesn't carry the release yet stay quiet.
 
 ---
 

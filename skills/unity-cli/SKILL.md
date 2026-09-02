@@ -19,11 +19,23 @@ unity command editor_play       # run one — e.g. enter Play mode
 unity command eval 'new UnityEngine.GameObject("Joe");'
 ```
 
+### More than one Editor open? Pass `--project-path`
+
+Every Editor-driving command takes `--project-path <path>`. **Pass it whenever more than one Editor may be running** — without it the CLI targets the Editor whose project contains the current directory, so the target follows the shell's cwd:
+
+```bash
+unity command editor_play --project-path /path/to/MyProject
+```
+
+A `unity status` instance's `project` field is what `--project-path` takes. For `unity command`/`list`/`job`/`mcp`, matching no running project fails with `AMBIGUOUS_EDITOR` and lists the candidates. [Details](references/integration-advanced.md#targeting-one-of-several-running-editors).
+
 Requires the project's `com.unity.pipeline` package (Unity 6.0+) — add it once with `unity pipeline install`. Full details — launching a headless Editor to drive, `unity list` tool discovery, and authoring custom `[CliCommand]` tools — are in [integration-advanced.md](references/integration-advanced.md).
+
+The package also ships a deeper `unity-pipeline` agent skill, invisible to clients inside `Library/PackageCache` — in a project with the package, run `unity skill install <client> --local` once to mirror it beside this skill.
 
 > **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, and `unity list` can't connect at all. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
-## Step 1: Install the CLI (if not already installed)
+## Install the CLI (if not already installed)
 
 First check if the CLI is available:
 
@@ -43,21 +55,7 @@ curl -fsSL https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.sh | UNITY_
 $env:UNITY_CLI_CHANNEL='beta'; irm https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.ps1 | iex
 ```
 
-After installing, open a new shell so `unity` is on PATH, then verify:
-
-```bash
-unity --version
-```
-
-If the install script fails or the binary is still not found, tell the user and stop.
-
-## Step 2: Verify it works
-
-```bash
-unity --version
-```
-
-If this fails with a permissions error or crash, the CLI installation may be broken. Suggest re-running the install script.
+After installing, open a new shell so `unity` is on PATH, then verify with `unity --version`. If the install script fails or the binary is still not found, tell the user and stop; if the command itself fails with a permissions error or crash, the installation may be broken — suggest re-running the install script.
 
 ---
 
@@ -70,20 +68,22 @@ These work on every command:
 | `--format <fmt>` | Output format: `human` (default), `json`, `tsv`, `ndjson`, `github`. Also via `UNITY_FORMAT` env var. |
 | `--json` | Global shorthand for `--format json`, accepted on every command (e.g. `unity status --json`, `unity doctor --json`). `--format` takes precedence when both are supplied. |
 | `--no-banner` | Suppress the branded header — use in scripts |
-| `--no-pager` | Disable the pager for long human output. Also via `UNITY_NO_PAGER` (presence-based — any value, including `0`, disables it). |
+| `--no-pager` | Turn off paging. Governs both pagers: the external one over the long listings (`unity command`, `releases`, `editors`, `changelog`, `logs`) and the interactive one in `unity projects list`. Also via `UNITY_NO_PAGER` (presence-based — any value, including `0`, disables it). |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
 | `--quiet` | Suppress non-essential output |
 | `--verbose` | Print full error details (stack trace + cause chain) on failure. Also via `UNITY_VERBOSE`. |
 | `--proxy <url>` | HTTP/HTTPS/SOCKS/PAC proxy URL for this invocation. Also via `UNITY_PROXY`. Takes precedence over standard `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` env vars and the persisted `proxy.json` setting. |
 | `--proxy-disable` | Disable proxy for this invocation, ignoring all sources (env vars, persisted config, system settings). |
-| `--log-proxy` | Log one redacted entry per outbound request (host-only URL, resolved proxy, auth source, status, duration) to `proxy-request.json` — for reproducing proxy issues for support. Also via `UNITY_LOG_PROXY=1` or the persisted `proxyRequestLogging` setting. |
+| `--log-proxy` | Log one redacted entry per outbound request to `proxy-request.json` — for reproducing proxy issues. Also via `UNITY_LOG_PROXY=1` or the `proxyRequestLogging` setting. |
 | `--no-log-proxy` | Opt a single invocation out of proxy request logging when it's enabled globally. |
 
 **Always use `--format json` when you need to parse output programmatically.**
 
-**Long human output is paged, on the `git log` model.** The long listing surfaces — `unity command`, `unity releases`, `unity editors`, `unity changelog`, `unity logs` — route stdout through a pager. The default is `less -RFX`, which quits immediately when the content fits one screen, so short output shows no pager UI at all. Resolution order is `$UNITY_PAGER` → `$PAGER` → `less -RFX` → `more.com` on Windows; when none can be spawned, output falls back to a direct write.
+**`unity projects list` is the only command that pages IN-PROCESS.** It shows 10 projects per screen and waits for a keypress between screens, and only when stdout is a terminal. Paging is off for redirected stdout, under `--format json` and `--format ndjson`, and under `--all`, `--watch`, or `--no-pager` / `UNITY_NO_PAGER`.
 
-**It never pages when output isn't a human reading a terminal**, so scripts need no special handling: paging is off for non-TTY stdout (pipes, redirects), for every machine format (`json`, `tsv`, `ndjson`), under `--quiet`, under `--no-pager` / `UNITY_NO_PAGER`, when `TERM=dumb`, and inside `unity shell`. Quitting the pager early (`q`) is silent and leaves the command's exit code untouched.
+**Not every machine format bypasses that one.** Only `json` and `ndjson` get their own non-interactive rendering; on a terminal, `--format tsv` and `--format github` fall through to the human table and page like `human` does — so `--format tsv` on a TTY yields neither TSV nor unpaged output. Redirect stdout (the usual case for a machine format) or pass `--no-pager`. Note this is the **opposite** of the external pager below, which is `human`-only: the two mechanisms differ here, and `projects list` is the surprising one.
+
+**The long listings page through an external pager, like `git log`.** `unity command` (the bare listing), `unity releases`, `unity editors`, `unity changelog`, and `unity logs` pipe human output through `less -RFX` on a terminal — colors kept, no screen clear, and `-F` quits by itself when the output already fits one screen, so short listings show no pager UI. `$UNITY_PAGER` then `$PAGER` override the choice and run through a shell, so `PAGER="less -S"` works; a blank value is ignored rather than treated as an opt-out. Quitting with `q` exits cleanly with the command's own exit code. Unlike `projects list`'s pager this one is **`human`-only**, and it never engages for redirected stdout, any machine format (`json`, `tsv`, `ndjson`, `github`), `--quiet`, `TERM=dumb`, the streaming modes (`editors --watch`, `logs --follow`), a named `unity command <name>`, or inside `unity shell`. A broken pager costs the paging, not the output: a `$PAGER` naming something that is not there is resolved before anything spawns, and one that spawns and then dies has its output reprinted to the terminal, decided from the pager's exit status (a clean exit is a normal `q` and discards; a failure status reprints). The exception is a pager that exits *successfully* without reading — `PAGER=true`, or anything that lingers and then exits 0 — which nothing distinguishes from a `q`, and which `git` loses too. A pager that starts and merely *waits* is not treated as broken, so the CLI waits with it.
 
 A branded Unity header (logo, wordmark, CLI version) renders on the landing surfaces — bare `unity`, `unity --help` / `-h`, `unity help`, and above the first-run consent prompt. It's shown only on a TTY, prints at most once, and degrades to compact, uncolored text on narrow terminals, without Unicode, or under `NO_COLOR`. Piped output is unaffected. Use `--no-banner` to suppress it in scripts. Bare `unity` prints usage and exits 0.
 
@@ -101,8 +101,10 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_VERBOSE` | `--verbose` | Show full error details on failure. |
 | `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
 | `UNITY_NO_BANNER` | `--no-banner` | Suppress the branded banner. |
-| `UNITY_NO_PAGER` | `--no-pager` | Disable the pager for long human output. Presence-based: any value disables it, including `0`. |
-| `UNITY_PAGER` | — | Pager command to use, taking precedence over `$PAGER` (e.g. `less -S`). Honors flags and quoting; falls back to `less -RFX`, then `more.com` on Windows. |
+| `UNITY_NO_PAGER` | `--no-pager` | Turn off paging — both the external pager over the long listings and `unity projects list`'s interactive one. Presence-based: any value counts, including `0`. |
+| `UNITY_PAGER` | — | The pager to use for the long listings, overriding `$PAGER` and the `less -RFX` default. Runs through a shell, so flags work (`less -S`). A blank value is ignored, not an opt-out. |
+| `PAGER` | — | Same as `UNITY_PAGER`, consulted only when that is unset or blank. |
+| `LESS` / `LV` / `LESSCHARSET` / `MORE` | — | Passed to the pager only when you have not set them, defaulting to `FRX`, `-c`, `utf-8`, and `FRX`. `LESSCHARSET` keeps multi-byte glyphs readable where the locale does not declare UTF-8; `MORE` exists because `more` on macOS/BSD is `less` under another name and reads `$MORE`, so without it `PAGER=more` waits for a keypress even for one line. |
 | `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
 | `UNITY_TEST_TIMEOUT` | `--timeout` | Timeout for `unity test` in seconds. |
 | `UNITY_CLOUD_ORG` | `--cloud-org` | Active Unity Cloud organization id or name for a single call. |
@@ -120,16 +122,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 
 ## Getting help
 
-If a command fails or you're unsure of the available options, append `-h` or `--help` to any command or subcommand:
-
-```bash
-unity --help
-unity install --help
-unity projects --help
-unity projects create --help
-```
-
-This works at every level of the command hierarchy.
+Append `-h` or `--help` to any command or subcommand, at any level: `unity --help`, `unity projects create --help`.
 
 ## Exit codes
 
@@ -163,7 +156,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `releases`, `templates` (list / info / create / pack / delete) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
-| `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `upgrade`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
+| `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
 | `mcp` (+ `configure`), `skill` (install / refresh), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
@@ -257,6 +250,40 @@ unity projects create "MyGame" --path ~/UnityProjects \
 Feed the token to `--git-token-stdin` from a secret store, never a literal — e.g.
 `… --git-token-stdin <<<"$GIT_TOKEN"` where `$GIT_TOKEN` comes from your CI/secret manager
 (UVCS uses your Unity sign-in, so no token is needed).
+
+**Working with a UVCS workspace day to day: two wrapped reads, everything else straight through
+to `cm`.** The split is deliberate and worth teaching, because guessing wrong wastes a user's time:
+
+- `unity vcs uvcs locks [path]` — who holds a lock, **and which locks cover files you have already
+  changed**. That join is the only thing here `cm` cannot do for you: it knows the repository's
+  locks and it knows your workspace's changes, but nothing puts them side by side, so without this
+  you learn a teammate holds a scene when your check-in is refused. Read-only, stamped with the
+  time it was taken (locks are shared state, so never treat a reading as current), and it prints
+  the exact `unity uvcs lock` command for anything worth acting on.
+- `unity vcs uvcs changesets [path] [--limit <n>]` — recent history in a stable envelope for CI and
+  agents. Use it when something parses the output; use `unity uvcs log` when a human reads it.
+- **Everything else is `unity uvcs <args>`**, which forwards the whole command line to `cm`
+  verbatim, `--help` and `--format` included. That is the supported route, not a workaround: `cm`
+  owns and versions this vocabulary, so wrapping it would pin a paraphrase that goes stale. Reach
+  for it for **partial checkout**, **shelves**, and **taking or releasing a lock**.
+
+```bash
+# Partial checkout (Gluon): work on part of a huge repository. cm's own flags, unchanged.
+unity uvcs partial configure
+unity uvcs partial update /Assets/Levels
+
+# Shelve work in progress, then bring it back. Again, cm's own vocabulary.
+unity uvcs shelve -c "wip: lighting pass"
+unity uvcs shelve --apply sh:12
+
+# Locks: read them through the wrapper (it adds the join), mutate them through cm.
+unity vcs uvcs locks                       # who holds what, and what collides with your changes
+unity uvcs lock list                       # the raw listing, cm's own flags and output
+unity uvcs lock unlock itemid:42@my-game   # release someone's lock, if you are entitled to
+```
+
+`unity cm <args>` is the same passthrough under cm's own name. Both need the `cm` client; install
+it with `unity plugin install plastic` if a command says it is missing.
 
 **Git tokens belong to the user's credential manager, not the CLI.** When no token flag or env var
 is given, the CLI asks `git credential fill` and uses whatever the configured helper returns; it
@@ -409,6 +436,6 @@ unity logs --follow --level info
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
 - The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely.
-- The CLI is currently in **beta** (latest: `1.0.0-beta.6`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- The CLI is currently in **beta** (latest: `1.0.0-beta.8`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
