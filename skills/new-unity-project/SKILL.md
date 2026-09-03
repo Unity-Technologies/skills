@@ -1,6 +1,6 @@
 ---
 name: new-unity-project
-description: Use when starting a brand-new Unity game or project from scratch — "make/start/create a new game", "bootstrap a Unity project", "I want to build a <genre> game", "scaffold/prototype a game", game jam, greenfield, blank project, project setup. A guided flow that gathers the concept, target platforms, and monetization, installs the Editor in the background while it asks, then creates the project and source control and installs packages — delegating the mechanics to the unity-cli and unity-package-management skills and handing off monetization to the dedicated skills. Does not scaffold gameplay code.
+description: Use when starting a brand-new Unity game or project from scratch — "make/start/create a new game", "bootstrap a Unity project", "I want to build a [genre] game", "scaffold/prototype a game", game jam, greenfield, blank project, project setup. A guided flow that gathers the concept, target platforms, and monetization, installs the Editor in the background while it asks, then creates the project and source control and installs packages — delegating the mechanics to the unity-cli and unity-package-management skills and handing off monetization to the dedicated skills. Does not scaffold gameplay code.
 allowed-tools:
   - Bash
   - Read
