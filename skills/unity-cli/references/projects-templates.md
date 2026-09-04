@@ -163,6 +163,102 @@ Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name
 
 **SSH transport policy.** No SSH URL is ever rewritten to HTTPS, and no key handling happens in the CLI — a key held by a running ssh-agent is used automatically, and a repository-local `core.sshCommand` or an `~/.ssh/config` host alias behaves identically to plain `git`, because the CLI only supplies its own SSH defaults when none of those (nor `GIT_SSH_COMMAND`/`GIT_SSH`) are already set — and it supplies none of them at all on an interactive terminal, deferring entirely to ssh's own prompts (a real fingerprint prompt for an unfamiliar host, a real passphrase prompt for a protected key with no agent), since a person at the terminal can answer them. Only in a non-interactive invocation (no TTY, or `--non-interactive`/`UNITY_NON_INTERACTIVE`), where no prompt could ever be answered, does the CLI supply its own defaults: an unknown host is trusted on first connect and pinned (so a *later* change to that host's key still fails loudly — this is not silenced), and a passphrase-protected key with no agent fails fast with an actionable error instead of hanging.
 
+#### Working in a Unity Version Control workspace
+
+Two reads are wrapped, because Unity-aware wrapping adds something, and code reviews get their own
+subgroup because `cm` cannot reach them at all. Everything else forwards to `cm` unchanged, because
+wrapping it would add nothing.
+
+```bash
+# Wrapped: the lock listing joined to YOUR pending changes. This is the one thing cm cannot
+# do for you, since it has no single command that knows both.
+unity vcs uvcs locks                        # who holds what, and what collides with your work
+unity vcs uvcs locks --format json          # stable envelope: asOf, inLocalChanges, unlockCommand
+
+# Wrapped: recent history in a shape a script or an agent can rely on.
+unity vcs uvcs changesets --limit 50
+unity vcs uvcs changesets --format json
+
+# Straight through to cm: partial checkout, shelves, and lock mutations. cm's own flags,
+# cm's own output, cm's own --help. This is the supported route, not a workaround.
+unity uvcs partial configure
+unity uvcs partial update /Assets/Levels
+unity uvcs shelve -c "wip: lighting pass"
+unity uvcs shelve --apply sh:12
+unity uvcs lock list
+unity uvcs lock unlock itemid:42@my-game
+unity uvcs --help                           # cm's own help, forwarded verbatim
+```
+
+`unity vcs uvcs --help` says the same thing at the point of confusion: anything it does not list
+forwards straight to `cm`. `unity cm <args>` is the identical passthrough under cm's own name.
+
+**Lock state is shared and racy.** `unity vcs uvcs locks` reports the state as of the moment it
+read it, and says so in both the human output and the `asOf` field. Do not cache a reading or treat
+one as authoritative; read again before you act. The wrapper never mutates a lock for the same
+reason it never paraphrases cm's flags: releasing someone else's lock is a decision about shared
+team state, so it stays an explicit `unity uvcs lock unlock` the user types.
+
+#### Code review comments
+
+`unity vcs uvcs review` reads the review comments a person left in the Unity Version Control GUI,
+and answers them. This is the one UVCS surface with no `cm` route at all — `cm codereview` manages
+review objects but has no comment verbs — so without these commands a reviewer's feedback is
+invisible to anything outside the GUI, and a human has to restate every comment in the prompt.
+
+```bash
+# Find a review. Any of --changeset, --branch or --status narrows it server-side.
+unity vcs uvcs review list --branch /main --format json
+
+# Read its comments, with the file and line each one is anchored to.
+unity vcs uvcs review comments --review 42 --format json
+unity vcs uvcs review comments --changeset 118      # the review attached to a changeset
+unity vcs uvcs review comments --review 42 --all-activity
+
+# Answer one, then record which change addressed it.
+unity vcs uvcs review reply   --review 42 --comment 7 --body "Fixed in the next changeset."
+unity vcs uvcs review resolve --review 42 --comment 7 --changeset 118
+```
+
+All four take the usual optional `[path]` operand; everything else is an option. `--limit` defaults
+to 50 and caps at 500, and the envelope's `truncated` tells you when there was more.
+
+**Unity Cloud only.** The reviews service resolves a per-organization cloud region, so a
+self-hosted workspace has no reviews API — those commands refuse with
+`VCS_UVCS_REVIEW_SELF_HOSTED` and point at the GUI rather than failing obscurely.
+
+**`line` is one-based, and may be absent.** The service anchors a comment with a zero-based line in
+a string field whose `-1` means "not anchored to a line". The CLI does that arithmetic once: `line`
+in the envelope matches what the dashboard shows, and is `null` — never `0` — for a comment that
+is not tied to a line. Do not add one yourself.
+
+**The default is file comments, not the whole feed.** The service's comments route is an activity
+feed of fourteen types, only four of which (`Comment`, `Change`, `Question`, `Conversation`) are
+things a person wrote against a file. `comments` returns those four; `--all-activity` adds the
+status changes, reviewer requests and timeline entries. Read `activityRead` alongside `returned` to
+tell "no comments" from "activity, but nothing to act on".
+
+**Resolving means naming a changeset, and is not idempotent.** There is no resolved flag on the
+wire — the state IS the changeset the comment was applied in — so `--changeset` is required and is
+never inferred from whatever the workspace happens to be sitting on. A comment that is already
+resolved is refused (`VCS_UVCS_REVIEW_ALREADY_RESOLVED`) rather than silently re-pointed, because
+overwriting it would lose which change actually addressed the comment. The service performs no
+already-resolved check of its own, so that guard is entirely client-side: on a review with more
+activity than one page, where the comment falls outside the window, `resolve` **refuses**
+(`VCS_UVCS_REVIEW_STATE_UNKNOWN`) rather than writing blind — resolve those from the GUI. The guard
+is not atomic either: another writer can resolve between the read and the write, and the service
+offers no conditional write to close that window.
+
+**Writes name both ids explicitly.** `reply` and `resolve` take `--review` and `--comment` and
+accept no `--changeset`/`--branch` selector, unlike the read leaves: they write a durable record
+other people read, and an indirect selector resolving to the wrong review would post into a
+conversation nobody looked at. Both ids come straight out of `review comments`. A reply body
+carrying control characters is refused rather than stripped, so what lands in the review is exactly
+what was written.
+
+The `cm` client is needed for all of this. `unity plugin install plastic` installs it; a command
+that needs it and cannot find it says so and names that command.
+
 #### Connecting to a self-hosted or enterprise host
 
 GitHub Enterprise Server, self-managed GitLab, and self-hosted Gitea/Forgejo all work with the URL form of `projects clone` and `projects link vcs` (not `projects create --vcs`, which accepts only `github`, `gitlab`, and `uvcs`), but **each host signs in separately**: being signed in to github.com grants nothing on `ghe.example.com`. The first attempt against a new host fails to authenticate (exit 3) until you sign in to that host specifically; the CLI then prints the exact command for whichever mechanism your machine has.

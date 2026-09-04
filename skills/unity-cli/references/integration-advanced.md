@@ -6,6 +6,47 @@ environment variables, exit codes, and common workflows. All global flags (`--fo
 
 ---
 
+## Targeting one of several running Editors
+
+`unity command` (and its subcommands), `unity list`, `unity job`, and `unity mcp` share one target resolver, which reads its selectors in this order:
+
+1. `--runtime <pattern>`, then `--runtime-path <path>` — these target a running **Unity Player build**, not an Editor, and are read **before** `--project-path`. Supply a runtime selector and `--project-path` together and the runtime wins, so pass only the one you mean.
+2. `--project-path <path>` — the Editor selector.
+3. Otherwise, the running Editor whose project directory **contains the current working directory**. With a project nested inside another, the deepest match wins.
+
+**Pass `--project-path` whenever more than one Editor may be running.** Relying on step 3 means the target depends on the shell's cwd, which is rarely what an agent intends and is invisible in the command it ran.
+
+> `unity pipeline install` and `unity pipeline upgrade` take `--project-path` too, but they do **not** use this resolver — they pick among the editors that actually need the operation, showing an interactive selector on a terminal and a different, candidate-listing error without `data.candidates` otherwise. Everything below describes the shared resolver only.
+
+When step 3 selects nothing — the cwd is inside none of the running projects, or two candidates tie — the CLI does **not** guess. It fails with code `AMBIGUOUS_EDITOR` (exit 6), lists the candidates, and names the flag:
+
+```
+Multiple Unity Editors are running with Pipeline servers:
+
+  1. Alpha (localhost:38412) - /path/to/Alpha
+  2. Beta (localhost:38413) - /path/to/Beta
+
+Pass `--project-path <path>` with one of the project paths listed above to choose one, or run the
+command from inside one of those project directories.
+```
+
+Under `--format json` / `--format ndjson` the same candidates ride the failure envelope as `data.candidates`, so a script can pick one without parsing the human text — the same shape `unity auth switch` uses for an ambiguous account:
+
+```json
+{
+  "success": false,
+  "data": {
+    "candidates": [
+      { "project": "Alpha", "projectPath": "/path/to/Alpha", "port": 38412, "pid": 4242 },
+      { "project": "Beta", "projectPath": "/path/to/Beta", "port": 38413, "pid": 4243 }
+    ]
+  },
+  "errors": [{ "code": "AMBIGUOUS_EDITOR", "message": "Multiple Unity Editors are running…" }]
+}
+```
+
+`unity status --format json` reports the same project paths for every registered Editor (`data.instances[].project`); either source gives you a value to pass straight back as `--project-path`.
+
 ### MCP — Model Context Protocol server (AI agent integration)
 
 New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands that a connected Editor adds show up as tools automatically.
@@ -64,6 +105,8 @@ unity skill install codex --dry-run
 
 Supported clients: `claude-code`, `claude-desktop`, `grok`, `cursor`, `windsurf`, `vscode`, `cline`, `codex`. Each is written in the format that client expects, at its platform-correct location. Not every client supports both scopes — some are user-global only, others project-local only — and `--list` reports which, so check there rather than guessing.
 
+A `--local` install also picks up the skill the project's `com.unity.pipeline` package ships (`.claude/skills/unity-pipeline/` inside the package) and mirrors it beside `unity-cli` — e.g. into `.claude/skills/unity-pipeline/` for `claude-code`. A resolved package lives under `Library/PackageCache`, which no client's skill discovery reads, so this mirror is what makes the package's own skill loadable; a project without the package installs `unity-cli` alone. `unity skill refresh` re-reads the mirrored copy from the project's package, and reports rather than deletes when the package is gone. The package skill never installs user-globally — it versions with the project's own package.
+
 `codex` installs a real skill directory (`~/.agents/skills/unity-cli`, or `.agents/skills/unity-cli` with `--local`), which is where Codex looks for skills. Earlier CLI versions instead merged the whole skill into a shared `AGENTS.md`, which Codex reads at the start of every session, so the entire skill was charged to sessions that had nothing to do with Unity. Installing or refreshing now removes that leftover block and reports the file it cleaned. If it finds more than one such block it leaves the file alone and says so, rather than guessing which block is Unity's.
 
 ```bash
@@ -75,7 +118,7 @@ unity skill refresh --yes
 unity skill refresh --dry-run
 ```
 
-Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity upgrade`** — the embedded skill ships with the binary, so an upgraded CLI leaves previously-installed copies stale until they're refreshed.
+Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity self-update`** — the embedded skill ships with the binary, so an updated CLI leaves previously-installed copies stale until they're refreshed.
 
 Two safety behaviors: writing through a symlink is refused rather than followed, and `--local` from your home directory warns first, since for most clients that either duplicates the global install or writes somewhere the client never reads.
 
@@ -123,7 +166,8 @@ unity command eval "return Application.unityVersion;" --project-path /path/to/My
 **Warm / interactive.** Use an Editor you already have open, or `unity open <project>` (GUI, stays
 resident). Unlike the batch case, its Pipeline server *does* register with `unity status` (state
 `ready`), so `unity status` gates readiness. Drive it the same way (the CLI auto-discovers it; pass
-`--project-path` to disambiguate when several are open).
+`--project-path` to disambiguate when several are open — see
+[Targeting one of several running Editors](#targeting-one-of-several-running-editors)).
 
 ```bash
 unity open /path/to/MyProject

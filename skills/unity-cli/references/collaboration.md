@@ -32,12 +32,17 @@ id — find one with `unity cloud project list`, see [auth-license-cloud.md](aut
 and `--project-path <path>`. Neither is required: resolution order is
 
 1. explicit `--project-id`, else
-2. `--project-path` → `UNITY_PROJECT_PATH` env var → the current directory, reading
-   `ProjectSettings/PlayerSettings.asset` for the project's `cloudProjectId`.
+2. the `UNITY_CLOUD_PROJECT` env var, else
+3. `--project-path` → `UNITY_PROJECT_PATH` env var → the current directory, reading
+   `ProjectSettings/PlayerSettings.asset` for the project's `cloudProjectId`, else
+4. the stored default cloud project for your active organization
+   (`unity cloud project set-default`, see [auth-license-cloud.md](auth-license-cloud.md)).
 
-If neither yields an id it fails with: `Could not determine the Unity Cloud project for '<path>'.
+If none yields an id it fails with: `Could not determine the Unity Cloud project for '<path>'.
 Pass --project-id explicitly, or --project-path to point at a project linked to Unity Cloud.` So
-inside a cloud-linked Unity project you can drop the flag entirely. Most of `jira` is scoped
+inside a cloud-linked Unity project you can drop the flag entirely, and with a default set you can
+drop it outside one too. Note the link outranks the default: it is the more specific fact about the
+directory you pointed the command at. Most of `jira` is scoped
 differently — see [Jira](#jira).
 
 **`--all` — auto-paginate.** `annotations list`, `annotations replies`, and `jira issues list` accept

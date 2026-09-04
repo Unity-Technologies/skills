@@ -134,11 +134,29 @@ unity cloud org set-default <id-or-name>      # set active default org
 unity cloud org clear-default                 # revert to "All Organizations"
 
 # Projects in the active organization
-unity cloud project list --format json
+unity cloud project list --format json               # * marks the active default project
+
+# Default project, stored per organization
+unity cloud project current                          # print the active default project id
+unity cloud project set-default <id-or-name>         # project UUID, Genesis id, or exact name
+unity cloud project clear-default                     # drop this organization's default
 
 # Override the active organization for a single call
 unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
 ```
+
+**The default project is per organization.** `set-default` stores the project's UUID against the
+active organization's Genesis id, so switching your active organization switches which default
+applies, and `clear-default` only drops the active organization's. `cloud project current` and
+`clear-default` read and write the settings file directly, so they need no network and no session
+when the organization comes from your stored default; passing `--cloud-org <name>` needs a lookup,
+so that path requires a session like the rest.
+
+**What consumes it.** Commands that need a Unity Cloud project but were not given one fall back to
+the stored default. The order is the explicit flag (`--project-id`), then `UNITY_CLOUD_PROJECT`,
+then the cloud link in the project directory's `ProjectSettings/PlayerSettings.asset`, then the
+stored default, so inside a cloud-linked project the link still wins. `unity collaboration` and
+the `cloud-pipeline` preview family both use this chain.
 
 **Exit codes.** The `cloud` and `auth` commands map an authentication failure (expired or missing session, rejected sign-in) to `3`, and any other operational failure (network, server error) to `6` — so scripts can distinguish "sign in again" from a genuine command failure. `unity auth status` / `logout` follow the same convention.
 
