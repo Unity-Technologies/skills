@@ -58,15 +58,19 @@ You can jump in at any step. If the Unity package and SDK are already installed,
 
 ```
 levelplay-unity-integration/
-├── SKILL.md                   # Core skill instructions
-├── references/                # Detailed API guides for each ad format
+├── SKILL.md                       # The workflow spine: decisions, checkpoints, questions
+├── references/                    # Detail read on demand, linked from the step that needs it
+│   ├── initialization-api.md
 │   ├── rewarded-api.md
 │   ├── interstitial-api.md
 │   ├── banner-api.md
-│   ├── ios-setup.md
-│   ├── privacy-settings.md
 │   ├── ilrd-api.md
-│   ├── initialization-api.md
+│   ├── privacy-settings.md
+│   ├── ios-setup.md
+│   ├── dependency-resolution.md
+│   ├── testing-and-validation.md
+│   ├── troubleshooting.md
+│   ├── migration-sdk-9.md
 │   └── best-practices.md
 ├── CHANGELOG.md
 └── README.md

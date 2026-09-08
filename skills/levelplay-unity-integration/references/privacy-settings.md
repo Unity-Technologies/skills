@@ -7,7 +7,7 @@
 - [CCPA Compliance](#ccpa-compliance)
 - [COPPA Compliance](#coppa-compliance)
 - [Combined Compliance Example](#combined-compliance-example)
-- [Deprecated APIs (SDK 9.3.0 and Lower)](#deprecated-apis-sdk-930-and-lower)
+- [Deprecated / Legacy APIs](#deprecated--legacy-apis)
 - [Best Practices](#best-practices)
 - [Testing Privacy Settings](#testing-privacy-settings)
 - [Common Issues](#common-issues)
@@ -475,40 +475,25 @@ public class PrivacyComplianceManager : MonoBehaviour
 
 ---
 
-## Deprecated APIs (SDK 9.3.0 and Lower)
+## Deprecated / Legacy APIs
 
-**⚠ These APIs are deprecated. Use the current `LevelPlayPrivacySettings` APIs instead.**
+**⚠️ The APIs below are superseded across all supported versions. Use the current `LevelPlayPrivacySettings` APIs shown in the sections above instead.**
 
-### Deprecated GDPR API — LevelPlay.SetConsent
+> **`SetGDPRConsents(Dictionary)` is NOT in this list.** It is the **current GDPR API on SDK 9.4.x** — not a legacy API. It only becomes `[Obsolete]` on SDK 9.5.0+, where `SetGDPRConsent(bool)` replaces it. See [GDPR Consent Management](#gdpr-consent-management) above for the version-appropriate call. Do not treat the per-network dictionary as deprecated if you are on 9.4.x.
+
+### Legacy GDPR API — LevelPlay.SetConsent (all versions)
 
 ```csharp
-// DEPRECATED - Do not use
-LevelPlay.SetConsent(true); // Grants consent for all networks
+// DEPRECATED - Do not use. Marked [Obsolete] in the SDK.
+LevelPlay.SetConsent(true);  // Grants consent for all networks
 LevelPlay.SetConsent(false); // Denies consent for all networks
 ```
 
-**Status:** Marked as `[Obsolete]` in SDK code.
+**Status:** Marked as `[Obsolete]` in SDK code (all supported versions).
 
-**Migration:** Use `LevelPlayPrivacySettings.SetGDPRConsents(Dictionary)` (SDK 9.4.x) or `LevelPlayPrivacySettings.SetGDPRConsent(bool)` (SDK 9.5.0+).
+**Migration:** Use `LevelPlayPrivacySettings.SetGDPRConsents(Dictionary)` on SDK 9.4.x, or `LevelPlayPrivacySettings.SetGDPRConsent(bool)` on SDK 9.5.0+.
 
-### Deprecated GDPR API — SetGDPRConsents (per-network dictionary, SDK 9.5.0+)
-
-```csharp
-// DEPRECATED as of SDK 9.5.0+ — generates compiler warning
-// NOTE: This is the CORRECT API for SDK 9.4.x. Only deprecated from 9.5.0 onwards.
-Dictionary<string, bool> consents = new Dictionary<string, bool>
-{
-    { "UnityAds", true },
-    { "AdMob", true }
-};
-LevelPlayPrivacySettings.SetGDPRConsents(consents);
-```
-
-**Note:** `SetGDPRConsents(Dictionary)` is the correct API for SDK 9.4.x. It becomes deprecated only in SDK 9.5.0+, where it is replaced by `SetGDPRConsent(bool)`. If you are on 9.5.0+, migrate to the boolean API.
-
-**Migration (9.5.0+ only):** Use `LevelPlayPrivacySettings.SetGDPRConsent(true/false)` instead.
-
-### Deprecated CCPA API
+### Legacy CCPA API
 
 ```csharp
 // DEPRECATED - Do not use
@@ -518,7 +503,7 @@ LevelPlay.SetMetaData("do_not_sell", "false");
 
 **Migration:** Use `LevelPlayPrivacySettings.SetCCPA(true)` instead.
 
-### Deprecated COPPA API
+### Legacy COPPA API
 
 ```csharp
 // DEPRECATED - Do not use
@@ -593,9 +578,9 @@ private void OnInitSuccess(LevelPlayConfiguration config)
 
 ### Issue: Using deprecated APIs
 
-**Cause:** Following outdated documentation or examples using `LevelPlay.SetConsent()` or `SetGDPRConsents(Dictionary)`
+**Cause:** Following outdated documentation or examples using the legacy `LevelPlay.SetConsent()` or `LevelPlay.SetMetaData("do_not_sell"/"is_child_directed", ...)` privacy calls.
 
-**Solution:** Migrate to current APIs — use `LevelPlayPrivacySettings.SetGDPRConsent(bool)` for GDPR
+**Solution:** Use the `LevelPlayPrivacySettings` API appropriate to your SDK version — for GDPR, `SetGDPRConsents(Dictionary)` on SDK 9.4.x, or `SetGDPRConsent(bool)` on SDK 9.5.0+. (Note: `SetGDPRConsents(Dictionary)` is current on 9.4.x and only warns as obsolete on 9.5.0+ — it is not a legacy API on 9.4.x.)
 
 ---
 

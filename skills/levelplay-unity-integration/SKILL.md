@@ -1,17 +1,21 @@
 ---
 name: levelplay-unity-integration
-description: Adds ads and monetization to a Unity game using the LevelPlay Mediation SDK (installed via the Ads Mediation UPM package). Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android. Also use when upgrading the LevelPlay or IronSource SDK version, migrating from deprecated IronSource.Agent APIs, or migrating a game from Unity Ads to LevelPlay.
+description: Integrates the LevelPlay Mediation SDK via the Ads Mediation UPM package. Use when a developer asks about adding ads to a Unity game, implementing rewarded, interstitial, or banner ads, setting up ad mediation, configuring ad networks, installing or updating the Ads Mediation package, troubleshooting LevelPlay namespace errors, resolving Android gradle or iOS CocoaPods dependency issues for ads, configuring ATT or privacy settings for ad compliance, tracking impression-level revenue (ILRD), initializing the LevelPlay SDK, or setting up ad unit IDs. Also use when a developer wants to monetize their Unity game with ads, asks how to get started with LevelPlay, ads, or mediation, or needs help with any part of the LevelPlay integration workflow including platform-specific setup for iOS or Android. Also use when upgrading the LevelPlay or IronSource SDK version, migrating from deprecated IronSource.Agent APIs, or migrating a game from Unity Ads to LevelPlay.
 ---
 
 # LevelPlay Unity package/SDK Integration
 
-Treat this as an interactive workflow to run with the developer, not as background reference. Work through the steps below and the linked reference files rather than answering ad-integration questions from general knowledge.
+Base editor-side checks on the actual project rather than assumptions — read the project files, or ask the user to confirm in the Editor. The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
 
-The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
+This skill covers the LevelPlay integration path only; it does not cover other mediation SDKs. If the user explicitly asks about alternatives, acknowledge that alternatives exist and point them to those vendors' own documentation — do not describe, characterize, or make claims about competitor products.
+
+Follow the steps and provide only the files and configurations described in this skill. Do not proactively add steps, create files, or make recommendations based on general knowledge. If the user asks a question outside the scope of this skill, check the skill and reference files first to confirm it is not covered. If it is not, use general knowledge to respond, but do not incorporate additional steps or files into the integration workflow as a result.
 
 Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding.
 
 LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and runs a unified auction across multiple ad networks and bidders to maximize competition for each impression. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
+
+**This SKILL.md is the workflow spine. It keeps the decisions, checkpoints, and exact questions; longer code, full API detail, and edge cases live in `references/` and are linked from the relevant step. Read the linked reference when you reach that step — do not answer from general knowledge instead.**
 
 ## Integration Workflow
 
@@ -20,7 +24,7 @@ LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad
 Ask: "Are you starting a new LevelPlay integration, migrating an existing one (from an older SDK version or from Unity Ads), or troubleshooting an existing setup?"
 
 - **New integration**: proceed to Step 1.
-- **Migration** (SDK upgrade, replacing IronSource.Agent APIs, migrating from Unity Ads, or fixing a Maven Central Android build failure): Read `references/migration-sdk-9.md`. Ask which of the five scenarios applies — A = SDK upgrade, B = init API migration, C = ad unit API migration, D = Maven Central build failure, E = Unity Ads migration — then follow the matching scenario. After applying all code changes, work through the Migration Completeness Checklist (section C5 of the reference) — it catches requirements that a line-by-line translation misses because the legacy code had no equivalent line. Then run a compilation check if the environment allows (`dotnet build`, or ask the user to check the Unity console). If compilation errors appear, diagnose and fix them before presenting results. If no compilation check is possible, do not block or keep retrying — list the files you changed, ask the user to check the Unity console, and continue.
+- **Migration** (SDK upgrade, replacing IronSource.Agent APIs, migrating from Unity Ads, or fixing a Maven Central Android build failure): Read `references/migration-sdk-9.md`. Ask which of the five scenarios applies — A = SDK upgrade, B = init API migration, C = ad unit API migration, D = Maven Central build failure, E = Unity Ads migration — then follow the matching scenario. After applying all code changes, work through the Migration Completeness Checklist (section C5 of the reference) — it catches requirements that a line-by-line translation misses because the legacy code had no equivalent line. Then ask the user to check the Unity console for compilation errors, and fix any that appear before presenting results. Do not block or keep retrying if you cannot see the console: list the files you changed, say what to look for, and continue.
 - **Troubleshooting or adding to an existing setup** (ATT, GDPR, ILRD, Test Suite, build errors on a fresh integration, or adding a feature to an already-working integration): Identify what the user needs and go directly to the relevant step or reference from "When to Read Detailed References."
 
 ### 1. Verify Unity Environment
@@ -41,20 +45,54 @@ Record this answer for later strategy recommendation in Step 8.
 
 ### 3. Install LevelPlay SDK via UPM
 
-**If the SDK is already installed:** Ask the user to verify 'Ads Mediation' appears under 'Packages: In Project' in the Package Manager. If it does, proceed directly to Step 4.
+**If the SDK looks already installed:** do not take that on trust, and do not ask the user to read
+the Package Manager window for you. Read `Packages/packages-lock.json` and look for
+`com.unity.services.levelplay`. If it is there, say which version resolved and proceed to Step 4.
+If it is not, it is not installed, whatever the conversation so far has assumed: continue with the
+install below.
 
 Guide through installing the LevelPlay Unity package using Unity Package Manager:
 
 1. Open Unity → Window > Package Manager
 2. Select Unity Registry dropdown or Services tab
-3. Search for "Ads Mediation" package
-4. Review package description to confirm it's the LevelPlay SDK
+3. In the Package Manager search bar, type **Ads Mediation**
+4. Confirm the package name matches exactly: the correct package is titled **Ads Mediation**. Do not install either of these packages:
+   - **Ads IAP Mediation Adaptor** (a separate in-app purchases package, not the LevelPlay SDK)
+   - **Advertisement Legacy** (a deprecated package, not compatible with the current LevelPlay integration)
 5. Click Install button
 6. Wait for package to download and import
 
 When you install the package, you may see a prompt to install Mobile Dependency Resolver — click **Import** if it appears. This is covered in more detail in the next step.
 
-Verify the package appears under "Packages: In Project" in Package Manager after installation.
+**Then verify it resolved, by reading the project rather than by asking.** The package id is
+`com.unity.services.levelplay` (its Package Manager display name is **Ads Mediation**; the id is
+what the project files record). Check both files:
+
+- **`Packages/manifest.json`** lists what the project *asks for*. `com.unity.services.levelplay`
+  must appear under `dependencies`.
+- **`Packages/packages-lock.json`** records what Unity actually *resolved*. The same id must appear
+  here too, with a concrete version. This is the file that answers "did it install", and it is the
+  one to trust.
+
+Both are plain JSON in the project, so this check needs no Editor, no CLI, and nothing from the
+user. Read them.
+
+> **This is a hard gate, not a formality.** Do not write, generate, or paste a single line of
+> LevelPlay code until `com.unity.services.levelplay` is present in `packages-lock.json`. Skipping
+> ahead produces code that looks correct, compiles nowhere, and fails with `CS0246` on every
+> LevelPlay symbol. If the id is missing from `manifest.json`, the install never happened. If it is
+> in `manifest.json` but not `packages-lock.json`, Unity has not resolved it yet: the Editor may
+> still be importing, or resolution failed. Say which of the two you found, and stop.
+>
+> **If you added the id to `manifest.json` yourself and no Editor has run since, the lock file will
+> not show it yet. That is expected, not a failure.** Never write the entry into
+> `packages-lock.json` yourself: that file is Unity's resolution output, hand-editing it is what the
+> migration guide forbids, and an entry you wrote is a false "resolved" signal rather than a passed
+> gate. Ask the user to open the Unity Editor so resolution runs, then re-read the file. If no
+> Editor is available at all, say so and stop there rather than manufacturing the evidence.
+
+Report the resolved version you found. Do not report "installed" on the strength of the Package
+Manager window, a previous turn, or a user's recollection.
 
 **Network Manager:** Access **Ads Mediation > Network Manager** at any time to install additional ad network adapters and check for SDK and adapter updates.
 
@@ -66,77 +104,21 @@ For iOS builds, note that SKAdNetwork configuration will be needed later (refere
 
 **Platform checkpoint — ask before proceeding:** "Which platform(s) are you targeting — iOS, Android, or both?" Record this. It determines which dependency resolution steps apply here, whether ATT is required (Step 6.5), and which testing steps are relevant (Step 10).
 
-LevelPlay requires native Android/iOS libraries that Unity's package manager alone doesn't handle. A dependency manager bridges this gap. If you've never added one to your project, don't worry; we'll walk you through it.
+**Set the active build target now.** Switch the project's active build target to Android or iOS via **File ▸ Build Profiles** (called **Build Settings** before Unity 6) → **Switch Platform**. This is required before any testing: LevelPlay only runs on Android/iOS targets, so even mock ads in the Editor (Step 10) do nothing while the target is Standalone/PC/Mac.
 
-**Check for existing dependency manager:**
+**Resolve dependencies for the target platform(s).** LevelPlay requires native Android/iOS libraries that Unity's package manager alone doesn't handle; a dependency manager (MDR, UEDM, or EDM4U) bridges this gap. The full procedure — checking for an existing dependency manager, resolving on Android vs iOS, installing one if the user has none, verification, and the older-version Custom Main Gradle Template — is in **`references/dependency-resolution.md`**. Walk the user through it now, and **if targeting both Android and iOS, complete resolution for both before proceeding.**
 
-Ask: "Do you have a dependency manager like Mobile Dependency Resolver (MDR), Unity External Dependency Manager (UEDM), or External Dependency Manager for Unity (EDM4U) installed? Check your Assets folder for these tools."
+Ask: "Have you run dependency resolution for your target platform(s) without errors?"
 
-**If unsure**: Check Assets folder in Unity for folders named 'Mobile Dependency Resolver', 'External Dependency Manager', or 'EDM4U'. If you see any folder with these names, answer 'Yes'. If not, answer 'No'.
-
-**If they HAVE a dependency manager:**
-
-**For Android:**
-- With newer versions of Mobile Dependency Resolver (shipped with the Ads Mediation package): Dependencies auto-resolve on build (no manual action needed). If unsure, try building first — if it fails, manually resolve via the Android Resolver menu.
-- With older MDR or other managers: Go to Assets > [Your Dependency Manager] > Android Resolver > Resolve
-- Example paths:
-  - MDR: `Assets > Mobile Dependency Resolver > Android Resolver > Resolve`
-  - EDM4U: `Assets > External Dependency Manager > Android Resolver > Resolve`
-- Menu paths may vary depending on dependency manager version. Look for 'Android Resolver' under your dependency manager's menu.
-
-**For iOS:**
-- All dependency managers require manual CocoaPods installation:
-  - MDR: `Assets > Mobile Dependency Resolver > iOS Resolver > Install Cocoapods`
-  - EDM4U: `Assets > External Dependency Manager > iOS Resolver > Install Cocoapods`
-  - UEDM: Similar path under Unity External Dependency Manager
-
-Ask: "Have you run the dependency resolution for your target platform(s)?"
-
-**If targeting both Android and iOS**, complete dependency resolution for both platforms before proceeding.
-
-**If they DON'T have a dependency manager:**
-
-If the user didn't see the Mobile Dependency Resolver prompt during installation (see Step 3), restart Unity Editor — the prompt may appear after restart. If it still doesn't appear, they may already have a dependency manager installed.
-
-When prompted:
-1. Click **Import** on the prompt to install Mobile Dependency Resolver
-2. After installation:
-   - **Android**: Dependencies will auto-resolve on build (newer MDR versions)
-   - **iOS**: Go to Assets > Mobile Dependency Resolver > iOS Resolver > Install Cocoapods
-
-**Alternative**: Install another dependency manager like EDM4U if preferred (search for installation instructions in their documentation).
-
-**Note**: Unity is transitioning to Unity External Dependency Manager (UEDM). If available in your Unity version, prefer UEDM over MDR.
-
-**Verification:**
-
-After resolution, verify:
-- **Android**: Gradle dependencies in `Assets/Plugins/Android/`
-- **iOS**: Podfile references or CocoaPods installation confirmation in console
-
-**If dependency resolution fails**: Check the Unity console for specific error messages and share them for troubleshooting — or see the **Common Issues and Solutions** section below for gradle and CocoaPods error guidance.
-
-**Android Custom Main Gradle Template (Older LevelPlay Versions):**
-
-For older LevelPlay Unity package versions, manually enable the Custom Main Gradle Template:
-1. Go to Edit > Project Settings > Player
-2. Select Android tab
-3. Expand Publishing Settings
-4. Under Build, check Custom Main Gradle Template
-
-In newer LevelPlay Unity package versions (with newer Mobile Dependency Resolver), this is enabled automatically by default.
-
-**Android API 33+ Requirement:**
-
-If targeting Android API level 33 or higher, declare the AD_ID permission in AndroidManifest.xml:
+**Android API 33+ (Android 13+):** declare the AD_ID permission in AndroidManifest.xml:
 
 ```xml
 <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
 ```
 
-This permission is required for advertising ID access on Android 13+.
+Without it, advertising ID access fails on Android 13+ devices. Details in `references/dependency-resolution.md`.
 
-**If you skip this step and target Android API 33+:** advertising ID access will fail on Android 13+ devices.
+**If dependency resolution fails**, see `references/troubleshooting.md` for gradle and CocoaPods error guidance.
 
 ### 5. Get App Key and Ad Unit IDs
 
@@ -180,11 +162,9 @@ Ask the user: "Do you need to configure privacy settings for GDPR, CCPA/CPRA (or
 
 **If YES to any:**
 
-Privacy settings must be configured **BEFORE** SDK initialization. See `references/privacy-settings.md` for complete implementation guide.
+Privacy settings must be configured **BEFORE** SDK initialization. See `references/privacy-settings.md` for the complete implementation guide (UI, consent management, combined regulations, and the full network key list).
 
-**Quick examples:**
-
-**GDPR:**
+**GDPR — the correct API depends on the user's SDK version** (check in **Ads Mediation > Network Manager**):
 
 **SDK 9.5.0+** — global consent boolean:
 ```csharp
@@ -194,7 +174,7 @@ using Unity.Services.LevelPlay;
 LevelPlayPrivacySettings.SetGDPRConsent(true);
 ```
 
-**SDK 9.4.x** — per-network consent dictionary (check your SDK version in Network Manager):
+**SDK 9.4.x** — per-network consent dictionary (this is the CURRENT API on 9.4.x, not legacy — it only becomes `[Obsolete]` on 9.5.0+; do not mislabel it as deprecated):
 ```csharp
 using Unity.Services.LevelPlay;
 using System.Collections.Generic;
@@ -207,27 +187,19 @@ LevelPlayPrivacySettings.SetGDPRConsents(new Dictionary<string, bool> {
 });
 ```
 
-If neither API compiles, your Unity package/SDK may be below 9.4.0 — upgrade via **Ads Mediation > Network Manager**.
+If neither API compiles, your Unity package/SDK may be below 9.4.0 (legacy) — recommend upgrading via **Ads Mediation > Network Manager**. If the user cannot upgrade, the legacy `LevelPlay.SetConsent(bool)` API is documented in `references/privacy-settings.md`.
 
 **CCPA (SDK 9.4.0+):**
 ```csharp
-using Unity.Services.LevelPlay;
-
 LevelPlayPrivacySettings.SetCCPA(true); // User opted out of data sale
 ```
 
 **COPPA (SDK 9.4.0+):**
 ```csharp
-using Unity.Services.LevelPlay;
-
 LevelPlayPrivacySettings.SetCOPPA(true); // Child-directed app
 ```
 
-The CCPA and COPPA APIs above also require SDK 9.4.0+. If either fails to compile, upgrade your Unity package/SDK via **Ads Mediation > Network Manager**.
-
-Call these BEFORE `LevelPlay.Init()` in Step 7.
-
-For complete implementation with UI, consent management, and combined regulations, see `references/privacy-settings.md`.
+If CCPA or COPPA fails to compile, upgrade your Unity package/SDK via **Ads Mediation > Network Manager**. Call all of these BEFORE `LevelPlay.Init()` in Step 7.
 
 **For iOS builds — required regardless of privacy regulations above:** Also implement App Tracking Transparency (ATT) before proceeding to Step 7. Apple requires ATT authorization before your app tracks users or accesses the device's advertising identifier on iOS 14.5+. Request ATT authorization before calling `LevelPlay.Init()` — this is both an Apple platform requirement and necessary for personalized ads (which also affects fill rate). See `references/ios-setup.md` for the ATT implementation code.
 
@@ -237,28 +209,32 @@ For complete implementation with UI, consent management, and combined regulation
 
 **Installation checkpoint:**
 
-Before providing initialization code, confirm:
+**First, re-read `Packages/packages-lock.json` and confirm `com.unity.services.levelplay` is there.**
+Do this every time you reach this point, even if Step 3 already passed earlier in the conversation.
+It costs one file read, and it is the only item here you can settle without the user. An earlier
+turn saying the package was installed is not evidence that it is: this check exists because the
+install step is the one most often skipped, and the resulting code fails with `CS0246` on every
+LevelPlay symbol. If the id is absent, go back to Step 3 and do not write initialization code.
 
-**If the user confirmed they are not using AdMob, omit the Step 6 item from the confirmation below.**
-
-If following the sequential workflow and Steps 3 and 4 have already been confirmed in this conversation, skip those items — only ask about Step 5 and Step 6 (if AdMob).
+Then confirm the remaining prerequisites with the user, which are the ones no file can answer.
+**If the user confirmed they are not using AdMob, omit the Step 6 item.** If Step 4 was already
+confirmed in this conversation, skip that item and ask only about Step 5 and Step 6 (if AdMob).
 
 "Please confirm these are working correctly:
-- Step 3: Do you see the 'Ads Mediation' package in Unity Package Manager under 'Packages: In Project'?
 - Step 4: Have you run dependency resolution for your target platform(s) without errors?
 - Step 5: Do you have your App Key copied from the LevelPlay dashboard?
 - Step 6 (only if using AdMob): Have you configured AdMob keys in Unity Editor settings?
 
 Verify these are working before proceeding."
 
-**If they answer NO or are unsure:**
-- Missing Step 3: Code will show `CS0246` namespace errors → Direct to Step 3
+**If the package check failed or they answer NO or are unsure:**
+- Package id absent from `packages-lock.json`: code will show `CS0246` namespace errors → Direct to Step 3. This one you established yourself; do not ask the user to overrule it.
 - Missing Step 4: Code compiles but Android/iOS builds will fail → Direct to Step 4
 - Missing Step 5: They won't have credentials to initialize → Direct to Step 5
 - Do not provide C# code until they confirm all steps are complete
 
 **If they answer YES:**
-- **Optional — Analytics: ILRD Wiring.** Ask this question verbatim — do not summarize or rephrase it: "Do you use an analytics or attribution platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend) that needs ad revenue data? If yes, the integration will include a logging stub for Impression Level Revenue (ILRD) — a few lines of code, no analytics platform setup required yet. (Yes / No / Not sure — defaults to yes)" Record the answer.
+- **Optional — Analytics: ILRD Wiring.** Ask this question verbatim — do not summarize or rephrase it: "Do you use an analytics or attribution platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend) that needs ad revenue data? If yes, the init script will include a logging stub for Impression Level Revenue (ILRD) — 3 lines of code, no analytics platform setup required yet. (Yes / No / Not sure — defaults to yes)" Record the answer.
 - Proceed with initialization code.
 
 LevelPlay SDK must be initialized before loading or showing any ads. Initialization should happen early in the application lifecycle.
@@ -266,197 +242,18 @@ LevelPlay SDK must be initialized before loading or showing any ads. Initializat
 **Ask how they want to handle initialization. Present all four options exactly as listed — do not condense or omit any:**
 1. Create a new dedicated script for LevelPlay initialization
 2. Add to an existing initialization/manager script they already have
-3. Create a new LevelPlay script that your existing manager calls
+3. Create a new LevelPlay script that your existing manager references
 4. Just show me the initialization code — I'll decide how to integrate it
 
-#### Option 1: Creating a New Script
+**Full code for each option is in `references/initialization-api.md` (Code Organization Options).** Behavior that must not change:
+- **Option 1 (new script):** If ATT was set up in Step 6.5 (iOS), use the `LevelPlayInitializer.cs` from `references/ios-setup.md` Part 3 (the `IEnumerator Start()` coroutine variant) instead of the plain template.
+- **Option 4 (just the code):** provide the complete Option 1 initialization class as a standalone snippet — do NOT create files or add Inspector/GameObject setup steps — with the note: "save it as `LevelPlayInitializer.cs`, attach it to a persistent GameObject in your first scene, and set the App Key field in the Inspector."
 
-If creating a new script (e.g., `LevelPlayInitializer.cs`), use this complete class:
+**ILRD wiring (if the user answered Yes or Not Sure).** The correct approach depends on the SDK version (check in **Ads Mediation > Network Manager**):
+- **SDK 9.5.0+ (current):** add nothing to the initializer — ILRD is delivered per ad instance via `OnAdImpressionDataReady`, wired when each ad is created in Step 9. The global `LevelPlay.OnImpressionDataReady` event is **deprecated on 9.5.0+ and generates a compiler warning** — do not use it.
+- **SDK 9.4.x and earlier:** subscribe to the global `LevelPlay.OnImpressionDataReady` event **before** `LevelPlay.Init()`, add a logging stub, and unsubscribe in `OnDestroy()`. On the iOS coroutine initializer, place the subscription inside `InitializeLevelPlay()` immediately before `LevelPlay.Init(appKey)`.
 
-```csharp
-using UnityEngine;
-using Unity.Services.LevelPlay;
-
-public class LevelPlayInitializer : MonoBehaviour
-{
-    [SerializeField] private string appKey;
-
-    void Awake()
-    {
-        // Persist across scene loads so ads stay initialized
-        DontDestroyOnLoad(gameObject);
-    }
-
-    void Start()
-    {
-        // Register initialization callbacks
-        LevelPlay.OnInitSuccess += OnInitSuccess;
-        LevelPlay.OnInitFailed += OnInitFailed;
-
-        // Initialize the SDK with your App Key
-        LevelPlay.Init(appKey);
-    }
-
-    private void OnInitSuccess(LevelPlayConfiguration config)
-    {
-        Debug.Log("LevelPlay SDK initialized successfully");
-        // SDK is now ready to load ads
-    }
-
-    private void OnInitFailed(LevelPlayInitError error)
-    {
-        Debug.LogError($"LevelPlay initialization failed: {error.ErrorMessage}");
-    }
-
-    void OnDestroy()
-    {
-        LevelPlay.OnInitSuccess -= OnInitSuccess;
-        LevelPlay.OnInitFailed -= OnInitFailed;
-    }
-}
-```
-
-**File location**: Save as `Assets/Scripts/LevelPlayInitializer.cs` (or `Assets/Scripts/Ads/LevelPlayInitializer.cs` if you have an Ads subfolder)
-
-**After creating:**
-1. Attach script to a GameObject in your first scene
-2. In Unity Inspector, find the "App Key" field
-3. Paste your App Key from Step 5 into that field
-
-**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up impression-level revenue. How you subscribe depends on the SDK version — check it in **Ads Mediation > Network Manager**:
-
-- **SDK 9.5.0+ (current):** subscribe per ad instance using `OnAdImpressionDataReady` on each ad object (rewarded, interstitial, banner) when you create it — not here in the initializer. The global event below is deprecated on 9.5.0+ and generates a compiler warning. See `references/ilrd-api.md` for the per-instance setup, then skip the snippet below.
-- **SDK 9.4.x and earlier:** use the global event below, registered before `LevelPlay.Init()`.
-
-For **SDK 9.4.x and earlier**, add these lines inside `Start()` (before `LevelPlay.Init(appKey)`):
-
-```csharp
-// SDK 9.4.x and earlier only. On 9.5.0+ use per-instance OnAdImpressionDataReady instead.
-// Recommended: register as early as possible, before LevelPlay.Init(). Subscribing in
-// OnInitSuccess also works, since impressions only fire after an ad is shown.
-// Callback fires on a BACKGROUND thread — see references/ilrd-api.md for
-// thread-safe forwarding patterns and a Firebase example.
-LevelPlay.OnImpressionDataReady += OnImpressionDataReady;
-```
-
-Add this stub method to the class:
-
-```csharp
-private void OnImpressionDataReady(LevelPlayImpressionData impressionData)
-{
-    // See references/ilrd-api.md for full implementation.
-    // For now, just log so you can verify it fires:
-    Debug.Log($"ILRD: {impressionData.AdNetwork} / {impressionData.AdFormat} / ${impressionData.Revenue}");
-}
-```
-
-And unsubscribe in `OnDestroy()`:
-
-```csharp
-LevelPlay.OnImpressionDataReady -= OnImpressionDataReady;
-```
-
-**Next:** Once you confirm the log fires after your first ad impression, read `references/ilrd-api.md` to wire it up to your actual analytics platform. Note: ILRD callbacks do not fire with mock ads in the Unity Editor — you'll need a device build to verify this log fires (see Step 10).
-
-#### Option 2: Adding to Existing Script
-
-If adding to an existing script (e.g., `GameManager.cs`):
-
-**1. Add namespace at top of file:**
-```csharp
-using Unity.Services.LevelPlay;
-```
-
-**2. In existing Start() or Awake() method, add initialization:**
-```csharp
-void Start()
-{
-    // Register initialization callbacks
-    LevelPlay.OnInitSuccess += OnInitSuccess;
-    LevelPlay.OnInitFailed += OnInitFailed;
-
-    // Initialize the SDK - REPLACE with your actual App Key from Step 5
-    LevelPlay.Init("YOUR_APP_KEY_HERE");
-
-    // ... your other existing Start() code
-}
-```
-
-**3. Add callback methods to class:**
-```csharp
-private void OnInitSuccess(LevelPlayConfiguration config)
-{
-    Debug.Log("LevelPlay SDK initialized successfully");
-    // SDK is ready - you can now create ad objects
-}
-
-private void OnInitFailed(LevelPlayInitError error)
-{
-    Debug.LogError($"LevelPlay initialization failed: {error.ErrorMessage}");
-}
-```
-
-**4. In existing OnDestroy() (or create if it doesn't exist), add:**
-```csharp
-void OnDestroy()
-{
-    // Unregister callbacks
-    LevelPlay.OnInitSuccess -= OnInitSuccess;
-    LevelPlay.OnInitFailed -= OnInitFailed;
-}
-```
-
-**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up ILRD following the version-aware guidance in Option 1 above — per ad instance via `OnAdImpressionDataReady` on SDK 9.5.0+, or the global event before `LevelPlay.Init(...)` (with a stub handler and unsubscribe in `OnDestroy()`) on SDK 9.4.x and earlier.
-
-Replace `"YOUR_APP_KEY_HERE"` with your actual App Key from Step 5 (the alphanumeric string copied from the LevelPlay dashboard).
-
-**Note:** If your existing script doesn't already persist across scenes, add `DontDestroyOnLoad(gameObject);` to its `Awake()` method to prevent re-initialization when loading new scenes.
-
-Before testing, double-check that you've replaced the placeholder with your actual App Key. The App Key should be an alphanumeric string, NOT 'YOUR_APP_KEY_HERE'.
-
-#### Option 3: Separate Script Called by Manager
-
-If you want to keep ads code in its own script but have your existing manager control initialization:
-
-**1. Create `LevelPlayInitializer.cs` using the complete class code from Option 1**
-
-**2. In existing manager script (e.g., `GameManager.cs`), add:**
-```csharp
-using UnityEngine;
-
-public class GameManager : MonoBehaviour
-{
-    void Awake()
-    {
-        // Add LevelPlay initialization as a component
-        gameObject.AddComponent<LevelPlayInitializer>();
-
-        // ... your other initialization code
-    }
-}
-```
-
-This keeps ad code isolated in `LevelPlayInitializer.cs` while `GameManager` controls when it initializes.
-
-**Note:** `LevelPlayInitializer.Awake()` calls `DontDestroyOnLoad(gameObject)`, which will mark this entire GameObject — including your GameManager and any other components on it — as persistent across scenes. Ensure this is compatible with your scene management strategy.
-
-**If the user answered Yes or Not Sure to ILRD in Step 7**, wire up ILRD following the version-aware guidance in Option 1 above (on SDK 9.5.0+ the per-instance subscriptions live in the ad manager classes, not `LevelPlayInitializer.cs`). No changes needed in `GameManager`.
-
-Before testing, ensure you've entered your actual App Key in the Unity Inspector's App Key field on the LevelPlayInitializer component (see Option 1's After Creating steps above).
-
-#### Option 4: Just Show Me the Code
-
-Provide the complete initialization code from Option 1 as a standalone snippet, without instructions for attaching to a GameObject or setting up the Inspector. Include a note: "This is the full initialization class — save it as `LevelPlayInitializer.cs`, attach it to a persistent GameObject in your first scene, and set the App Key field in the Inspector."
-
-**Key points:**
-- Always register `OnInitSuccess` and `OnInitFailed` callbacks before calling `Init()`
-- Call initialization early in app lifecycle (in `Awake()` or `Start()` of first scene)
-- Only initialize once. If initialization script is in first scene and you have multiple scenes, add `DontDestroyOnLoad(gameObject);` in `Awake()` to prevent re-initialization when loading new scenes
-- Wait for `OnInitSuccess` before creating ad objects
-
-If initialization fails repeatedly, see the Common Issues section for troubleshooting. Common causes include incorrect App Key, no internet connection, or missing package dependencies.
-
-For more advanced initialization options (user ID, consent management, etc.), see `references/initialization-api.md`.
+The exact wiring code for each option (including the iOS coroutine placement) is in `references/initialization-api.md` (Version-Aware ILRD Init Wiring). ILRD callbacks do not fire with mock ads — a device build is needed to verify (see Step 10). For advanced options (user ID, segmentation, consent management), see `references/initialization-api.md`.
 
 ### 8. Recommend Ad Unit Strategy
 
@@ -464,91 +261,21 @@ Based on the optimization goal identified in Step 2, recommend an ad unit strate
 
 **Recall the user's optimization goal from Step 2.** If the conversation has been long or the answer is unclear, confirm: "Earlier you mentioned your optimization goal. To confirm, are you primarily focused on revenue, user experience, or a balance of both?"
 
-**Map the answer to the appropriate strategy:**
-- User focused on **maximizing revenue, impressions, or monetization** → Use **Revenue-Focused Strategy**
-- User focused on **user experience, retention, or avoiding annoyance** → Use **UX-Focused Strategy**
-- User wants to **balance both** or mentioned **both revenue and UX** → Use **Balanced Strategy**
-- User answered **"Not sure yet"** in Step 2 → Use **Balanced Strategy**. After presenting the recommendation, add: "Since you weren't sure of your goal earlier, I've gone with the Balanced approach — if you'd prefer to lean more toward revenue or user experience now that you've seen the options, just say so."
-- If unclear, ask: "Would you prioritize revenue, user experience, or a balance of both?"
+**Map the answer to a strategy** and give a brief recommendation (full detail, benchmarks, and placement guidance are in `references/best-practices.md` under "Ad Format Strategy by Goal"):
 
-#### Revenue-Focused Strategy
+- **Revenue-focused** → **Revenue Strategy.** Rewarded (primary monetization, multiple high-value moments) → Interstitial (secondary; at transitions; frequency cap 3–5 min) → Banner (persistent during gameplay). Bid floors are an optional revenue lever configured in Step 9. Implementation priority: **Rewarded → Interstitial → Banner**.
+- **UX-focused** → **UX Strategy.** Rewarded only, user-initiated (explicit opt-in), high-value rewards, **no forced ads, ever**. Interstitials optional/sparingly at session boundaries only; banners generally avoided or menu-only. Implementation priority: **Rewarded only, or Rewarded → (optional) Interstitial**.
+- **Balanced** → **Balanced Strategy.** Rewarded (2–3 strategic placements) → Interstitial (moderate; natural breakpoints; frequency cap 5–7 min) → Banner (selective; menus/low-attention). Implementation priority: **Rewarded → Interstitial → Banner (selective)**.
+- **"Not sure yet"** (from Step 2) → use the **Balanced Strategy**, then add: "Since you weren't sure of your goal earlier, I've gone with the Balanced approach — if you'd prefer to lean more toward revenue or user experience now that you've seen the options, just say so."
+- If still unclear, ask: "Would you prioritize revenue, user experience, or a balance of both?"
 
-**Goal**: Maximize ad revenue and impression opportunities
-
-**Recommended ad units:**
-- **Rewarded ads**: Primary monetization driver
-  - Implement in multiple high-value moments
-  - Use for premium rewards, extra lives, bonus content
-  - Load ads proactively to ensure availability
-
-- **Interstitial ads**: Secondary revenue source
-  - Show at natural transition points (level complete, game over)
-  - Frequency cap: Every 3-5 minutes of gameplay (see `references/interstitial-api.md`)
-
-- **Banner ads**: Persistent revenue during gameplay
-  - Show during core gameplay loops
-  - Use smart positioning to avoid UI conflicts
-
-**Revenue lever: bid floor (optional)**
-
-Once ads are live, bid floors let you set a minimum bid price per ad unit — raising your average eCPM at the cost of lower fill rate. You'll be prompted in Step 9 to configure this or skip and add it later.
-
-**Implementation priority**: Rewarded → Interstitial → Banner
-
-The next step will ask you to choose which ad formats to implement from this priority list.
-
-#### UX-Focused Strategy
-
-**Goal**: Maintain excellent user experience while monetizing thoughtfully
-
-**Recommended ad units:**
-- **Rewarded ads**: Primary and often only ad format
-  - User-initiated only (explicit opt-in)
-  - High-value rewards that feel generous
-  - No forced ads, ever
-
-- **Interstitial ads**: Optional, sparingly used
-  - Only at major session boundaries (e.g., exiting to main menu)
-  - Never interrupt active gameplay
-
-- **Banner ads**: Generally avoided or minimized
-  - If used, only during menu screens, not gameplay
-  - Small, non-intrusive sizes
-
-**Implementation priority**: Rewarded only, or Rewarded → (optional) Interstitial
-
-The next step will ask you to choose which ad formats to implement from this priority list.
-
-#### Balanced Strategy
-
-**Goal**: Optimize both revenue and user satisfaction
-
-**Recommended ad units:**
-- **Rewarded ads**: Core monetization
-  - 2-3 strategic placements in high-engagement moments
-  - Rewards feel valuable but not exploitative
-
-- **Interstitial ads**: Moderate usage
-  - At natural breakpoints (level transitions, session ends)
-  - Frequency cap: Every 5-7 minutes (see `references/interstitial-api.md`)
-
-- **Banner ads**: Selective placement
-  - Show in menus or low-attention moments
-  - Hide during intense gameplay
-
-**Implementation priority**: Rewarded → Interstitial → Banner (selective)
-
-The next step will ask you to choose which ad formats to implement from this priority list. If the user wants to implement in a different order than recommended, accommodate that preference.
+The next step asks which ad formats to implement from this priority list. If the user wants a different order than recommended, accommodate that preference.
 
 ### 9. Implement Ad Units
 
-**Important: Read Best Practices First**
-
-Before implementing ad code, read the **Best Practices** section below (after Step 10). It contains essential patterns for loading strategy, error handling, memory management, and placement strategy. These patterns should be incorporated into all ad implementations.
+**Read `references/best-practices.md` first** — its "Code Generation Guidelines (Step 9)" section carries the general ad lifecycle, the per-organization-approach code-gen rules, the always-include requirements (MonoBehaviour, `DestroyAd()` in `OnDestroy()`, the placement-capping show-path check (when placements are used), event unsubscription, null checks, error handling), and the bid-floor wiring examples. Incorporate those patterns into all ad implementations.
 
 **Implementation checkpoint:**
-
-Before implementing ad units, confirm:
 
 "Before providing ad implementation code, please confirm:
 - Did you complete SDK initialization in Step 7?
@@ -556,17 +283,9 @@ Before implementing ad units, confirm:
 
 Verify initialization is working before proceeding with ad units."
 
-**If they answer NO or are unsure:**
-- Direct back to Step 7 to complete initialization first
-- Do not provide ad implementation code until initialization is confirmed working
-
-**If they answer YES**, proceed with ad implementation.
+**If they answer NO or are unsure:** direct back to Step 7 and do not provide ad implementation code until initialization is confirmed working.
 
 **Ad format checkpoint — ask before generating any code:** "Which ad formats do you want to implement? Rewarded, Interstitial, Banner, or a combination?" Only implement the formats the user selects. They can add more formats later using the 'Adding More Ad Formats Later' section.
-
-Based on the chosen strategy, implement the appropriate ad formats.
-
-**Implementation flexibility**: Implement formats one at a time or all at once. Choose which formats you want to implement now, and you can always add more formats later (see 'Adding More Ad Formats Later' section below).
 
 **First, ask the user how they want to organize the ad code. Do not generate any code until they have answered:**
 
@@ -580,7 +299,9 @@ Based on the chosen strategy, implement the appropriate ad formats.
 
 4. **I already have ad manager code** - Review and help fix/update existing implementation
 
-Based on their answer, adapt your response accordingly.
+Based on their answer, adapt your response accordingly (see the code-gen guidelines in `references/best-practices.md`).
+
+**If the user already has ad code (e.g., an existing manager script), ask to see it before generating any** — so you can provide targeted fixes rather than new code from scratch. This applies regardless of which organization option they picked (Option 4 is specifically for reviewing existing code, but the same "show me your code first" applies whenever the user mentions they already have some).
 
 **Then present the optional bid floor feature (skip for Option 4 — review existing code instead):**
 
@@ -595,276 +316,41 @@ If you'd like to set bid floors now: a bid floor sets a minimum bid price (USD) 
 
 Reply with values per format, or just say 'skip' — you can add them any time."
 
-**Record the answer per format.** Wire `Config.Builder().SetBidFloor(...)` into the ad construction for any format where a value was provided. Formats marked 'skip' use the basic constructor.
+**Record the answer per format.** Wire `Config.Builder().SetBidFloor(...)` into the ad construction for any format where a value was provided; formats marked 'skip' use the basic constructor (see the bid-floor examples in `references/best-practices.md`).
 
 **If they choose Option 4 (existing code):**
-- Ask: "Please share your existing ad manager code for review"
-- Wait for them to provide the code
-- Analyze the existing implementation:
-  - Check if they're using current LevelPlay Ad Unit API (LevelPlayRewardedAd, LevelPlayInterstitialAd, LevelPlayBannerAd)
-  - Identify if they're using deprecated IronSource.Agent APIs
-  - Check for proper callback registration/unsubscription
-  - Look for missing error handling or memory leaks
+- Ask: "Please share your existing ad manager code for review" and wait for it.
+- Analyze the implementation: whether they use the current LevelPlay Ad Unit API (LevelPlayRewardedAd, LevelPlayInterstitialAd, LevelPlayBannerAd), whether they use **deprecated IronSource.Agent APIs**, proper callback registration/unsubscription, and missing error handling or memory leaks.
 - Provide specific guidance:
-  - If using deprecated APIs: "You're using the old IronSource.Agent API. Here's how to migrate to the new LevelPlay Ad Unit API:"
+  - If using deprecated APIs: "You're using the old IronSource.Agent API. Here's how to migrate to the new LevelPlay Ad Unit API:" (full migration detail in `references/migration-sdk-9.md` — Scenario B for init, Scenario C per ad format including the C5 completeness checklist)
   - If using current APIs with issues: "Your implementation looks good but I noticed [specific issues]. Here's how to fix them:"
   - If implementation is correct: "Your implementation looks solid. Which additional ad formats would you like to add?"
-- Offer to either:
-  - Provide fixes as code snippets to integrate into existing files
-  - Suggest refactoring if the code has structural issues
-- When adding new formats after reviewing existing code, present the bid floor prompt scoped to those new formats only, confirm whether to match their existing code organization pattern or use a new one, then follow the same implementation guidelines as Options 1–3 above.
+- Offer fixes as code snippets or suggest refactoring. When adding new formats after review, present the bid floor prompt scoped to those new formats only, confirm whether to match their existing organization pattern or use a new one, then follow the same guidelines as Options 1–3.
 
-For each ad format, follow the implementation guidelines in detailed references:
+For each ad format, follow the implementation guidelines in the detailed references:
 
 - **Rewarded ads**: See `references/rewarded-api.md`
 - **Interstitial ads**: See `references/interstitial-api.md`
 - **Banner ads**: See `references/banner-api.md`
 
-#### General Implementation Pattern
-
-All ad formats follow a similar lifecycle:
-
-1. **Load**: Request an ad from LevelPlay
-2. **Listen**: Register callbacks for ad events (loaded, failed, shown, clicked, closed)
-3. **Check readiness**: Verify ad is ready before showing
-4. **Show**: Display the ad to the user
-5. **Handle callbacks**: Respond to user interactions and ad lifecycle events
-
-#### Code Generation Guidelines
-
-**If the user mentions they have existing code**, ask to see it before providing implementation guidance. This allows you to provide targeted fixes rather than generating new code from scratch.
-
-Adapt output based on the user's chosen organization approach:
-
-**Option 1: Separate manager scripts**
-- Create complete, production-ready `.cs` files for each ad format
-- Name them clearly: `RewardedAdManager.cs`, `InterstitialAdManager.cs`, `BannerAdManager.cs`
-- Include full class structure with proper namespaces
-- Each manager handles one ad format completely
-
-**Option 2: Unified AdManager**
-- Create a single `AdManager.cs` file
-- Include methods and callbacks for all requested ad formats in one class
-- Use clear method naming to distinguish between formats (e.g., `LoadRewardedAd()`, `LoadInterstitial()`)
-- Keep code organized with regions or comments separating each ad format
-
-**Option 3: Code snippets only**
-- Provide focused code blocks without full class wrappers
-- Clearly label each snippet (e.g., "Rewarded Ad Initialization", "Interstitial Event Callbacks")
-- Explain where/how to integrate each snippet
-- Note any dependencies between snippets
-
-**Regardless of chosen approach, always include:**
-- All manager classes must inherit from `MonoBehaviour` — required for Unity lifecycle methods (`Start()`, `OnDestroy()`) and to attach the script to a GameObject
-- After generating any manager script, instruct the user to attach it to a persistent GameObject in their scene (the same one as the initializer, with `DontDestroyOnLoad`)
-- For banner and interstitial managers, call `DestroyAd()` in `OnDestroy()` so ads are destroyed and memory is freed when the manager is destroyed
-- Rewarded and interstitial show paths check `IsAdReady()` before `ShowAd()`. If the game uses dashboard placements, also check the static `IsPlacementCapped(placementName)` — capping is configured per placement in the LevelPlay dashboard, and showing a capped placement fails
-- Proper event subscription and unsubscription (to avoid memory leaks)
-- Null checks and defensive programming
-- Debug logs for troubleshooting
-- Clear variable names that match LevelPlay conventions
-- Error handling and graceful degradation
-
-**Bid floor handling (per-format):**
-- If the user provided a bid floor value for a format, wrap construction in `Config.Builder().SetBidFloor(value).Build()` and pass the config to the constructor.
-- If the user said 'skip' for that format, use the basic constructor (`new LevelPlayRewardedAd(adUnitId)`).
-- Apply per-format: a publisher may set a floor on rewarded but skip banner.
-
-Example (with bid floor):
-```csharp
-var config = new LevelPlayRewardedAd.Config.Builder()
-    .SetBidFloor(0.80)
-    .Build();
-rewardedAd = new LevelPlayRewardedAd(adUnitId, config);
-```
-
-Example (skipped):
-```csharp
-rewardedAd = new LevelPlayRewardedAd(adUnitId);
-```
-
-**Impression Level Revenue Tracking:** If the user answered Yes or Not Sure to ILRD in Step 7, the ILRD callback was wired up during setup (per ad instance on SDK 9.5.0+, or globally in the init script on SDK 9.4.x and earlier). See `references/ilrd-api.md` to forward the data to the analytics platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend).
-
-If the user said "No" to ILRD and wants to add it now, see `references/ilrd-api.md` — how you subscribe depends on the SDK version: per ad instance via `OnAdImpressionDataReady` on SDK 9.5.0+, or the global `LevelPlay.OnImpressionDataReady` (before `LevelPlay.Init()`) on SDK 9.4.x and earlier.
+**Impression Level Revenue Tracking (version-aware):** See `references/ilrd-api.md` to forward impression data to the analytics platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend).
+- **SDK 9.5.0+ (current):** subscribe to each ad object's `OnAdImpressionDataReady` event right after you create it (and unsubscribe in `OnDestroy()`). Add this to every ad manager you generate — it is the correct ILRD path in 9.5.0+.
+- **SDK 9.4.x and earlier:** ILRD uses the single global `LevelPlay.OnImpressionDataReady` event, wired in the init script (Step 7). If the user answered Yes/Not Sure in Step 7, it is already wired. If they said "No" and want it now, subscribe to `LevelPlay.OnImpressionDataReady` **before** the existing `LevelPlay.Init()` call.
 
 ### 10. Testing and Validation
 
-LevelPlay provides two validation approaches for different stages of development:
+LevelPlay provides two validation approaches for different stages of development. **Full detail — setup, callback-behavior tables, the Test Suite initializer template, and the iOS coroutine placement — is in `references/testing-and-validation.md`. Read it when the user is testing.**
 
-#### Early Development: Mock Ads in Unity Editor
+**Early Development: Mock Ads in Unity Editor.** For rapid iteration and callback testing. Pressing Play in the Editor provides mock ads automatically — but **only if the active build target is Android or iOS** (Standalone/PC/Mac returns no ads; this is the most common "no ads in Editor" cause — see Step 4). Mock ads work with any App Key/Ad Unit ID, but recommend real credentials so they aren't forgotten. Mock ads fire most callbacks (OnAdLoaded/Displayed/Rewarded/Closed) but NOT failure, click, or impression/ILRD callbacks — so test error handling on device. Details and the full callback table: `references/testing-and-validation.md`.
 
-For early iteration and callback testing, use **mock ads** in Unity Editor. Unity automatically provides mock ads when you press Play in the Editor - no special configuration needed.
+**Integration Validation: LevelPlay Test Suite (Recommended).** The primary method for comprehensive validation against real ad networks on device. Key rules that must not change:
+- `LevelPlay.SetMetaData("is_test_suite", "enable");` **before** `LevelPlay.Init()`
+- `LevelPlay.LaunchTestSuite();` inside `OnInitSuccess`
+- **Requires a device build** (does not work in the Editor); enable **Development Build** so SDK logs are visible; use the production App Key.
+- **Remove both lines before production release.**
+- iOS coroutine initializer: put `SetMetaData` as the first line inside `InitializeLevelPlay()` before `Init` (not in `Start()`).
 
-**How it works:**
-
-When you press Play in Unity Editor, Unity automatically provides mock ads - no special configuration needed. Mock ads work with ANY App Key and Ad Unit ID values (including dummy values like "test" or "editor"). However, **recommend using real App Key and real Ad Unit IDs** from the LevelPlay dashboard so you don't forget to update them before building to device.
-
-**Example setup (works in both Editor and device builds):**
-
-The same initialization code you wrote in Step 7 works in both Editor (with mock ads) and device builds (with real ads). For example:
-
-```csharp
-// Initialize with your actual App Key (replace "abc123..." with yours)
-// Mock ads work with any value, but use your real key to avoid forgetting to update it later
-LevelPlay.Init("abc123youractualappkey");
-```
-
-Example for rewarded ads (works in both Editor and device):
-```csharp
-// In OnInitSuccess callback:
-// Use your real ad unit ID from LevelPlay dashboard (replace "12345..." with yours)
-// Mock ads work with any value, but use your real IDs to avoid forgetting to update them later
-LevelPlayRewardedAd rewardedAd = new LevelPlayRewardedAd("12345youractualadunitid");
-rewardedAd.OnAdLoaded += OnAdLoaded;
-rewardedAd.OnAdRewarded += OnAdRewarded;
-rewardedAd.LoadAd();
-```
-
-**Key points:**
-- **Mock ads work with any App Key/Ad Unit ID values** (you can even use "test" or "editor")
-- **Recommended: Use your real credentials** from Step 5 to avoid forgetting to update them later
-- **Mock ads appear automatically** when testing in Unity Editor
-- **Real ads appear automatically** when building to device
-- **Same code works everywhere** - no switching or conditional compilation needed
-- **Android API 33+**: If targeting Android 13+ devices, verify you've added the AD_ID permission to AndroidManifest.xml (see Step 4)
-
-**What mock ads validate:**
-- Ad integration flow works correctly
-- Most callbacks fire as expected (see callback behavior below)
-- Ad loading, showing, and closing logic
-- Ad positioning and layout (for banners)
-- Basic ad logic and state management
-
-**Mock ad callback behavior:**
-
-Mock ads in Unity Editor fire most callbacks, but not all:
-
-**Callbacks that FIRE:**
-- `OnAdLoaded` - Always fires after LoadAd()
-- `OnAdDisplayed` - Fires when ShowAd() is called
-- `OnAdRewarded` - Fires for rewarded ads (with test reward)
-- `OnAdClosed` - Fires when mock ad is dismissed
-
-**Callbacks that DON'T fire:**
-- `OnAdLoadFailed` - Mock ads always succeed loading
-- `OnAdDisplayFailed` - Mock ads always succeed showing
-- `OnAdClicked` - Mock ads don't simulate user clicks
-- `OnAdExpanded` / `OnAdCollapsed` - Banner expand/collapse not simulated
-- `OnAdLeftApplication` - No real ad redirect in Editor
-- `OnAdInfoChanged` - Mock ads don't update ad info dynamically
-- ILRD impression callback (`OnAdImpressionDataReady` on 9.5.0+, or global `LevelPlay.OnImpressionDataReady` on 9.4.x and earlier) - No impression data generated in Editor
-
-This means you can test your happy-path flow in Editor, but must test error handling on real devices.
-
-**Note on SDK initialization in the Editor:** `LevelPlay.OnInitSuccess` may not fire in all SDK configurations when running in the Unity Editor. If your initialization callback doesn't trigger and your ad objects never load as a result, try creating them directly in `Start()` after calling `LevelPlay.Init()` rather than waiting for the callback — mock ads will appear even without `OnInitSuccess` firing.
-
-**Mock ads limitations:**
-- Don't simulate network latency or failures
-- Don't test real ad network behavior
-- Don't validate reward logic server-side
-- Placeholder UI instead of real ad creatives
-- Error callbacks never fire
-
-**Best for**: Early development, rapid iteration on ad logic, callback testing
-
-#### Integration Validation: LevelPlay Test Suite (Recommended)
-
-The **Test Suite** is the primary method for comprehensive validation. It tests your integration with real ad networks on device.
-
-**What Test Suite validates:**
-- All ad formats (Rewarded, Interstitial, Banner) with real ads
-- SDK initialization with production App Key
-- All callbacks fire correctly in production environment
-- Real ad network behavior, latency, and edge cases
-- Ad rendering and user interaction flows
-
-**Before running the Test Suite:**
-- **Unity Ads is pre-installed** — the Ads Mediation package includes the Unity Ads adapter by default, so you have at least one network ready without any additional setup. For ads to fill on device, verify your LevelPlay dashboard has active instances configured for your ad units.
-- **Enable Development Build** in **Build Profiles** (called **Build Settings** in Unity versions before Unity 6) before building to device. Without it, SDK console output won't be visible, making it very difficult to diagnose issues if something doesn't work as expected.
-
-**Setup (requires device build):**
-
-Add these two lines to your existing `LevelPlayInitializer.cs` — do not create a new file or replace your existing initializer:
-
-1. At the top of `Start()`, before `LevelPlay.Init(appKey)`:
-```csharp
-LevelPlay.SetMetaData("is_test_suite", "enable");
-```
-
-2. Inside your `OnInitSuccess` callback:
-```csharp
-LevelPlay.LaunchTestSuite();
-```
-
-**Important**: Remove both lines before your production release. Test Suite should only be used during development and testing.
-
-**Don't have a `LevelPlayInitializer.cs` yet?** Use this complete template:
-
-```csharp
-using UnityEngine;
-using Unity.Services.LevelPlay;
-
-public class LevelPlayInitializer : MonoBehaviour
-{
-    [SerializeField] private string appKey;
-
-    void Awake()
-    {
-        DontDestroyOnLoad(gameObject);
-    }
-
-    void Start()
-    {
-        // Enable Test Suite — REMOVE before production release
-        LevelPlay.SetMetaData("is_test_suite", "enable");
-
-        LevelPlay.OnInitSuccess += OnInitSuccess;
-        LevelPlay.OnInitFailed += OnInitFailed;
-        LevelPlay.Init(appKey);
-    }
-
-    private void OnInitSuccess(LevelPlayConfiguration config)
-    {
-        Debug.Log("LevelPlay initialized successfully");
-        // Launch Test Suite — REMOVE before production release
-        LevelPlay.LaunchTestSuite();
-    }
-
-    private void OnInitFailed(LevelPlayInitError error)
-    {
-        Debug.LogError($"LevelPlay initialization failed: {error.ErrorMessage}");
-    }
-
-    void OnDestroy()
-    {
-        LevelPlay.OnInitSuccess -= OnInitSuccess;
-        LevelPlay.OnInitFailed -= OnInitFailed;
-    }
-}
-```
-
-**After creating this script:**
-1. Attach it to a GameObject in your first scene
-2. In the Unity Inspector, find the "App Key" field
-3. Paste your App Key from Step 5 into that field
-
-**Key points:**
-- `LevelPlay.SetMetaData("is_test_suite", "enable");` must be called **BEFORE** `LevelPlay.Init()` — if the Test Suite doesn't appear after launch, this is the most likely cause
-- `LevelPlay.LaunchTestSuite();` is called **AFTER** successful initialization (in `OnInitSuccess`)
-- **Requires device build** - Test Suite does not work in Unity Editor
-- Use production App Key, not "editor"
-- Build to Android or iOS device and run the app
-- Test Suite UI will appear automatically after initialization
-
-**Testing workflow:**
-1. Add Test Suite code (SetMetaData before Init, LaunchTestSuite after OnInitSuccess)
-2. Build to Android or iOS device
-3. Run the app on device
-4. Test Suite UI launches automatically
-5. Follow on-screen instructions to test each ad format
-6. Verify all ad formats load and callbacks fire correctly
-
-**Best for**: Integration validation before production, final testing with real ad networks
+Add the two lines to the existing `LevelPlayInitializer.cs` (don't create a new file). The full setup, the standalone template for users without an initializer, and the testing workflow are in `references/testing-and-validation.md`.
 
 #### Production Release Checklist
 
@@ -901,226 +387,56 @@ If you've already integrated some ad formats and want to add more:
 4. **Follow the same implementation guidelines** from Step 9 for the new ad format
 5. **Test the new format** following Step 10 testing guidelines
 
-**Example**: If you initially implemented only Rewarded ads using separate manager scripts, and now want to add Interstitial ads:
-- Create `InterstitialAdManager.cs` following the same structure as your `RewardedAdManager.cs`
-- Follow the interstitial implementation guidelines from `references/interstitial-api.md`
-- Test the interstitial ads in Unity Editor and on device
-
-Your existing ad formats will continue to work while you add new ones. You can add formats incrementally without disrupting your current implementation.
+**Example**: If you initially implemented only Rewarded ads using separate manager scripts, and now want to add Interstitial ads: create `InterstitialAdManager.cs` following the same structure as your `RewardedAdManager.cs`, follow the interstitial guidelines from `references/interstitial-api.md`, and test in Editor and on device. Your existing ad formats keep working while you add new ones.
 
 ## Best Practices
 
-### Loading Strategy
-
-**Rewarded Ads:**
-- `LoadAd()` must be called explicitly — the SDK no longer auto-manages loading as it did in the legacy IronSource API
-- Create the ad object and subscribe events in `OnInitSuccess`; trigger `LoadAd()` from a publisher-controlled point (a button, scene entry, or gameplay moment)
-- Reloading after close is optional and publisher-controlled, not automatic; see `references/rewarded-api.md` for both the explicit and eager preload patterns
-
-**Interstitial Ads:**
-- Load proactively before natural break points
-- Maintain a loaded interstitial for opportunistic moments
-- Reload after showing
-
-**Banner Ads:**
-- Load when entering scenes where banners will be displayed
-- Destroy banners when leaving those scenes to free memory
-
-### Placement Strategy
-
-Align ad placements with user engagement moments:
-
-- **High engagement** (post-victory, level up): Best for rewarded ads
-- **Natural transitions** (level complete, menu navigation): Good for interstitials
-- **Low attention** (waiting periods, menus): Acceptable for banners
-
-### Error Handling
-
-Always handle ad load failures gracefully:
-
-```csharp
-private void OnAdLoadFailed(LevelPlayAdError error)
-{
-    Debug.LogWarning($"Ad failed to load: {error.ErrorMessage}");
-
-    // Retry loading after a delay
-    Invoke(nameof(LoadAd), 30f); // Retry in 30 seconds
-
-    // Provide fallback UX if ad was requested by user
-    // Don't leave users stuck waiting for an ad that won't load
-}
-```
-
-### Memory Management
-
-Properly unsubscribe from events to prevent memory leaks:
-
-```csharp
-void OnDestroy()
-{
-    // Unsubscribe from all LevelPlay events
-    if (rewardedAd != null)
-    {
-        rewardedAd.OnAdLoaded -= OnAdLoaded;
-        rewardedAd.OnAdLoadFailed -= OnAdLoadFailed;
-        // ... unsubscribe from all other events
-    }
-}
-```
+Before implementing ad code, read `references/best-practices.md`. It covers loading strategy (per format), placement strategy, error handling and graceful degradation, memory management, frequency management, and common mistakes to avoid — incorporate these patterns into all ad implementations.
 
 ## Common Issues and Solutions
 
-**Note**: This section addresses issues that can occur during integration. If you haven't started the integration yet, begin with Step 1: Verify Environment.
+If the user reports a problem, route to the matching issue in `references/troubleshooting.md` and follow it (stop generating code where that guidance says to). Do not wait for the user to open the reference — surface the fix directly. If they haven't started integration yet, begin with Step 1.
 
-### Issue: CS0246 - Type or namespace 'Unity.Services.LevelPlay' not found
-
-**Root cause**: Ads Mediation package not installed in Unity project
-
-**Symptoms:**
-- Compiler errors: `The type or namespace name 'LevelPlay' could not be found`
-- Compiler errors: `The type or namespace name 'Unity.Services.LevelPlay' could not be found`
-- Red underlines in Unity Editor on all LevelPlay code
-
-**Solutions:**
-1. Stop providing code immediately
-2. Ask: "Can you confirm the Ads Mediation package is installed? Check Window > Package Manager and verify 'Ads Mediation' appears under 'Packages: In Project'"
-3. If not installed, direct to Step 3 to install via Unity Package Manager
-4. Have them restart Unity Editor after installation (important!)
-5. Verify installation by checking that `using Unity.Services.LevelPlay;` no longer shows errors
-6. Only resume code generation after confirmation and verification
-
-**Prevention**: Always verify package installation at Step 7 checkpoint before generating any code.
-
-### Issue: Android gradle build fails / iOS build fails with dependency errors
-
-**Root cause**: Native dependencies not resolved
-
-**Symptoms:**
-- **Android**: Gradle build errors mentioning missing dependencies or classes
-- **iOS**: CocoaPods errors, missing frameworks, or linker errors
-- Code compiles perfectly in Unity Editor but fails during platform build
-- Build succeeds in Editor but crashes immediately on device
-
-**Solutions:**
-1. Verify you have a dependency manager installed (Mobile Dependency Resolver, Unity External Dependency Manager, or EDM4U)
-2. Check your project's Assets folder for dependency manager tools
-3. Run dependency resolution:
-   - **Android (newer MDR versions)**: Should auto-resolve on build. If failing, manually resolve via Assets > Mobile Dependency Resolver > Android Resolver > Resolve
-   - **Android (older/other managers)**: Assets > [Your Dependency Manager] > Android Resolver > Resolve
-   - **iOS (all managers)**: Assets > [Your Dependency Manager] > iOS Resolver > Install Cocoapods
-4. Verify resolution:
-   - **Android**: Check `Assets/Plugins/Android/` for gradle files
-   - **iOS**: Look for Podfile or CocoaPods confirmation in console
-5. If you don't have a dependency manager, restart Unity - you should see a prompt to install Mobile Dependency Resolver
-6. Rebuild for your target platform after resolution
-
-**Prevention**: Complete Step 4 (dependency resolution) before building for Android/iOS.
-
-### Issue: Ads not loading
-
-**Possible causes:**
-- SDK not initialized before loading ads
-- Incorrect App Key
-- Ad object created before initialization completes
-- Network connectivity issues
-- Ad inventory not available in test region
-
-**Solutions:**
-- Verify `LevelPlay.Init()` is called and `OnInitSuccess` fires before creating ad objects
-- Create ad objects only after `OnInitSuccess` callback
-- Check App Key matches LevelPlay dashboard
-- Test on real devices with active internet connection
-- Enable test mode in LevelPlay dashboard for guaranteed test ads (Note: dashboard test mode is separate from mock ads in the Unity Editor — it enables real test ads on device)
-
-### Issue: Callbacks not firing
-
-**Possible causes:**
-- Events registered after SDK initialization
-- Missing event subscriptions
-- Script destroyed before callbacks execute
-
-**Solutions:**
-- Register callbacks before calling `Init()`
-- Verify all callbacks are subscribed (check with Debug.Log statements)
-- Use persistent GameObject with DontDestroyOnLoad if needed
-
-### Issue: Platform-specific build errors
-
-**iOS:**
-- Ensure SKAdNetwork IDs are configured in Info.plist
-- Verify ATT is implemented correctly (see `references/ios-setup.md`)
-- Check Xcode build settings for required frameworks
-
-**Android:**
-- Verify Google Play Services is included
-- Check AndroidManifest.xml for required permissions
-- Ensure Gradle dependencies are resolved
+| Symptom | Likely root cause | Action |
+|---|---|---|
+| `CS0246` on `Unity.Services.LevelPlay`; red underlines on all LevelPlay code | Ads Mediation package not installed | Stop giving code; check `Packages/packages-lock.json` for `com.unity.services.levelplay`; install (Step 3); restart Editor; then resume. See troubleshooting.md. |
+| Android gradle / iOS build fails with dependency errors; compiles in Editor but fails at build | Native dependencies not resolved | Resolve dependencies (Step 4 / dependency-resolution.md); verify `Assets/Plugins/Android/`; rebuild. See troubleshooting.md. |
+| Ads not loading | SDK not initialized, wrong App Key, ad created before init, or no connectivity | Confirm `OnInitSuccess` fires before creating ads; check App Key; test on device. See troubleshooting.md. |
+| Callbacks not firing | Events registered after init, missing subscriptions, or script destroyed | Register callbacks before `Init()`; verify subscriptions; use a persistent GameObject. See troubleshooting.md. |
+| Platform-specific build errors (iOS SKAdNetwork/ATT/frameworks; Android Play Services/manifest/gradle) | Platform setup incomplete | See troubleshooting.md and `references/ios-setup.md`. |
+| Android build fails resolving `com.ironsource.sdk` dependencies from `android-sdk.is.com` (worked before; nothing changed) | Dependencies moved to Maven Central; the old is.com repository was shut down | Follow Scenario D in `references/migration-sdk-9.md`: delete the stale dependency XMLs, reinstall via Network Manager, verify no is.com references remain. |
 
 ## When to Read Detailed References
 
-Read specific references based on what the user is implementing:
+Read specific references based on what the user is doing:
 
-- **[references/rewarded-api.md](references/rewarded-api.md)**: When implementing rewarded ads
-- **[references/interstitial-api.md](references/interstitial-api.md)**: When implementing interstitial ads
-- **[references/banner-api.md](references/banner-api.md)**: When implementing banner ads
-- **[references/initialization-api.md](references/initialization-api.md)**: When user ID tracking, segmentation, consent management, or advanced SDK configuration options are needed
-- **[references/ios-setup.md](references/ios-setup.md)**: When targeting iOS builds
-- **[references/best-practices.md](references/best-practices.md)**: When user asks for optimization guidance or troubleshooting
-- **[references/privacy-settings.md](references/privacy-settings.md)**: When GDPR, CCPA, or COPPA compliance is needed
-- **[references/ilrd-api.md](references/ilrd-api.md)**: When wiring ILRD to an analytics platform
-- **[references/migration-sdk-9.md](references/migration-sdk-9.md)**: When migrating from IronSource or older LevelPlay APIs, upgrading SDK to 9.x.x, migrating from Unity Ads, or fixing Maven Central dependency build failures
+- **`references/dependency-resolution.md`**: Resolving native dependencies (Step 4), or gradle/CocoaPods build failures
+- **`references/initialization-api.md`**: Step 7 init code-organization options and ILRD init wiring; also user ID, segmentation, consent management, advanced config
+- **`references/privacy-settings.md`**: GDPR, CCPA, or COPPA compliance (incl. legacy `SetConsent` and the full network key list)
+- **`references/ios-setup.md`**: iOS builds — ATT, SKAdNetwork, the iOS coroutine initializer
+- **`references/rewarded-api.md`** / **`references/interstitial-api.md`** / **`references/banner-api.md`**: Implementing each ad format (Step 9)
+- **`references/best-practices.md`**: Strategy detail (Step 8), the Step 9 code-generation guidelines, optimization, placement
+- **`references/ilrd-api.md`**: Wiring ILRD to an analytics platform
+- **`references/testing-and-validation.md`**: Mock ads and the Test Suite (Step 10)
+- **`references/troubleshooting.md`**: Compile/build errors, ads not loading, callbacks not firing
+- **`references/migration-sdk-9.md`**: Migrating from IronSource or older LevelPlay APIs, upgrading the SDK to 9.x.x, migrating from Unity Ads, or Maven Central dependency build failures (Step 0)
 
 ## Examples
 
-**Note**: These examples show abbreviated workflows for illustration. In practice, follow all steps 1–10 in order to ensure proper integration.
+**Note**: Examples show abbreviated workflows for illustration. In practice, follow all steps 1–10 in order.
 
-### Example 1: Revenue-Focused Game
+**Revenue-focused game** ("maximize ad revenue in my casual puzzle game"): Steps 1–7 to verify environment/goal/install/deps/App Key/AdMob/init → Step 8 recommend Revenue strategy → Step 9 ask code organization and generate the chosen structure → Step 10 testing.
 
-**User request:** "I want to maximize ad revenue in my casual puzzle game"
+**UX-focused game** ("optional rewarded ads for extra lives without annoying players"): same spine, but Step 8 recommends UX strategy (rewarded only, user-initiated) and Step 9 implements rewarded with proper patterns.
 
-**Response approach:**
-1. Verify Unity project (Step 1)
-2. Ask about optimization goal (Step 2)
-3. Verify SDK installed (Step 3)
-4. Verify dependencies resolved (Step 4)
-5. Verify they have App Key (Step 5)
-6. Verify AdMob config if needed (Step 6)
-7. Verify SDK initialized (Step 7)
-8. Recommend revenue-focused strategy (Step 8)
-9. Ask about code organization preference (Step 9)
-10. Generate appropriate code structure (Step 9)
-11. Guide through testing (Step 10)
+**Existing project** ("existing GameManager, add interstitials between levels"): same spine, Step 8 Balanced, Step 9 ask to see `GameManager.cs` then provide Option-2 snippets.
 
-### Example 2: UX-Focused Game
+## Core Rules (reminder)
 
-**User request:** "I want to add optional rewarded ads for extra lives without annoying players"
+These repeat the rules at the top of this file — they are the guardrails that matter most, restated here so they stay in view at the end of a long workflow:
 
-**Response approach:**
-1. Verify Unity project (Step 1)
-2. Ask about optimization goal (Step 2)
-3. Verify SDK installed (Step 3)
-4. Verify dependencies resolved (Step 4)
-5. Verify they have App Key (Step 5)
-6. Verify AdMob config if needed (Step 6)
-7. Verify SDK initialized (Step 7)
-8. Recommend UX-focused strategy (Step 8): Rewarded only, user-initiated
-9. Ask about code organization preference (Step 9)
-10. Provide implementation with proper patterns (Step 9)
-11. Guide through testing (Step 10)
-
-### Example 3: Existing Project Integration
-
-**User request:** "I have an existing GameManager script and want to add interstitial ads between levels"
-
-**Response approach:**
-1. Verify Unity project (Step 1)
-2. Ask about optimization goal (Step 2)
-3. Verify SDK installed (Step 3)
-4. Verify dependencies resolved (Step 4)
-5. Verify they have App Key (Step 5)
-6. Verify AdMob config if needed (Step 6)
-7. Verify SDK initialized (Step 7)
-8. Recommend balanced strategy (Step 8)
-9. Ask to see existing GameManager.cs, then provide code snippets (Step 9)
-10. Guide through testing (Step 10)
-
+- Base editor-side checks on the actual project rather than assumptions — read the project files, or ask the user to confirm in the Editor. The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
+- This skill covers the LevelPlay integration path only; it does not cover other mediation SDKs. If the user explicitly asks about alternatives, acknowledge that alternatives exist and point them to those vendors' own documentation — do not describe, characterize, or make claims about competitor products.
+- Follow the steps and provide only the files and configurations described in this skill. Do not proactively add steps, create files, or make recommendations based on general knowledge. If the user asks a question outside the scope of this skill, check the skill and reference files first to confirm it is not covered. If it is not, use general knowledge to respond, but do not incorporate additional steps or files into the integration workflow as a result.
+- Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding.
+- When a step points to a reference file, read that reference and use its content — do not substitute general knowledge. Present the four init options (Step 7) and four organization options (Step 9) exactly as written, and ask the ILRD question (Step 7) verbatim.

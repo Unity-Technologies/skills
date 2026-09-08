@@ -2,6 +2,8 @@
 
 ## Contents
 - [Overview](#overview)
+- [Code Organization Options (Step 7)](#code-organization-options-step-7)
+- [Version-Aware ILRD Init Wiring (Step 7)](#version-aware-ilrd-init-wiring-step-7)
 - [Basic Initialization](#basic-initialization)
 - [Advanced Initialization](#advanced-initialization)
 - [API Reference](#api-reference)
@@ -14,6 +16,221 @@
 ## Overview
 
 Proper SDK initialization is critical for LevelPlay to function correctly. This reference covers basic initialization, advanced options, and best practices.
+
+## Code Organization Options (Step 7)
+
+Step 7 of SKILL.md asks the user how they want to handle initialization and presents four options. Full
+implementation for each option follows. Present the four option labels exactly as written in SKILL.md;
+use the code here once the user has chosen.
+
+### Option 1: Creating a New Script
+
+**If you completed ATT in Step 6.5 (iOS):** Use the `LevelPlayInitializer.cs` from `references/ios-setup.md` (Part 3) instead of the template below — it already includes the `IEnumerator Start()` coroutine required for ATT and the `DontDestroyOnLoad` setup. Skip this code block and continue from the ILRD wiring below.
+
+If creating a new script (e.g., `LevelPlayInitializer.cs`), use this complete class:
+
+```csharp
+using UnityEngine;
+using Unity.Services.LevelPlay;
+
+public class LevelPlayInitializer : MonoBehaviour
+{
+    [SerializeField] private string appKey;
+
+    void Awake()
+    {
+        // Persist across scene loads so ads stay initialized
+        DontDestroyOnLoad(gameObject);
+    }
+
+    void Start()
+    {
+        // Register initialization callbacks
+        LevelPlay.OnInitSuccess += OnInitSuccess;
+        LevelPlay.OnInitFailed += OnInitFailed;
+
+        // Initialize the SDK with your App Key
+        LevelPlay.Init(appKey);
+    }
+
+    private void OnInitSuccess(LevelPlayConfiguration config)
+    {
+        Debug.Log("LevelPlay SDK initialized successfully");
+        // SDK is now ready to load ads
+    }
+
+    private void OnInitFailed(LevelPlayInitError error)
+    {
+        Debug.LogError($"LevelPlay initialization failed: {error.ErrorMessage}");
+    }
+
+    void OnDestroy()
+    {
+        LevelPlay.OnInitSuccess -= OnInitSuccess;
+        LevelPlay.OnInitFailed -= OnInitFailed;
+    }
+}
+```
+
+**File location**: Save as `Assets/Scripts/LevelPlayInitializer.cs` (or `Assets/Scripts/Ads/LevelPlayInitializer.cs` if you have an Ads subfolder)
+
+**After creating:**
+1. Attach script to a GameObject in your first scene
+2. In Unity Inspector, find the "App Key" field
+3. Paste your App Key from Step 5 into that field
+
+### Option 2: Adding to Existing Script
+
+If adding to an existing script (e.g., `GameManager.cs`):
+
+**1. Add namespace at top of file:**
+```csharp
+using Unity.Services.LevelPlay;
+```
+
+**2. In existing Start() or Awake() method, add initialization:**
+```csharp
+void Start()
+{
+    // Register initialization callbacks
+    LevelPlay.OnInitSuccess += OnInitSuccess;
+    LevelPlay.OnInitFailed += OnInitFailed;
+
+    // Initialize the SDK - REPLACE with your actual App Key from Step 5
+    LevelPlay.Init("YOUR_APP_KEY_HERE");
+
+    // ... your other existing Start() code
+}
+```
+
+**3. Add callback methods to class:**
+```csharp
+private void OnInitSuccess(LevelPlayConfiguration config)
+{
+    Debug.Log("LevelPlay SDK initialized successfully");
+    // SDK is ready - you can now create ad objects
+}
+
+private void OnInitFailed(LevelPlayInitError error)
+{
+    Debug.LogError($"LevelPlay initialization failed: {error.ErrorMessage}");
+}
+```
+
+**4. In existing OnDestroy() (or create if it doesn't exist), add:**
+```csharp
+void OnDestroy()
+{
+    // Unregister callbacks
+    LevelPlay.OnInitSuccess -= OnInitSuccess;
+    LevelPlay.OnInitFailed -= OnInitFailed;
+}
+```
+
+Replace `"YOUR_APP_KEY_HERE"` with your actual App Key from Step 5 (the alphanumeric string copied from the LevelPlay dashboard).
+
+**Note:** If your existing script doesn't already persist across scenes, add `DontDestroyOnLoad(gameObject);` to its `Awake()` method to prevent re-initialization when loading new scenes.
+
+Before testing, double-check that you've replaced the placeholder with your actual App Key. The App Key should be an alphanumeric string, NOT 'YOUR_APP_KEY_HERE'.
+
+### Option 3: Separate Script Referenced by Manager
+
+If you want to keep ads code in its own script that your existing manager references:
+
+**1. Create `LevelPlayInitializer.cs` using the complete class code from Option 1.**
+
+**2. Add the `LevelPlayInitializer` component to a GameObject in the Unity Editor** (at design time — not at runtime). Use a dedicated persistent GameObject (e.g. an "Ads" object in your first scene), and set its **App Key** field in the Inspector, exactly as in Option 1's "After creating" steps.
+
+**3. Reference it from your existing manager** via a serialized field, so `GameManager` can coordinate with the initializer without creating it at runtime:
+```csharp
+using UnityEngine;
+
+public class GameManager : MonoBehaviour
+{
+    // Assign the LevelPlayInitializer GameObject in the Inspector.
+    // Enter your App Key on the LevelPlayInitializer component itself (see step 2),
+    // NOT here — that keeps your ad credentials in one place where publishers expect them.
+    [SerializeField] private LevelPlayInitializer levelPlayInitializer;
+
+    void Awake()
+    {
+        // ... your other initialization code.
+        // LevelPlayInitializer initializes itself in its own Start();
+        // GameManager just holds a reference to it via the field above.
+    }
+}
+```
+
+This keeps ad code isolated in `LevelPlayInitializer.cs` while giving `GameManager` a reference to it.
+
+> **Why not `gameObject.AddComponent<LevelPlayInitializer>()` at runtime?** The initializer reads its App Key from a `[SerializeField]` Inspector field. A component added at runtime never receives that Inspector value, so the App Key would be empty and initialization would fail. Attaching the component in the Editor (step 2) is what makes the App Key field available to fill in.
+
+**Note:** `LevelPlayInitializer.Awake()` calls `DontDestroyOnLoad(gameObject)`, so the GameObject you attach it to persists across scenes. Put it on a dedicated Ads GameObject rather than on your `GameManager`, unless you intend `GameManager` to persist too.
+
+### Option 4: Just Show Me the Code
+
+Provide the complete initialization code from Option 1 as a standalone snippet, without instructions for attaching to a GameObject or setting up the Inspector. Include a note: "This is the full initialization class — save it as `LevelPlayInitializer.cs`, attach it to a persistent GameObject in your first scene, and set the App Key field in the Inspector."
+
+**Key points (all options):**
+- Always register `OnInitSuccess` and `OnInitFailed` callbacks before calling `Init()`
+- Call initialization early in app lifecycle (in `Awake()` or `Start()` of first scene)
+- Only initialize once. If initialization script is in first scene and you have multiple scenes, add `DontDestroyOnLoad(gameObject);` in `Awake()` to prevent re-initialization when loading new scenes
+- Wait for `OnInitSuccess` before creating ad objects
+
+If initialization fails repeatedly, see `references/troubleshooting.md`. Common causes include incorrect App Key, no internet connection, or missing package dependencies.
+
+## Version-Aware ILRD Init Wiring (Step 7)
+
+**If the user answered Yes or Not Sure to the ILRD question in Step 7**, wire up the impression-revenue
+callback. **The correct approach depends on the user's SDK version** (check in **Ads Mediation > Network
+Manager**):
+
+**SDK 9.5.0+ (current): do NOT add anything to the initializer here.** In 9.5.0+, ILRD is delivered per
+ad instance via the `OnAdImpressionDataReady` event on each ad object — it is wired when you create each
+ad in Step 9 (see `references/ilrd-api.md`). The global `LevelPlay.OnImpressionDataReady` event still
+exists but is **deprecated in 9.5.0+ and generates a compiler warning** — do not use it on 9.5.0+.
+
+**SDK 9.4.x and earlier:** subscribe to the global `LevelPlay.OnImpressionDataReady` event before
+`LevelPlay.Init()`. Add these lines inside `Start()` (before `LevelPlay.Init(appKey)`):
+
+```csharp
+// SDK 9.4.x and earlier only. MUST be registered BEFORE LevelPlay.Init() to avoid
+// losing early impressions. Callback fires on a BACKGROUND thread — see
+// references/ilrd-api.md for thread-safe forwarding patterns and a Firebase example.
+LevelPlay.OnImpressionDataReady += OnImpressionDataReady;
+```
+
+Add this stub method to the class:
+
+```csharp
+private void OnImpressionDataReady(LevelPlayImpressionData impressionData)
+{
+    // See references/ilrd-api.md for full implementation.
+    // For now, just log so you can verify it fires:
+    Debug.Log($"ILRD: {impressionData.AdNetwork} / {impressionData.AdFormat} / ${impressionData.Revenue}");
+}
+```
+
+And unsubscribe in `OnDestroy()`:
+
+```csharp
+LevelPlay.OnImpressionDataReady -= OnImpressionDataReady;
+```
+
+**iOS path (SDK 9.4.x and earlier only):** if you used the `LevelPlayInitializer.cs` from
+`references/ios-setup.md` Part 3, note that `Start()` is a coroutine with **no `LevelPlay.Init(appKey)`
+call inside it** — initialization happens in `InitializeLevelPlay()`. Place the
+`LevelPlay.OnImpressionDataReady += ...` line inside `InitializeLevelPlay()`, immediately **before**
+`LevelPlay.Init(appKey)`, so it registers before the first impression.
+
+For Option 2 (existing script) and Option 3 (separate script referenced by a manager), apply the same
+version-aware wiring: on 9.4.x and earlier add the global subscription/stub/unsubscribe shown above; on
+9.5.0+ add nothing here (ILRD is wired per ad instance in Step 9). For Option 3, the wiring goes in
+`LevelPlayInitializer.cs`, with no changes in `GameManager`.
+
+**Next:** Once you confirm the log fires after your first ad impression, read `references/ilrd-api.md` to
+wire it up to your actual analytics platform. Note: ILRD callbacks do not fire with mock ads in the
+Unity Editor — you'll need a device build to verify this log fires (see Step 10).
 
 ## Basic Initialization
 
@@ -569,6 +786,8 @@ IEnumerator InitializeAfterOnboarding()
 
 ## Migration from IronSource.* APIs
 
+> **Full migration guide:** for SDK upgrade paths, per-format ad unit API migration, the migration completeness checklist, Unity Ads migration, and Maven Central build failures, see `references/migration-sdk-9.md`. The summary below covers initialization only.
+
 If you're migrating from deprecated IronSource APIs:
 
 **Old (Deprecated):**
@@ -592,6 +811,8 @@ LevelPlay.Init(appKey);
 ## Error Code Reference
 
 When ad operations fail, `LevelPlayAdError` contains an `ErrorCode` property with one of these values:
+
+> **Note:** Code **508** is an initialization/mediation-level error, surfaced via `LevelPlayInitError` in the `OnInitFailed` callback — not via a per-ad `LevelPlayAdError` (hence "N/A" in the Ad Formats column). All other codes below are per-ad errors delivered through `LevelPlayAdError` in the ad load/show failure callbacks.
 
 | Code | Ad Formats | Description |
 |------|-----------|-------------|

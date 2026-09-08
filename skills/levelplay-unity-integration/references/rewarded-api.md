@@ -33,6 +33,10 @@ public class RewardedAdManager : MonoBehaviour
     private LevelPlayRewardedAd rewardedAd;
     private string adUnitId = "YOUR_REWARDED_AD_UNIT_ID";
 
+    // Optional: assign a handler to be notified when the user earns the reward.
+    // Callers (e.g. a HintSystem) set this before calling ShowAd().
+    public System.Action OnRewardGranted;
+
     void Start()
     {
         // Create the rewarded ad object and register event listeners.
@@ -40,6 +44,9 @@ public class RewardedAdManager : MonoBehaviour
         // action (e.g. a button press, scene entry, or a point in gameplay where the ad
         // should be available). See LoadAd() below.
         rewardedAd = new LevelPlayRewardedAd(adUnitId);
+
+        // ILRD (SDK 9.5.0+): if impression-revenue tracking is enabled, also subscribe here —
+        //   rewardedAd.OnAdImpressionDataReady += OnImpressionDataReady;   // see references/ilrd-api.md
 
         // Register event listeners
         rewardedAd.OnAdLoaded += OnAdLoaded;
@@ -65,11 +72,14 @@ public class RewardedAdManager : MonoBehaviour
             rewardedAd.OnAdClosed -= OnAdClosed;
             rewardedAd.OnAdClicked -= OnAdClicked;
             rewardedAd.OnAdInfoChanged -= OnAdInfoChanged;
+            // ILRD (9.5.0+): rewardedAd.OnAdImpressionDataReady -= OnImpressionDataReady;
         }
     }
 
-    // Call LoadAd() from a publisher-controlled trigger (e.g. a button or scene entry).
-    // The SDK does not auto-load, so LoadAd() must be called explicitly.
+    // Call this from the trigger point in your game where you want the ad to be available —
+    // for example, from a UI button handler, on entering a scene, or at a natural moment
+    // in gameplay. Unlike the legacy IronSource rewarded video, the SDK does not load
+    // automatically; LoadAd() must always be called explicitly.
     public void LoadAd()
     {
         Debug.Log("Loading rewarded ad...");
@@ -88,6 +98,10 @@ public class RewardedAdManager : MonoBehaviour
             Debug.LogWarning("Rewarded ad is not ready yet");
         }
     }
+
+    // True once a rewarded ad has finished loading and can be shown.
+    // Use this to decide whether to offer the ad before calling ShowAd().
+    public bool IsAdReady() => rewardedAd != null && rewardedAd.IsAdReady();
 
     // Event Callbacks
     private void OnAdLoaded(LevelPlayAdInfo adInfo)
@@ -119,6 +133,8 @@ public class RewardedAdManager : MonoBehaviour
         Debug.Log($"User earned reward: {reward.Amount} {reward.Name}");
         // Grant the reward to the user
         GrantReward(reward);
+        // Notify any external listener (e.g. HintSystem) that the reward was earned
+        OnRewardGranted?.Invoke();
     }
 
     private void OnAdClosed(LevelPlayAdInfo adInfo)
@@ -469,7 +485,7 @@ if (LevelPlayRewardedAd.IsPlacementCapped("extra_lives"))
 
 All events are properties of the `LevelPlayRewardedAd` object.
 
-**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from the ILRD impression callback (see `references/ilrd-api.md`), which runs on a background thread.
+**Threading:** All ad callbacks run on the Unity main thread, so you can safely call Unity APIs (update UI, access GameObjects, etc.) directly in these callbacks. This is different from `LevelPlay.OnImpressionDataReady` which runs on a background thread.
 
 #### `OnAdLoaded`
 Fired when a rewarded ad is successfully loaded.
@@ -603,7 +619,7 @@ rewardedAd.OnAdInfoChanged += (adInfo) =>
 
 **Why it matters:** The updated `LevelPlayAdInfo` contains the latest revenue estimates and network information, which directly impacts your monetization. Always use the most recent `adInfo` when logging or analyzing ad performance.
 
-**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in the ILRD impression callback already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
+**If you're using ILRD** (`references/ilrd-api.md`): the `LevelPlayImpressionData` you receive in `OnImpressionDataReady` already contains the final revenue value, so `OnAdInfoChanged` is mostly useful for in-Editor debugging of the waterfall. Most publishers can leave it as a logging hook.
 
 ## Data Types
 
