@@ -22,7 +22,7 @@
 - [Failure Description Property Names](#failure-description-property-names)
 - [CrossPlatformValidator](#crossplatformvalidator)
 - [Interface Hierarchy](#interface-hierarchy)
-- [IRunCommand Template: Fetch Products](#iruncommand-template-fetch-products)
+- [Template: Fetch Products](#template-fetch-products)
 
 ## Anti-Hallucination: v5 vs Legacy API
 
@@ -222,7 +222,7 @@ Product coinsPack = store.GetProductById("com.mygame.coins100");
 
 ### CatalogListings and uSku (v5.4+)
 
-In v5.4, `Product` exposes two new members. Prefer these for new code — `product.definition.id` remains backwards compatible but points new users toward `CatalogListings`:
+In v5.4, `Product` exposes two new members. Prefer these for new code — `product.definition.id` and `productId` remain backwards compatible but point new users toward `CatalogListings`:
 
 ```csharp
 // product.uSku — the Unity-side identifier for the product (cross-platform canonical ID)
@@ -518,45 +518,42 @@ StoreController implements:
   IPurchaseService   - PurchaseProduct(), ConfirmPurchase(), FetchPurchases(), Apple/Google purchase extensions
 ```
 
-## IRunCommand Template: Fetch Products
+## Template: Fetch Products
 
 ```csharp
 using UnityEngine;
 using UnityEngine.Purchasing;
 using System.Collections.Generic;
 
-namespace Unity.AI.Assistant.Agent.Dynamic.Extension.Editor
+public static class FetchProductsExample
 {
-    internal class CommandScript : IRunCommand
+    // Store callbacks arrive after Connect() returns, so this reports through the
+    // Editor console rather than a return value.
+    public static async void Run()
     {
-        public string Title => "Fetch IAP products";
-        public string Description => "Connects to the store and fetches product information.";
-        public async void Execute(ExecutionResult result)
+        var store = UnityIAPServices.StoreController();
+
+        // Subscribe to events BEFORE Connect
+        store.OnStoreConnected += () =>
         {
-            var store = UnityIAPServices.StoreController();
-
-            // Subscribe to events BEFORE Connect
-            store.OnStoreConnected += () =>
+            var products = new List<ProductDefinition>
             {
-                var products = new List<ProductDefinition>
-                {
-                    new ProductDefinition("com.mygame.coins100", ProductType.Consumable),
-                    new ProductDefinition("com.mygame.removeads", ProductType.NonConsumable)
-                };
-
-                store.OnProductsFetched += (fetched) =>
-                {
-                    foreach (var p in fetched)
-                        result.Log($"{p.definition.id}: {p.metadata.localizedPriceString}");
-                };
-                store.OnProductsFetchFailed += (failure) => result.LogError($"Product fetch failed: {failure.FailureReason}");
-
-                store.FetchProducts(products);
+                new ProductDefinition("com.mygame.coins100", ProductType.Consumable),
+                new ProductDefinition("com.mygame.removeads", ProductType.NonConsumable)
             };
-            store.OnStoreDisconnected += (failure) => result.LogError($"Store disconnected: {failure.Message}");
 
-            await store.Connect();
-        }
+            store.OnProductsFetched += (fetched) =>
+            {
+                foreach (var p in fetched)
+                    Debug.Log($"{p.definition.id}: {p.metadata.localizedPriceString}");
+            };
+            store.OnProductsFetchFailed += (failure) => Debug.LogError($"Product fetch failed: {failure.FailureReason}");
+
+            store.FetchProducts(products);
+        };
+        store.OnStoreDisconnected += (failure) => Debug.LogError($"Store disconnected: {failure.Message}");
+
+        await store.Connect();
     }
 }
 ```
