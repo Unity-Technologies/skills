@@ -10,6 +10,33 @@ documentation for a CLI version that has not shipped publicly is not recorded he
 release is out — so this file never names unreleased surface. Pending skill work is tracked
 alongside the CLI change itself, not here.
 
+## CLI `1.0.0-beta.9` (2026-09-08)
+
+Aligned to the CLI's `1.0.0-beta.9` release. Several pieces of this release's surface were already documented ahead of it landing in the shipped binary — `unity version`, `unity test --affected`, and the `--child-modules`/`--list-modules` spellings — and needed no change here. This pass documents the rest of the shipped surface for the first time.
+
+### Added
+
+- **`unity skill show`** — read the embedded skill (or one of its reference files) straight to stdout, with `--list` and `--path <file>`, without installing anything. Documented in `integration-advanced.md`, alongside `skill install`/`refresh`.
+- **A `unity plugin` reference section**, new — this command family (`install`/`remove`/`upgrade`/`list`/`changelog`) shipped across earlier releases (`install`/`remove`/`upgrade` in `1.0.0-beta.7`) but had never had a dedicated write-up beyond a passing mention of `plugin install plastic`. Added now because `plugin upgrade`'s real version-comparison behavior and the new `plugin changelog <id>` needed somewhere to live, and documenting them in isolation without the surrounding command family would have been more confusing than useful.
+- **`--color <auto|always|never>` / `--no-color`** — the new global flag, added to the global-flags table.
+- **`unity auth consumers`** / **`unity auth revoke <application>`** — list and manage the applications using this machine's Unity sign-in through the auth broker.
+- **`unity config get|set|list|unset <key>`** — the generic key-value interface over the existing `proxy` / `proxy.bypass` / `update-check` settings, documented in `config-hub.md` alongside the purpose-built subcommands it shares storage with.
+- **`unity doctor`'s bundled third-party components section** — noted as a one-paragraph addition to the existing Doctor writeup; it's informational, not a check, so it didn't need more than that.
+- The always-on `cli telemetry` usage ping, the sign-in token store's machine-sealing, and the self-installed-vs-Homebrew PATH-conflict warning — each is a background/security behavior with no new command surface, so each got a sentence in the relevant existing section (Analytics, SKILL.md's Notes, and Self-update respectively) rather than a section of its own.
+
+### Changed
+
+- Command index (SKILL.md) and global-flags/environment tables refreshed for the above.
+- `unity install`/`install-modules`'s child-modules flag examples now lead with `--child-modules`/`--no-child-modules` (matching `unity editors module add`), noting the old `--cm`/`--no-cm` shorts still work.
+- `unity modules list`'s column table now names the last column `Aliases` (renamed from `downloaderName` in `--format json`).
+- Refreshed the latest-version note to `1.0.0-beta.9`.
+
+### Deferred
+
+- The Unity Accelerator feature (`unity config accelerator`, `--accelerator`/`--no-accelerator`, `unity diagnose accelerator`, the `accelerator` config key, `unity doctor`'s Accelerator section) is withheld from this publish — it is still `[Unreleased]` in the CLI's own changelog as of this release, so nothing about it appears here.
+- One paragraph distinguishing `unity vcs uvcs review`'s four auth-shaped error codes is withheld from this publish for the same reason: it describes behavior a still-unreleased fix introduces (pre-fix, every failure surfaces as one generic error). The rest of that section — the commands themselves, released since `1.0.0-beta.7` — is unaffected.
+- Auth broker client libraries (the .NET/TypeScript SDKs for other products to use Unity sign-in) are not `unity` CLI commands, so nothing in this skill changes for them.
+
 ## CLI `1.0.0-beta.8` (2026-09-01)
 
 Aligned to the CLI's `1.0.0-beta.8` release, which supersedes the withdrawn `1.0.0-beta.7`. That release reached the production beta channel and was pulled the same day, so beta.8 is what actually carries its surface to users, and this stamp moves on from `1.0.0-beta.6`, which is what the channel served in between. Everything the skill already documents stays accurate. Two additions extend the `unity vcs` provider layer that the beta.7 note below recorded as public but not yet documented: repository creation and readiness reporting through Bitbucket's `bkt` and Azure DevOps' `az`. Both are deferred to that same alignment pass rather than documented piecemeal here. Also deferred, for the same reason: `unity skill install <client> --local` now mirroring the agent skill a project's `com.unity.pipeline` package ships, and `unity install --format json` printing on success the same result envelope the NDJSON `result` frame already carried. The rest of the release is Windows elevation and install fixes that change no flag or exit code this skill documents.

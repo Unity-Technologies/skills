@@ -76,6 +76,8 @@ These work on every command:
 | `--proxy-disable` | Disable proxy for this invocation, ignoring all sources (env vars, persisted config, system settings). |
 | `--log-proxy` | Log one redacted entry per outbound request to `proxy-request.json` — for reproducing proxy issues. Also via `UNITY_LOG_PROXY=1` or the `proxyRequestLogging` setting. |
 | `--no-log-proxy` | Opt a single invocation out of proxy request logging when it's enabled globally. |
+| `--color <auto\|always\|never>` | Control colored output for this invocation, overriding `NO_COLOR`/`FORCE_COLOR` and TTY auto-detection. Governs every ANSI-emitting surface (help, tables, spinners, errors), not just `human` output. |
+| `--no-color` | Shorthand for `--color never`. Whichever of `--color`/`--no-color` appears last on the line wins. |
 
 **Always use `--format json` when you need to parse output programmatically.**
 
@@ -151,13 +153,13 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 | Commands | Reference file |
 |---|---|
-| `auth` (login / logout / status / list / switch / default), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
+| `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
 | `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `releases`, `templates` (list / info / create / pack / delete) | [projects-templates.md](references/projects-templates.md) |
-| `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
+| `config` (proxy / update-check / get / set / list / unset), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
-| `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), `skill` (install / refresh), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
+| `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
 ## Common workflows
@@ -435,7 +437,7 @@ unity logs --follow --level info
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
-- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely.
-- The CLI is currently in **beta** (latest: `1.0.0-beta.8`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping regardless of analytics/consent state — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
+- The CLI is currently in **beta** (latest: `1.0.0-beta.9`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.

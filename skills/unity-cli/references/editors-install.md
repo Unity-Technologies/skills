@@ -214,10 +214,10 @@ unity install 6000.0.47f1 --module windows-mono --module android
 unity install 6000.0.47f1 --changeset abc123def456
 
 # Include child modules
-unity install 6000.0.47f1 --cm
+unity install 6000.0.47f1 --child-modules
 
 # Exclude child modules
-unity install 6000.0.47f1 --no-cm
+unity install 6000.0.47f1 --no-child-modules
 
 # Install and accept EULAs automatically (CI)
 unity install 6000.0.47f1 --yes --accept-eula
@@ -232,8 +232,9 @@ unity install 6000.0.47f1 --resume
 unity install 6000.0.47f1 --dry-run --format json
 
 # List the editor's available modules and exit without installing
-# (a drop-in alias for `unity modules list <version>`)
-unity install 6000.0.47f1 --list-components --format json
+# (a drop-in alias for `unity modules list <version>`; the old --list-components spelling
+# still works as a hidden alias, matching the -m/--module terminology used everywhere else)
+unity install 6000.0.47f1 --list-modules --format json
 
 # Space-separated module values after a single -m are equivalent to repeating -m
 unity install 6000.0.47f1 -m android ios          # space-separated
@@ -277,7 +278,7 @@ unity modules list 6000.0.47f1 --format json
 unity modules list 6000.0.47f1 --architecture arm64 --format json
 ```
 
-`unity modules list` honors `--format ndjson` (empty results emit a clean, empty NDJSON stream).
+`unity modules list` honors `--format ndjson` (empty results emit a clean, empty NDJSON stream). The last column is `Aliases` — the alternate module names `-m`/`--module` accepts for that row; under `--format json` it's the `aliases` field (renamed from the old `downloaderName`).
 
 ### install-modules
 
@@ -292,10 +293,10 @@ unity install-modules --editor-version 6000.0.47f1 --module android --module ios
 unity install-modules --editor-version 6000.0.47f1 --all --yes
 
 # Include child modules (default behaviour)
-unity install-modules --editor-version 6000.0.47f1 --module android --cm
+unity install-modules --editor-version 6000.0.47f1 --module android --child-modules
 
 # Exclude child modules
-unity install-modules --editor-version 6000.0.47f1 --module android --no-cm
+unity install-modules --editor-version 6000.0.47f1 --module android --no-child-modules
 
 # Accept EULAs and dry-run
 unity install-modules --editor-version 6000.0.47f1 --all --accept-eula --dry-run
@@ -320,6 +321,8 @@ unity install-modules --editor-version 6000.0.47f1 --module android --no-elevate
 A module whose download or validation fails intermittently — common for large modules such as Android SDK/NDK and OpenJDK — is retried automatically (up to twice with exponential backoff by default) instead of failing the whole run; already-installed modules are never re-downloaded, and retry attempts surface in both human and `--format ndjson` output.
 
 `--module android ios` (space-separated values after a single `--module`) and `--module android --module ios` (repeated flag) are equivalent — both install all listed modules.
+
+`--child-modules` / `--no-child-modules` is the primary spelling on both `install` and `install-modules`, matching `unity editors module add`; the old `--cm` / `--no-cm` shorts keep working as hidden aliases.
 
 Module discovery works for editors registered via `unity editors add <path>` (located editors), not just editors installed by the Hub.
 
