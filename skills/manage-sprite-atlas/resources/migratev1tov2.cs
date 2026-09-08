@@ -256,7 +256,7 @@ public static class BuildScriptMigrationExample
         public static void BuildGame()
         {
             // Step 1: Generate/update atlases (V2)
-            string[] guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset");
+            string[] guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset", new[] { "Assets" });
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);

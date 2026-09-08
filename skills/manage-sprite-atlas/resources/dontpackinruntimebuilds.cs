@@ -63,7 +63,7 @@ public static class DontPackInRuntimeBuildsDocumentation
             public void OnPreprocessBuild(BuildTarget target, string path)
             {
                 // Find and pack all atlases before build
-                string[] guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset");
+                string[] guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset", new[] { "Assets" });
                 var atlases = new SpriteAtlasAsset[guids.Length];
 
                 for (int i = 0; i < guids.Length; i++)

@@ -140,7 +140,10 @@ An `AudioMixer` is a project asset, not a scene object, so it is found through t
 rather than a scene query.
 
 ```csharp
-var guids = UnityEditor.AssetDatabase.FindAssets("t:AudioMixer");
+// Scope to Assets. Unscoped, FindAssets also walks read-only packages and reports mixers the
+// user did not author. The second parameter is string[] searchInFolders; there is no SearchMode
+// overload. Measured on one project: t:Material returned 81 unscoped against 9 under Assets.
+var guids = UnityEditor.AssetDatabase.FindAssets("t:AudioMixer", new[] { "Assets" });
 var paths = System.Linq.Enumerable.Select(guids, UnityEditor.AssetDatabase.GUIDToAssetPath);
 return $"count={guids.Length}: {string.Join(", ", paths)}";
 ```

@@ -10,7 +10,7 @@ This document covers invalid V2 patterns, API corrections, and common mistakes t
   - [❌ SetMasterAtlasPath() - Method Does Not Exist](#-setmasteratlaspath---method-does-not-exist)
   - [⚠️ Platform-Specific Format Limitations](#️-platform-specific-format-limitations)
   - [⚠️ PackAtlases() Requires Runtime SpriteAtlas[]](#️-packatlases-requires-runtime-spriteatlas)
-  - [⚠️ AssetDatabase.FindAssets() Requires 2 Arguments](#️-assetdatabasefindassets-requires-2-arguments)
+  - [⚠️ Always scope AssetDatabase.FindAssets to the folders you mean](#️-always-scope-assetdatabasefindassets-to-the-folders-you-mean)
   - [⚠️ AssetImporter.GetAtPath() Takes Single Argument](#️-assetimportergetatpath-takes-single-argument)
 
 ## Invalid V2 Patterns (Do Not Use)
@@ -84,22 +84,33 @@ variant.SetMasterAtlas(masterRuntime);
 SpriteAtlasUtility.PackAtlases(atlasAssets, ...);
 
 // ✅ CORRECT - Load runtime SpriteAtlases first
-SpriteAtlas[] atlases = AssetDatabase.FindAssets("t:SpriteAtlas", SearchMode.AllAssets)
+SpriteAtlas[] atlases = AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Assets" })
     .Select(g => AssetDatabase.LoadAssetAtPath<SpriteAtlas>(AssetDatabase.GUIDToAssetPath(g)))
     .Where(a => a != null)
     .ToArray();
 SpriteAtlasUtility.PackAtlases(atlases, EditorUserBuildSettings.activeBuildTarget, false);
 ```
 
-### ⚠️ AssetDatabase.FindAssets() Requires 2 Arguments
+### ⚠️ Always scope AssetDatabase.FindAssets to the folders you mean
 
 ```csharp
-// ❌ WRONG - Missing SearchMode argument
+// ❌ WRONG - does not compile. There is no SearchMode overload.
+string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas", SearchMode.AllAssets);
+
+// ❌ RISKY - compiles, but searches the WHOLE project including read-only packages
 string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas");
 
-// ✅ CORRECT - Two arguments only
-string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas", SearchMode.AllAssets);
+// ✅ CORRECT - the second parameter is string[] searchInFolders
+string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Assets" });
 ```
+
+`AssetDatabase.FindAssets` has exactly two overloads, `FindAssets(string filter)` and
+`FindAssets(string filter, string[] searchInFolders)`. Verified on Unity 6000.5.8f1.
+
+Scoping matters because an unscoped search reaches into `Packages/`, and those assets are usually
+read-only. Measured on a real project: an unscoped `t:Scene` search returned 20 scenes where the
+project itself has 1, and all 19 extras were package test fixtures. A batch operation that then
+writes to what it found will fail, or worse, target assets it must not modify.
 
 ### ⚠️ AssetImporter.GetAtPath() Takes Single Argument
 
