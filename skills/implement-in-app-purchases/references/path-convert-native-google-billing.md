@@ -115,7 +115,7 @@ Generate all 18 sections. Do not skip any.
 9. **Non-consumable acknowledgement behavior mapping** — native `acknowledgePurchase` → Unity IAP `ConfirmPurchase` (only after grant)
 10. **Subscription behavior mapping** — detected subscription products, restore path, renewal handling
 11. **Google-specific features detected** — list each (see Blocker Detection below)
-12. **Unity IAP 5.2 migration blockers** — features that cannot be cleanly mapped
+12. **Unity IAP 5.x migration blockers** — features that cannot be cleanly mapped
 13. **Proposed new Unity IAP architecture** — new files and their roles
 14. **Code files to create** — with paths
 15. **Code files to modify** — with nature of each change

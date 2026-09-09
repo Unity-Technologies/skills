@@ -18,6 +18,10 @@ string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(myAsset))
 var entry = table.GetEntry(sharedEntryId) ?? table.AddEntry(sharedEntryId, guid);
 entry.Guid = guid;
 EditorUtility.SetDirty(table);
+// SetDirty only marks the table. Without a save the entry reads back correctly for the rest of
+// the session and is gone when the Editor closes. See the save sequence in SKILL.md: dirty the
+// collection and its SharedData too, then save once at the end.
+AssetDatabase.SaveAssets();
 ```
 
 ## Common Namespace Conflicts (CS0118)
