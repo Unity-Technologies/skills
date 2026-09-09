@@ -1,7 +1,6 @@
 ---
 name: build-live-game
 description: Build and operate a live game using Unity Services. Use when the user needs to implement, connect, or debug backend-driven features — battle passes, achievements, player progression, cloud saves, leaderboards, matchmaking, virtual economies, server-authoritative logic, anti-cheat, player accounts and authentication, remote configuration, feature flags, A/B testing, analytics, or cloud resource deployment. Triggers on live-ops, live service, backend, server authority, cloud code, cloud save, remote config, player data, retention, monetization loop, season pass, ranking, multiplayer sessions, lobbies, or any Unity Services integration.
-enabled: true
 ---
 
 # Build a Live Game With Unity Gaming Services

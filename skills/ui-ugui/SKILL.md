@@ -1,12 +1,6 @@
 ---
 name: ui-ugui
 description: Unity uGUI (Canvas-based) UI expert. Understands, edits, and generates Canvas hierarchies, RectTransforms, Layout Groups, and prefab UI. Use for requests involving Canvas, uGUI, RectTransform, or .prefab UI files.
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
 ---
 
 Understand existing Unity uGUI, make targeted edits, and generate new Canvas-based hierarchies.

@@ -1,12 +1,6 @@
 ---
 name: ui-imgui
-description: Unity IMGUI (Immediate Mode GUI) expert for legacy editor tools using OnGUI/immediate mode. Generates and modifies IMGUI EditorWindows, custom Inspectors, PropertyDrawers, and scripts with IMGUI code (OnGUI, OnInspectorGUI). Use when maintaining existing IMGUI editor code or when user explicitly requests IMGUI/OnGUI.
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
+description: Unity IMGUI (Immediate Mode GUI) expert for legacy editor tools using OnGUI/immediate mode. Generates and modifies IMGUI EditorWindows, custom Inspectors, PropertyDrawers, and scripts with IMGUI code (OnGUI, OnInspectorGUI). Use when maintaining existing IMGUI editor code or when user explicitly requests IMGUI/OnGUI. Do not use for NEW editor windows or tools: new editor UI defaults to UI Toolkit (ui-uitk) unless the project already uses IMGUI exclusively or the user asks for OnGUI by name.
 ---
 
 **Before proceeding:** If the user is asking about creating a **new** editor window, custom inspector, or PropertyDrawer without explicitly mentioning IMGUI/OnGUI, recommend using UI Toolkit (CreateGUI) instead, as it's the modern approach. Only proceed with IMGUI if:

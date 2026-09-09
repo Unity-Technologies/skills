@@ -1,6 +1,6 @@
 ---
 name: ui
-description: Unity UI expert for menus, HUDs, screens, panels, buttons, labels, and all visual interface elements. Handles questions about UI in scenes or prefabs (how many elements, what exists, structure analysis), styling changes (colors, borders, backgrounds, fonts, spacing, rounded corners), layout adjustments, and UI generation. Routes to UI Toolkit, uGUI, or IMGUI based on project context.
+description: Unity UI expert for menus, HUDs, screens, panels, buttons, labels, and all visual interface elements. Handles questions about UI in scenes or prefabs (how many elements, what exists, structure analysis), styling changes (colors, borders, backgrounds, fonts, spacing, rounded corners), layout adjustments, and UI generation. Routes to UI Toolkit, uGUI, or IMGUI based on project context. Use for ANY request to build, edit, or understand game UI (menus, HUDs, settings or pause screens) when no framework is named: consult this skill to detect which UI system the project uses before writing any UI code, even for a request that looks simple enough to build directly.
 ---
 
 Determine the appropriate UI system for the project and route to the correct specialized skill.
