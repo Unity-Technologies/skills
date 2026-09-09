@@ -35,7 +35,7 @@ public static class UpdateBuildScriptsDocumentation
         public static void BuildGame()
         {
             // Manually pack atlases
-            var guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset");
+            var guids = AssetDatabase.FindAssets("t:SpriteAtlasAsset", new[] { "Assets" });
             var atlases = new SpriteAtlas[guids.Length];
             for (int i = 0; i < guids.Length; i++)
             {

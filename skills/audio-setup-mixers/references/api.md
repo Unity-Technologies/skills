@@ -33,8 +33,13 @@ All snippets below are written for `unity command eval --code '<snippet>'`: full
 ## Inventory the project's mixers and their groups
 
 ```csharp
-var guids = UnityEditor.AssetDatabase.FindAssets("t:AudioMixer");
-if (guids.Length == 0) { return "no AudioMixer assets in this project"; }
+// Scope the search to Assets. Unscoped, FindAssets also walks read-only packages, so the
+// inventory fills up with mixers the user did not author and cannot edit. Measured on one
+// project: t:Material returned 81 unscoped against 9 under Assets, t:Shader 204 against 22.
+// The only overloads are (string) and (string, string[] searchInFolders) — there is no
+// SearchMode parameter.
+var guids = UnityEditor.AssetDatabase.FindAssets("t:AudioMixer", new[] { "Assets" });
+if (guids.Length == 0) { return "no AudioMixer assets under Assets/"; }
 
 var rows = new System.Collections.Generic.List<string>();
 foreach (var guid in guids)
