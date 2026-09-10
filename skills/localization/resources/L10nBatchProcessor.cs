@@ -6,6 +6,7 @@ using UnityEditor.Events;
 using UnityEngine.Events;
 using UnityEngine.Localization.Components;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 
 /// <summary>
@@ -61,6 +62,14 @@ public static class L10nBatchProcessor
         labels.AddRange(Object.FindObjectsByType<TMP_Text>(
             FindObjectsInactive.Include, FindObjectsSortMode.None));
 
+        // Longest key first. A label reading "NO ITEMS FOUND" must bind to that key rather
+        // than to a shorter "NO" that is a substring of it -- the case SKILL.md's mapping
+        // guidance calls out. Dictionary enumeration order is unspecified, so without this
+        // the binding is not just wrong but irreproducible; and because the loop below breaks
+        // on the first hit and marks the label matched, a mis-binding never surfaces in the
+        // unmatched report. Sorted once here rather than once per label.
+        var ordered = mapping.OrderByDescending(e => e.Key.Length).ToList();
+
         foreach (var label in labels)
         {
             // Read the current string from whichever family this component belongs to.
@@ -68,7 +77,7 @@ public static class L10nBatchProcessor
             if (string.IsNullOrEmpty(current)) continue;
 
             var matched = false;
-            foreach (var kvp in mapping)
+            foreach (var kvp in ordered)
             {
                 if (!current.Contains(kvp.Key)) continue;
 
