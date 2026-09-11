@@ -437,6 +437,6 @@ Attach [CollisionDebugger.cs](resources/CollisionDebugger.cs) to both objects in
 
 ---
 
-## 11. Troubleshooting & Resources
+## 11. Resources
 
 -> [references/troubleshooting.md](references/troubleshooting.md)
