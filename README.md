@@ -8,24 +8,6 @@ A collection of reusable AI agent skills for Unity workflows. Compatible with Cl
 npx skills add Unity-Technologies/skills
 ```
 
-## Available skills
-
-| Skill | Description |
-|---|---|
-| `new-unity-project` | Guided flow from an idea to a running, version-controlled project — gathers concept, platforms, and monetization, then delegates setup to the skills below |
-| `unity-cli` | Interact with the Unity CLI — bootstrap a new project from scratch, install editors, manage projects, run builds, check auth, and more |
-| `unity-package-management` | Add, remove, upgrade, or discover Unity (UPM) packages programmatically — headless/CI installs via the C# PackageManager Client API, and choosing packages by genre/platform/monetization |
-| `build-live-game` | Build and operate a live game with Unity Gaming Services — auth, cloud save, cloud code, economy, remote config, leaderboards, and more |
-| `implement-in-app-purchases` | Implement, configure, and debug Unity In-App Purchases (IAP) |
-| `levelplay-unity-integration` | Integrate LevelPlay (IronSource) ad mediation — rewarded, interstitial, and banner ads |
-| `ui` | Router for Unity UI work — detects the project's UI system and routes to `ui-uitk`, `ui-ugui`, or `ui-imgui` |
-| `ui-uitk` | UI Toolkit (Unity 6.0+) — author UXML/USS, flex layout, custom elements, Painter2D, runtime binding |
-| `ui-ugui` | uGUI — Canvas hierarchies, RectTransform anchoring, Layout Groups, prefab UI |
-| `ui-imgui` | IMGUI editor tooling — EditorWindows, custom Inspectors, PropertyDrawers |
-| `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
-| `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
-| `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
-
 ## Usage
 
 Once installed, your agent will automatically use the relevant skill when you ask it to perform Unity CLI operations. For example:
