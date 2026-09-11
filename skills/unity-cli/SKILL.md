@@ -35,6 +35,8 @@ The package also ships a deeper `unity-pipeline` agent skill, invisible to clien
 
 > **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, and `unity list` can't connect at all. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
+> **Running as a sandboxed coding agent and `unity status` reports no instances?** A restrictive sandbox can hide an Editor that is genuinely running from this CLI's view of it — don't treat that alone as proof the Editor is down. Full detail in [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
+
 ## Install the CLI (if not already installed)
 
 First check if the CLI is available:
@@ -76,6 +78,8 @@ These work on every command:
 | `--proxy-disable` | Disable proxy for this invocation, ignoring all sources (env vars, persisted config, system settings). |
 | `--log-proxy` | Log one redacted entry per outbound request to `proxy-request.json` — for reproducing proxy issues. Also via `UNITY_LOG_PROXY=1` or the `proxyRequestLogging` setting. |
 | `--no-log-proxy` | Opt a single invocation out of proxy request logging when it's enabled globally. |
+| `--color <auto\|always\|never>` | Control colored output for this invocation, overriding `NO_COLOR`/`FORCE_COLOR` and TTY auto-detection. Governs every ANSI-emitting surface (help, tables, spinners, errors), not just `human` output. |
+| `--no-color` | Shorthand for `--color never`. Whichever of `--color`/`--no-color` appears last on the line wins. |
 
 **Always use `--format json` when you need to parse output programmatically.**
 
@@ -151,13 +155,14 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 | Commands | Reference file |
 |---|---|
-| `auth` (login / logout / status / list / switch / default), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
+| `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
 | `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `releases`, `templates` (list / info / create / pack / delete) | [projects-templates.md](references/projects-templates.md) |
-| `config` (proxy / update-check), `hub install` | [config-hub.md](references/config-hub.md) |
+| `config` (proxy / update-check / get / set / list / unset), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
-| `logs`, `doctor`, `env`, `cache`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), `skill` (install / refresh), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
+| `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
 ## Common workflows
@@ -181,9 +186,12 @@ Command names are defined by the Editor, so run `unity command` (or `unity list`
 > - **invisible** to the running Editor until a reimport, so the change silently fails to take effect; and
 > - **prone to hitting the wrong file** — e.g. writing to `SampleScene.unity` while the Editor's active scene is actually `Demo2.unity`, producing valid-looking YAML that changes nothing the user sees.
 
-Only fall back to editing files directly when `unity status` shows **no** reachable Editor — and say so explicitly ("no live Editor detected, editing the file directly").
+**Rule out two false negatives before concluding no Editor is reachable — both look identical to a genuinely closed Editor, and both are easy to get wrong under time pressure:**
 
-**One exception worth ruling out first:** if an Editor *is* running for this project but `unity status` / `unity command` won't connect, it may be stuck in **Safe Mode** from a compile error rather than genuinely absent. Run `unity pipeline list` — if it reports Safe Mode, editing the C# source to fix the compile errors (and then restarting Unity) *is* the correct move, not a fallback. See [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+- **Safe Mode.** If an Editor *is* running for this project but `unity status` / `unity command` won't connect, it may be stuck in **Safe Mode** from a compile error rather than genuinely absent. Run `unity pipeline list` — if it reports Safe Mode, editing the C# source to fix the compile errors (and then restarting Unity) *is* the correct move, not a fallback. See [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+- **A sandboxed agent shell.** If your own shell commands run inside a restrictive sandbox — the normal case for a coding agent like this one — the sandbox can hide a genuinely running Editor from `unity status` the same way. This applies to **every** scene/GameObject/prefab/asset task that reaches this preflight, not only ones that obviously need a live Editor: a task you could otherwise finish without any CLI involvement (e.g. generating an asset through ordinary Editor APIs) can still get funneled into "no Editor" here and derailed. Don't treat "no instances" as proof the Editor is down, and don't quietly improvise a third path — like driving a separate headless Editor process to approximate what a live connection would have done — as a substitute for a disclosed file edit. Say plainly that your sandbox may be blocking your view of a real Editor, and ask whether one is actually open before falling back. Full detail: [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
+
+Only fall back to editing files directly once you've ruled out both of the above — and say so explicitly ("no live Editor detected, editing the file directly").
 
 ### Bootstrap a new project from scratch
 
@@ -251,39 +259,35 @@ Feed the token to `--git-token-stdin` from a secret store, never a literal — e
 `… --git-token-stdin <<<"$GIT_TOKEN"` where `$GIT_TOKEN` comes from your CI/secret manager
 (UVCS uses your Unity sign-in, so no token is needed).
 
-**Working with a UVCS workspace day to day: two wrapped reads, everything else straight through
+**Working with a UVCS workspace day to day: a few wrapped reads, everything else straight through
 to `cm`.** The split is deliberate and worth teaching, because guessing wrong wastes a user's time:
 
-- `unity vcs uvcs locks [path]` — who holds a lock, **and which locks cover files you have already
-  changed**. That join is the only thing here `cm` cannot do for you: it knows the repository's
-  locks and it knows your workspace's changes, but nothing puts them side by side, so without this
-  you learn a teammate holds a scene when your check-in is refused. Read-only, stamped with the
-  time it was taken (locks are shared state, so never treat a reading as current), and it prints
-  the exact `unity uvcs lock` command for anything worth acting on.
-- `unity vcs uvcs changesets [path] [--limit <n>]` — recent history in a stable envelope for CI and
-  agents. Use it when something parses the output; use `unity uvcs log` when a human reads it.
-- **Everything else is `unity uvcs <args>`**, which forwards the whole command line to `cm`
-  verbatim, `--help` and `--format` included. That is the supported route, not a workaround: `cm`
-  owns and versions this vocabulary, so wrapping it would pin a paraphrase that goes stale. Reach
-  for it for **partial checkout**, **shelves**, and **taking or releasing a lock**.
+- **`unity vcs uvcs <verb>`** wraps the reads that **join `cm`'s data to your project** —
+  `locks` (who holds a lock, *and which locks cover files you have already changed*),
+  `changesets`, and `review`. Those joins are the thing `cm` cannot do for you, and they come in a
+  stable envelope, so prefer them whenever something *parses* the output.
+- **`unity uvcs <args>`** forwards the whole command line to `cm` verbatim, `--help` and
+  `--format` included. That is the supported route, not a workaround: `cm` owns and versions this
+  vocabulary, so wrapping it would pin a paraphrase that goes stale. Reach for it for **partial
+  checkout**, **shelves**, and **taking or releasing a lock**, and when a human reads the output.
 
 ```bash
-# Partial checkout (Gluon): work on part of a huge repository. cm's own flags, unchanged.
-unity uvcs partial configure
-unity uvcs partial update /Assets/Levels
-
-# Shelve work in progress, then bring it back. Again, cm's own vocabulary.
-unity uvcs shelve -c "wip: lighting pass"
-unity uvcs shelve --apply sh:12
-
-# Locks: read them through the wrapper (it adds the join), mutate them through cm.
 unity vcs uvcs locks                       # who holds what, and what collides with your changes
 unity uvcs lock list                       # the raw listing, cm's own flags and output
-unity uvcs lock unlock itemid:42@my-game   # release someone's lock, if you are entitled to
+unity uvcs partial update /Assets/Levels   # cm's own vocabulary, unchanged
+unity uvcs shelve -c "wip: lighting pass"
 ```
+
+Every verb, flag and trap: [version-control.md](references/version-control.md).
 
 `unity cm <args>` is the same passthrough under cm's own name. Both need the `cm` client; install
 it with `unity plugin install plastic` if a command says it is missing.
+
+**Beyond setup, the `vcs` group covers the whole day-2 loop** — `status`, `sync`, `switch`,
+`merge-setup`, `conflicts` / `explain` / `resolve`, `diff`, `blame`, `summarize`, `affected`,
+`hooks`, `doctor`, `providers` — and the Unity semantics are the reason to reach for it over raw
+`git`. Full reference, with the flags and the traps:
+[version-control.md](references/version-control.md).
 
 **Git tokens belong to the user's credential manager, not the CLI.** When no token flag or env var
 is given, the CLI asks `git credential fill` and uses whatever the configured helper returns; it
@@ -435,7 +439,7 @@ unity logs --follow --level info
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
-- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely.
-- The CLI is currently in **beta** (latest: `1.0.0-beta.8`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping regardless of analytics/consent state — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
+- The CLI is currently in **beta** (latest: `1.0.0-beta.9`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.

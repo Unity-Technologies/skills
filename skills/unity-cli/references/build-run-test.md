@@ -263,7 +263,27 @@ Under `--format json` the same summary appears as a `retries` block, **absent en
 
 Three cases end early rather than doing something misleading. **Nothing failed** → the editor is not started and the run exits 0 with a warning, because an empty test filter is no filter at all and launching would run everything. **`--report-format junit` alone** → rejected up front (exit **2**): `--output` is then the JUnit report, and the failing set is read from NUnit, so ask for `--report-format nunit,junit`. **`--shard`** → rejected (exit **2**): the editor accepts one test filter and each option needs it, so to retry a shard, run that shard again with `--retries`.
 
-Options: `--mode EditMode|PlayMode`, `--filter <pattern>`, `--output <path>`, `--report-format nunit|junit|nunit,junit`, `--junit-output <path>`, `--shard <n/m>`, `--shard-inventory <path>`, `--retries <n>` (0-10), `--rerun-failed`, `--coverage`, `--coverage-output <path>`, `--coverage-options <options>`, `--editor-version <version>` (env `UNITY_EDITOR_VERSION`), `-e, --editor-path <path>`, `-a, --architecture <arch>`, `--allow-install`, `--timeout <seconds>` (env `UNITY_TEST_TIMEOUT`).
+#### Running only the tests a change affects (`--affected`)
+
+`--affected --since <ref>` runs only the test assemblies the change can reach, taken from `unity vcs affected`'s guid impact graph instead of a hand-written filter. `--since` defaults to `HEAD` (uncommitted work) and otherwise uses the revision's merge base with `HEAD`, like `vcs affected`.
+
+```bash
+unity test /path/to/MyProject                                   # seed the inventory: one full run
+unity test /path/to/MyProject --affected --since origin/main    # writes test-results.affected.xml
+unity test /path/to/MyProject --affected-compare --since origin/main
+```
+
+**Selection is an approximation, and every run says so.** The impact graph is a *lower bound*: Addressables groups, resource-folder lookups and assets loaded by path or name are real dependencies no static analysis finds. So this trades correctness for time, and the warning naming those classes is printed on every `--affected` run — human, tsv (on stderr) and as `lowerBound` plus `lowerBoundReason` in `--format json`.
+
+**It needs an inventory, for the same reason `--shard` does.** The editor's command line filters by test *full name* (`Namespace.Fixture.Method`), which carries no assembly, so resolving affected assemblies into runnable tests needs an NUnit3 report an earlier full run wrote. It reads `--output` (`test-results.xml` by default) and writes to a derived path — `test-results.affected.xml` — so a selective run can never overwrite the full-suite record it will read next time.
+
+**Anything it cannot prove runs the whole suite**, with a stable untranslated `reason` token in `--format json` for a pipeline to log. That happens for: a non-code change (`non-code-change` — the graph maps changed *code* to assemblies and has no edge from a prefab to the test that loads it, so a change touching any asset refuses, including one that also touches scripts), a moved assembly boundary (`assembly-boundary-changed`), a project using Addressables (`addressables`, read from both `Packages/manifest.json` and `Packages/packages-lock.json` so a transitive dependency counts, and an unreadable manifest or settings folder counts as using them), files changed outside the project (`outside-project-changes`), an empty diff (`no-changes`), a bad revision (`diff-failed`), no repository (`no-git-repository`), unreadable project input (`unreadable-input`, `changed-without-guid`), a missing or unattributable inventory (`no-inventory`, `unattributed-tests`), an inventory older than the change (`stale-inventory`), a change that edits a test source at all (`changed-test-source` — an inventory is keyed on assembly *names*, so a case added inside an existing test assembly is invisible to it, and selecting anyway would skip the very test the change adds while still exiting 0), a set too large for one test filter (`filter-unsendable`), and — deliberately — an empty selection (`nothing-selected`), because "no test is affected" is the largest claim a lower bound can fail to support. A refused run behaves exactly as if `--affected` had not been passed, so a `--filter` you also gave is still honoured.
+
+**Measure before you trust it.** `--affected-compare` runs *every* test, then reports what selection would have skipped and, from this run's own results, how many of those tests **failed** — the false-negative count, alongside the seconds selection would have saved. Both ride the `warnings` channel so they survive onto a failing run's envelope, which is the run most likely to have one. Use it for a while before switching to `--affected`.
+
+`--affected`, `--affected-compare`, `--shard` and `--rerun-failed` are mutually exclusive (exit **2**): each decides which tests run, and the editor accepts one test filter. `--since` without `--affected` or `--affected-compare` is a usage error too.
+
+Options: `--mode EditMode|PlayMode`, `--filter <pattern>`, `--output <path>`, `--report-format nunit|junit|nunit,junit`, `--junit-output <path>`, `--shard <n/m>`, `--shard-inventory <path>`, `--retries <n>` (0-10), `--rerun-failed`, `--affected`, `--affected-compare`, `--since <ref>`, `--coverage`, `--coverage-output <path>`, `--coverage-options <options>`, `--editor-version <version>` (env `UNITY_EDITOR_VERSION`), `-e, --editor-path <path>`, `-a, --architecture <arch>`, `--allow-install`, `--timeout <seconds>` (env `UNITY_TEST_TIMEOUT`).
 
 ---
 
@@ -346,4 +366,3 @@ unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.B
 ```
 
 ---
-

@@ -62,6 +62,37 @@ unity config update-check --json
 
 ---
 
+### config get / set / list / unset — read or write any setting by key
+
+A generic key-value interface over the same persisted settings the purpose-built subcommands above already manage — read or write one by name instead of having to know its dedicated command.
+
+```bash
+# Every configuration key and its resolved value
+unity config list
+unity config list --format json
+
+# Read one key
+unity config get proxy
+
+# Write one key (validated the same way its dedicated command would validate it)
+unity config set update-check off
+
+# Clear one back to its default
+unity config unset proxy.bypass
+```
+
+Recognized keys, and what they back onto:
+
+| Key | Same as | Notes |
+|---|---|---|
+| `proxy` | `unity config proxy <url>` | Secret-shaped values are redacted on read/echo (`http://***:***@host`) — the real value is still stored and used. |
+| `proxy.bypass` | `unity config proxy <url> --bypass <hosts>` | Comma-separated hosts; writing/clearing it leaves the sibling `proxy` key untouched. |
+| `update-check` | `unity config update-check on\|off` | Value is `on`/`off`. |
+
+An unknown key, a read-only key (none exist yet — the mechanism exists for a future resolved-only value), or an invalid value for a writable key is rejected with exit **2** and a message pointing at `unity config list`. `--format json` returns `{key, value}` for `get`/`set`, `{key, cleared}` for `unset`, and `{entries: [{key, value, writable}, …]}` for `list`.
+
+---
+
 ### Hub — install the Unity Hub application
 
 Bootstrap Unity Hub on a clean machine from the command line.

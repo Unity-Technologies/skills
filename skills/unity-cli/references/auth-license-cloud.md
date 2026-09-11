@@ -71,6 +71,26 @@ Three behaviors worth knowing before scripting these:
 
 `unity auth default` resolves the project from the current directory unless `--project` is given, and errors if that path isn't a Unity project. Passing both an account and `--clear` is rejected.
 
+#### Consumers — see who's used your sign-in, and revoke one
+
+Some products use your Unity sign-in without holding your refresh token themselves, brokering through the CLI's own auth broker instead. `unity auth consumers` lists every application that has done this on this machine, and `unity auth revoke` cuts one off.
+
+```bash
+# Application, scopes, grants/denials, and when it was last used
+unity auth consumers
+unity auth consumers --format json
+
+# Stop an application from using your sign-in (covers every scope it asked for)
+unity auth revoke "Some Tool"
+
+# Undo that
+unity auth revoke "Some Tool" --restore
+```
+
+Both are local-only — reading the broker's audit trail and a local revocation list — so neither needs sign-in or the network. On a machine that has never run the broker, `auth consumers` reports an empty list rather than an error. `auth revoke` without `--restore` revokes; with it, it un-revokes; either way it reports the actual resulting state (e.g. "already revoked") rather than assuming the write changed anything.
+
+The stored token itself is sealed to the machine that wrote it (TPM-backed on Windows/Linux where available, Keychain on macOS, with a local-key-file fallback everywhere), so a copied token-store file is worthless on another machine. `unity doctor` reports which protection is in force.
+
 **Separate sign-in from Hub.** As of `0.1.0-beta.8`, the CLI and the GUI Hub store their sign-in credentials **separately** — signing in to one no longer signs you out of (or overwrites the account of) the other, so each can stay signed in as a different account. (In earlier betas they shared a single keyring session.)
 
 **Service-account credentials via env vars** (`UNITY_SERVICE_ACCOUNT_ID` + `UNITY_SERVICE_ACCOUNT_SECRET`) mint bearer tokens automatically for the duration of the process — no browser round-trip, no keyring write. If only one of the two is set, the CLI prints a warning on stderr instead of silently falling back to the keyring/OAuth identity.

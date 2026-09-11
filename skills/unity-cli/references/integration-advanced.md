@@ -124,6 +124,76 @@ Two safety behaviors: writing through a symlink is refused rather than followed,
 
 If you last installed the Codex skill with an older CLI, `unity skill refresh` migrates it: it writes the skill directory, strips the old `AGENTS.md` block, and replaces the tracking entry.
 
+#### skill show — read the skill without installing it
+
+`unity skill show` prints the embedded skill straight to stdout — no prompt, no file written, no network call — for a client (or an agent already reading this skill) that only wants the content, not a filesystem write it may not be permitted to make.
+
+```bash
+# The skill's SKILL.md (default)
+unity skill show
+
+# List every embedded file (SKILL.md first, then docs and references, in sort order)
+unity skill show --list
+
+# Show one specific file from that list
+unity skill show --path references/auth-license-cloud.md
+
+# Machine-readable — { path, content, files }; path/content are null for --list
+unity skill show --format json
+```
+
+An unrecognized `--path` fails with a usage error (exit 2) naming the available paths.
+
+---
+
+### Plugin — manage optional CLI-adjacent tools
+
+The CLI resolves a small set of external tools and runtimes it needs for specific features — Plastic SCM's `cm` client (aliases `plastic`, `uvcs`, needed for `unity vcs uvcs …` / `unity cm …`), the Unity Licensing Client (`licensingClient`, needed for `unity license`), and the Unity Gaming Services CLI (`ugs`) — on demand, from a small versioned registry. `unity plugin` manages that resolution explicitly instead of waiting for a command to trigger it.
+
+```bash
+# What's resolved, and from where (PATH, or a CLI-managed copy under the external-modules dir)
+unity plugin list
+unity plugin list --versions      # probe each installed component's real version (costs a subprocess per component)
+
+# Install one by id or alias
+unity plugin install plastic      # same target as `unity plugin install cm` / `unity plugin install uvcs`
+unity plugin install ugs
+
+# Remove a CLI-managed copy (never a PATH install the CLI didn't create; prompts unless -y/--yes)
+unity plugin remove plastic --yes
+
+# Update everything with a managed install to the newest compatible version
+unity plugin upgrade
+unity plugin upgrade plastic
+```
+
+`plugin install`/`upgrade` accept `--offline` to resolve only against the cached/embedded registry document (no network attempt). `plugin remove` requires confirmation — pass `-y`/`--yes` non-interactively — and discloses the bytes it will free (including superseded leftovers) before asking; removing the licensing client warns that it can break `unity license` and `unity bug`.
+
+#### plugin upgrade — real version comparison, not a checksum guess
+
+`unity plugin upgrade [id] [--force] [--changelog]` compares the installed component's own recorded version against what the registry currently publishes, rather than inferring staleness from a checksum. Outcomes, and what to expect from each:
+
+- **Stale → installed.** A newer compatible version exists and was acquired.
+- **Up to date → unchanged.** Nothing to do.
+- **`indeterminate`.** Reached only when NEITHER this CLI's install-ledger version stamp NOR the older checksum/source-sentinel fallback can date the install — nothing on disk at all, or an install predating both. A Hub-installed copy lacks only the newer ledger; it falls back to the same checksum/source-sentinel comparison it always used and gets the same staleness answer as before, so it is not automatically `indeterminate`. `--force` re-acquires a genuinely undatable install regardless.
+- **`ahead-of-registry`.** The installed version has higher precedence than anything the registry currently admits (a manual downgrade, or a sideloaded build) — reported and left alone, even with `--force` — **unless** that installed version is specifically found `yanked`, in which case `upgrade` downgrades to the newest safe (non-yanked) version on its own and says so plainly, naming both the yanked version and why, and the version it downgraded to.
+
+`--changelog` fetches and prints the full release notes for the version about to install before acquiring it (the one-line summary from the registry prints unconditionally either way); a component with no published notes for that version just says so and the upgrade proceeds. `--format json`/`tsv`/`ndjson` carry `fromVersion`, `toVersion`, and a `yanked` flag alongside the existing per-component fields, so a script can tell a downgrade-to-recover apart from an ordinary upgrade.
+
+#### plugin changelog — read a plugin's own release notes
+
+```bash
+# Notes for the version `plugin upgrade` would install
+unity plugin changelog plastic
+
+# Notes for a specific version instead
+unity plugin changelog ugs --version 2.1.0
+
+unity plugin changelog plastic --format json    # { id, name, version, summary, notes }
+```
+
+Rendered from markdown and paged like `unity changelog`. Unlike `plugin upgrade --changelog` (where missing notes is never a failure), `plugin changelog` on its own fails (exit 6) when the component has no publisher-hosted changelog at all or no notes for the requested version — you asked specifically to read them, so nothing to show is reported rather than silently swallowed. `--version` must be an exact, canonical semver value (`1.2.3`, not `v1.2.3`); an invalid value is a usage error (exit 2).
+
 ---
 
 ### Connected Editors — pipeline / command / status
@@ -335,6 +405,56 @@ unity status --project megacity
 ```
 
 Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+
+#### Sandboxed agent tooling can hide a running Editor
+
+If you're operating as a coding agent whose shell commands run inside a restrictive
+sandbox, `unity status`, `unity command`, and `unity list` can report no reachable
+Editor **even when one is genuinely open on this machine for this project**. The CLI
+does not yet distinguish this case from an Editor that truly isn't running, so today
+the message is the same generic one either way — treat a "no instances" or
+"cannot connect" result as a real possibility of this, not proof the Editor is down,
+whenever you know your own shell commands are sandboxed.
+
+Two distinct mechanisms are known to cause this, each specific to one platform — don't
+assume the other one's cause on a platform it doesn't apply to, and don't assume every
+sandbox on that platform necessarily behaves this way:
+
+- **Windows.** Some sandboxes run the agent's shell commands under a separate,
+  restricted local account rather than the interactive user's own account. The Editor
+  writes its discovery file under its own account with an owner-only ACL, so a
+  sandboxed account attempting to read it gets a permission error, not a missing file
+  — and that permission error is what gets misreported as "no Editor found."
+- **macOS.** Some sandboxes leave the discovery file itself readable (no separate
+  account involved) but block the outbound loopback network connection the CLI needs
+  to reach the Editor's local Pipeline server. The connection attempt is refused or
+  times out exactly as it would if the Editor weren't running.
+
+**What to do when you suspect this:**
+- Ask whether a Unity Editor is actually open for this project before concluding it
+  isn't — the person running the sandbox can usually see that directly, even when a
+  command run inside the sandbox cannot.
+- If they confirm one is open, say plainly that your own sandbox is likely blocking
+  your view of it, rather than repeating the generic message or guessing at some
+  unrelated cause (a stale lockfile, the wrong project path, and so on).
+- **Never suggest turning the sandbox off** to get around this. That gives up a
+  security boundary the user or their tooling chose deliberately. Recommend running
+  the one blocked command outside the sandbox, or adjusting the sandbox's own
+  file-system or network allowances, instead.
+- Don't fall back to guessing at project state or hand-editing files as a substitute
+  for a live connection — outside a sandboxed environment, the same "no Editor" result
+  usually does mean what it says.
+- Don't quietly substitute a different workflow instead — e.g. driving a separate
+  headless Editor process to approximate what the live connection would have done.
+  That produces a different result (sometimes an incomplete one, materializing only
+  once something else runs) without ever telling the user their task was rerouted.
+  Say what's actually happening — sandbox suspected, live connection unavailable —
+  rather than silently working around it.
+
+This is a known gap in the CLI's own diagnostics, not a documented CLI behavior — the
+explanation above is this skill's interim guidance, not something `unity status` prints
+today. If a future CLI version reports this case with its own distinct, structured
+message, prefer that message over this section.
 
 #### Recovering from Safe Mode (connection fails because of compile errors)
 
