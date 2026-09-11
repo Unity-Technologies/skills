@@ -175,7 +175,7 @@ unity plugin upgrade plastic
 
 - **Stale → installed.** A newer compatible version exists and was acquired.
 - **Up to date → unchanged.** Nothing to do.
-- **`indeterminate`.** Neither this CLI's install-ledger version stamp nor the older checksum/source-sentinel fallback can date the install (most commonly a Hub-installed copy, which doesn't write the newer ledger yet). `--force` re-acquires it regardless.
+- **`indeterminate`.** Reached only when NEITHER this CLI's install-ledger version stamp NOR the older checksum/source-sentinel fallback can date the install — nothing on disk at all, or an install predating both. A Hub-installed copy lacks only the newer ledger; it falls back to the same checksum/source-sentinel comparison it always used and gets the same staleness answer as before, so it is not automatically `indeterminate`. `--force` re-acquires a genuinely undatable install regardless.
 - **`ahead-of-registry`.** The installed version has higher precedence than anything the registry currently admits (a manual downgrade, or a sideloaded build) — reported and left alone, even with `--force` — **unless** that installed version is specifically found `yanked`, in which case `upgrade` downgrades to the newest safe (non-yanked) version on its own and says so plainly, naming both the yanked version and why, and the version it downgraded to.
 
 `--changelog` fetches and prints the full release notes for the version about to install before acquiring it (the one-line summary from the registry prints unconditionally either way); a component with no published notes for that version just says so and the upgrade proceeds. `--format json`/`tsv`/`ndjson` carry `fromVersion`, `toVersion`, and a `yanked` flag alongside the existing per-component fields, so a script can tell a downgrade-to-recover apart from an ordinary upgrade.
@@ -405,6 +405,56 @@ unity status --project megacity
 ```
 
 Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+
+#### Sandboxed agent tooling can hide a running Editor
+
+If you're operating as a coding agent whose shell commands run inside a restrictive
+sandbox, `unity status`, `unity command`, and `unity list` can report no reachable
+Editor **even when one is genuinely open on this machine for this project**. The CLI
+does not yet distinguish this case from an Editor that truly isn't running, so today
+the message is the same generic one either way — treat a "no instances" or
+"cannot connect" result as a real possibility of this, not proof the Editor is down,
+whenever you know your own shell commands are sandboxed.
+
+Two distinct mechanisms are known to cause this, each specific to one platform — don't
+assume the other one's cause on a platform it doesn't apply to, and don't assume every
+sandbox on that platform necessarily behaves this way:
+
+- **Windows.** Some sandboxes run the agent's shell commands under a separate,
+  restricted local account rather than the interactive user's own account. The Editor
+  writes its discovery file under its own account with an owner-only ACL, so a
+  sandboxed account attempting to read it gets a permission error, not a missing file
+  — and that permission error is what gets misreported as "no Editor found."
+- **macOS.** Some sandboxes leave the discovery file itself readable (no separate
+  account involved) but block the outbound loopback network connection the CLI needs
+  to reach the Editor's local Pipeline server. The connection attempt is refused or
+  times out exactly as it would if the Editor weren't running.
+
+**What to do when you suspect this:**
+- Ask whether a Unity Editor is actually open for this project before concluding it
+  isn't — the person running the sandbox can usually see that directly, even when a
+  command run inside the sandbox cannot.
+- If they confirm one is open, say plainly that your own sandbox is likely blocking
+  your view of it, rather than repeating the generic message or guessing at some
+  unrelated cause (a stale lockfile, the wrong project path, and so on).
+- **Never suggest turning the sandbox off** to get around this. That gives up a
+  security boundary the user or their tooling chose deliberately. Recommend running
+  the one blocked command outside the sandbox, or adjusting the sandbox's own
+  file-system or network allowances, instead.
+- Don't fall back to guessing at project state or hand-editing files as a substitute
+  for a live connection — outside a sandboxed environment, the same "no Editor" result
+  usually does mean what it says.
+- Don't quietly substitute a different workflow instead — e.g. driving a separate
+  headless Editor process to approximate what the live connection would have done.
+  That produces a different result (sometimes an incomplete one, materializing only
+  once something else runs) without ever telling the user their task was rerouted.
+  Say what's actually happening — sandbox suspected, live connection unavailable —
+  rather than silently working around it.
+
+This is a known gap in the CLI's own diagnostics, not a documented CLI behavior — the
+explanation above is this skill's interim guidance, not something `unity status` prints
+today. If a future CLI version reports this case with its own distinct, structured
+message, prefer that message over this section.
 
 #### Recovering from Safe Mode (connection fails because of compile errors)
 

@@ -35,6 +35,8 @@ The package also ships a deeper `unity-pipeline` agent skill, invisible to clien
 
 > **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, and `unity list` can't connect at all. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
+> **Running as a sandboxed coding agent and `unity status` reports no instances?** A restrictive sandbox can hide an Editor that is genuinely running from this CLI's view of it — don't treat that alone as proof the Editor is down. Full detail in [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
+
 ## Install the CLI (if not already installed)
 
 First check if the CLI is available:
@@ -160,6 +162,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | `run`, `test`, `build` | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
 | `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), connected editors (`pipeline` / `command` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
 ## Common workflows
@@ -183,9 +186,12 @@ Command names are defined by the Editor, so run `unity command` (or `unity list`
 > - **invisible** to the running Editor until a reimport, so the change silently fails to take effect; and
 > - **prone to hitting the wrong file** — e.g. writing to `SampleScene.unity` while the Editor's active scene is actually `Demo2.unity`, producing valid-looking YAML that changes nothing the user sees.
 
-Only fall back to editing files directly when `unity status` shows **no** reachable Editor — and say so explicitly ("no live Editor detected, editing the file directly").
+**Rule out two false negatives before concluding no Editor is reachable — both look identical to a genuinely closed Editor, and both are easy to get wrong under time pressure:**
 
-**One exception worth ruling out first:** if an Editor *is* running for this project but `unity status` / `unity command` won't connect, it may be stuck in **Safe Mode** from a compile error rather than genuinely absent. Run `unity pipeline list` — if it reports Safe Mode, editing the C# source to fix the compile errors (and then restarting Unity) *is* the correct move, not a fallback. See [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+- **Safe Mode.** If an Editor *is* running for this project but `unity status` / `unity command` won't connect, it may be stuck in **Safe Mode** from a compile error rather than genuinely absent. Run `unity pipeline list` — if it reports Safe Mode, editing the C# source to fix the compile errors (and then restarting Unity) *is* the correct move, not a fallback. See [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+- **A sandboxed agent shell.** If your own shell commands run inside a restrictive sandbox — the normal case for a coding agent like this one — the sandbox can hide a genuinely running Editor from `unity status` the same way. This applies to **every** scene/GameObject/prefab/asset task that reaches this preflight, not only ones that obviously need a live Editor: a task you could otherwise finish without any CLI involvement (e.g. generating an asset through ordinary Editor APIs) can still get funneled into "no Editor" here and derailed. Don't treat "no instances" as proof the Editor is down, and don't quietly improvise a third path — like driving a separate headless Editor process to approximate what a live connection would have done — as a substitute for a disclosed file edit. Say plainly that your sandbox may be blocking your view of a real Editor, and ask whether one is actually open before falling back. Full detail: [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
+
+Only fall back to editing files directly once you've ruled out both of the above — and say so explicitly ("no live Editor detected, editing the file directly").
 
 ### Bootstrap a new project from scratch
 
@@ -253,39 +259,35 @@ Feed the token to `--git-token-stdin` from a secret store, never a literal — e
 `… --git-token-stdin <<<"$GIT_TOKEN"` where `$GIT_TOKEN` comes from your CI/secret manager
 (UVCS uses your Unity sign-in, so no token is needed).
 
-**Working with a UVCS workspace day to day: two wrapped reads, everything else straight through
+**Working with a UVCS workspace day to day: a few wrapped reads, everything else straight through
 to `cm`.** The split is deliberate and worth teaching, because guessing wrong wastes a user's time:
 
-- `unity vcs uvcs locks [path]` — who holds a lock, **and which locks cover files you have already
-  changed**. That join is the only thing here `cm` cannot do for you: it knows the repository's
-  locks and it knows your workspace's changes, but nothing puts them side by side, so without this
-  you learn a teammate holds a scene when your check-in is refused. Read-only, stamped with the
-  time it was taken (locks are shared state, so never treat a reading as current), and it prints
-  the exact `unity uvcs lock` command for anything worth acting on.
-- `unity vcs uvcs changesets [path] [--limit <n>]` — recent history in a stable envelope for CI and
-  agents. Use it when something parses the output; use `unity uvcs log` when a human reads it.
-- **Everything else is `unity uvcs <args>`**, which forwards the whole command line to `cm`
-  verbatim, `--help` and `--format` included. That is the supported route, not a workaround: `cm`
-  owns and versions this vocabulary, so wrapping it would pin a paraphrase that goes stale. Reach
-  for it for **partial checkout**, **shelves**, and **taking or releasing a lock**.
+- **`unity vcs uvcs <verb>`** wraps the reads that **join `cm`'s data to your project** —
+  `locks` (who holds a lock, *and which locks cover files you have already changed*),
+  `changesets`, and `review`. Those joins are the thing `cm` cannot do for you, and they come in a
+  stable envelope, so prefer them whenever something *parses* the output.
+- **`unity uvcs <args>`** forwards the whole command line to `cm` verbatim, `--help` and
+  `--format` included. That is the supported route, not a workaround: `cm` owns and versions this
+  vocabulary, so wrapping it would pin a paraphrase that goes stale. Reach for it for **partial
+  checkout**, **shelves**, and **taking or releasing a lock**, and when a human reads the output.
 
 ```bash
-# Partial checkout (Gluon): work on part of a huge repository. cm's own flags, unchanged.
-unity uvcs partial configure
-unity uvcs partial update /Assets/Levels
-
-# Shelve work in progress, then bring it back. Again, cm's own vocabulary.
-unity uvcs shelve -c "wip: lighting pass"
-unity uvcs shelve --apply sh:12
-
-# Locks: read them through the wrapper (it adds the join), mutate them through cm.
 unity vcs uvcs locks                       # who holds what, and what collides with your changes
 unity uvcs lock list                       # the raw listing, cm's own flags and output
-unity uvcs lock unlock itemid:42@my-game   # release someone's lock, if you are entitled to
+unity uvcs partial update /Assets/Levels   # cm's own vocabulary, unchanged
+unity uvcs shelve -c "wip: lighting pass"
 ```
+
+Every verb, flag and trap: [version-control.md](references/version-control.md).
 
 `unity cm <args>` is the same passthrough under cm's own name. Both need the `cm` client; install
 it with `unity plugin install plastic` if a command says it is missing.
+
+**Beyond setup, the `vcs` group covers the whole day-2 loop** — `status`, `sync`, `switch`,
+`merge-setup`, `conflicts` / `explain` / `resolve`, `diff`, `blame`, `summarize`, `affected`,
+`hooks`, `doctor`, `providers` — and the Unity semantics are the reason to reach for it over raw
+`git`. Full reference, with the flags and the traps:
+[version-control.md](references/version-control.md).
 
 **Git tokens belong to the user's credential manager, not the CLI.** When no token flag or env var
 is given, the CLI asks `git credential fill` and uses whatever the configured helper returns; it
