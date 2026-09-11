@@ -1,7 +1,0 @@
-# API keys - never commit
-.env
-
-# Promptfoo output
-output/
-promptfoo-output/
-*.html
