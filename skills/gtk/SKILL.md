@@ -69,6 +69,9 @@ State Machine API is not available there. Do not emulate it with the Graph API u
 
 ## Workflow A: build a graph tool
 
+Read `references/graph-api.md` now, before writing code; member names and builder chains come from
+there, not from memory. Read `references/runtime-and-visualization.md` as well when step 5 applies.
+
 1. **Graph class.** `[Graph(AssetExtension)] [Serializable] class MyGraph : Graph` with a
    `public const string AssetExtension`. Add a `[MenuItem("Assets/Create/...")]` static method that
    calls `GraphDatabase.PromptInProjectBrowserToCreateNewAsset<MyGraph>()`. Pass
@@ -84,13 +87,29 @@ State Machine API is not available there. Do not emulate it with the Graph API u
    attached to the message, a menu item, or the importer, and say so when the user asks about it.
 4. **Structure, as requested.** Context and block nodes, subgraphs, blackboard variables, type casting
    through `IsConnectionAllowed`, a toolbar element, or a context menu. Details in `graph-api.md`.
-5. **Output.** A `ScriptedImporter` registered on the same extension loads the graph with
-   `GraphDatabase.LoadGraphForImporter<MyGraph>(ctx.assetPath)`, walks nodes and ports, and adds the
-   runtime object with `ctx.AddObjectToAsset` and `ctx.SetMainObject`. Details in
-   `runtime-and-visualization.md`.
+5. **Output.** A `ScriptedImporter` registered on the same extension compiles the graph into a plain
+   runtime asset. The shape is always the same:
+
+   ```csharp
+   var graph = GraphDatabase.LoadGraphForImporter<MyGraph>(ctx.assetPath);   // never LoadGraph here
+   if (graph == null) return;                                                 // bad path or type: log and stop
+   var start = graph.GetNodes().OfType<StartNode>().FirstOrDefault();
+   if (start == null) return;                                                 // OnGraphChanged already reported it
+   var next = start.GetOutputPortByName("Next").FirstConnectedPort?.GetNode(); // null when unconnected
+   var titlePort = next.GetInputPortByName("Title");
+   titlePort.TryGetValue<string>(out var title);                              // the value typed on the node
+   if (titlePort.IsConnected) { /* resolve titlePort.FirstConnectedPort.GetNode() upstream instead */ }
+   ctx.AddObjectToAsset("Runtime", runtime); ctx.SetMainObject(runtime);
+   ```
+
+   The runtime asset and its assembly must not reference `Unity.GraphToolkit.Editor`; keep `Hash128`
+   IDs as `Hash128`. Debug views and code-built graphs are in `runtime-and-visualization.md`.
 6. **Verify** as described below.
 
 ## Workflow B: build a state machine tool (Unity 6.7 and newer)
+
+Read `references/state-machine-api.md` now; there is no manual chapter for this API yet, so that file
+is the only accurate source for its member names.
 
 1. **State machine class.** `[StateMachine(AssetExtension)] [Serializable] class MySM : StateMachine`
    plus a menu item calling `StateMachineDatabase.PromptInProjectBrowserToCreateNewAsset<MySM>()`.
@@ -153,6 +172,7 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
 
 ## Verify
 
+0. Read `references/pitfalls.md` and check the code against it before showing it to the user.
 1. The project compiles with no errors. If the Unity CLI is available, use it to build or run the
    Editor headless; otherwise ask the user to focus the Editor and report the Console.
 2. Create an asset from the new menu item, double-click it, add every node or state type from the Add
