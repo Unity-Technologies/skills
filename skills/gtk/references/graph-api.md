@@ -119,6 +119,7 @@ Builder methods, chain then finish with `.Build()` which returns the `IPort`:
 | `AsVertical()` | all | Top/bottom placement; labels hidden; not on block nodes |
 | `WithCapacity(PortCapacity.None | Single | Multi)` | all | Max wire count |
 | `WithDataType<T>()` / `WithDataType(Type)` | untyped builders | Give a type after the fact |
+| **6.7** `WithDataTypes(params Type[])` / `WithDataTypes(IEnumerable<Type>)` | untyped builders | Polymorphic port that accepts any of the listed types; at least one type, duplicates ignored |
 | `WithDefaultValue(T)` | typed input | Value used when unconnected; editable on the node |
 | `Delayed()` | input | Commit on Enter or focus loss |
 | `AsTextArea(minLines, maxLines)` | input (string) | Multi-line field |

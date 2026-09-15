@@ -145,6 +145,7 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
 |---|---|
 | Limit how many wires a port accepts | `.WithCapacity(PortCapacity.Single)` (or `Multi`, `None`) in the port builder |
 | Connect an `int` output to a `float` input | Override `Graph.IsConnectionAllowed(IPort output, IPort input)` |
+| One port that accepts several types, like Shader Graph | 6000.7+: `.WithDataTypes(typeof(float), typeof(int), typeof(Vector3))` on the builder. 6000.6: an untyped port plus `IsConnectionAllowed` |
 | An execution-flow port with no data type | `context.AddInputPort("In")` with no type; its `DataType` is `Untyped`. Add `.WithConnectorUI(PortConnectorUI.Arrowhead)` for a flow look |
 | Hide a node type from the Add menu | Make it `abstract`, or move it to another assembly without `[UseWithGraph]`, or set `GraphOptions.DisableAutoInclusionOfNodesFromGraphAssembly` and opt nodes in explicitly |
 | Group nodes in the Add menu | `[Node("Category/Sub")]`. The class or title name is appended after the path |
