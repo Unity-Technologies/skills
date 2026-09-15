@@ -1,0 +1,83 @@
+{
+  "skill_name": "gtk",
+  "evals": [
+    {
+      "id": 1,
+      "name": "scaffold-dialogue-graph-tool",
+      "prompt": "I'm on Unity 6000.6.3f1. Scaffold a minimal Graph Toolkit tool for dialogue authoring: a DialogueGraph asset type with .dialogue extension, a menu item to create it, a StartNode, and a LineNode with a Speaker string, a Text string and a Next output. Show the C# files and where they go.",
+      "expectations": [
+        "Defines a class deriving from Unity.GraphToolkit.Editor.Graph decorated with [Graph(...)] carrying the file extension and marked [Serializable]",
+        "Creates the asset through GraphDatabase.PromptInProjectBrowserToCreateNewAsset<DialogueGraph>() from a [MenuItem] static method",
+        "Node classes derive from Node, are [Serializable], and define ports by overriding OnDefinePorts with context.AddInputPort / AddOutputPort chains that end in .Build()",
+        "Places the files in an Editor-only assembly (an Editor folder or editor-only asmdef)",
+        "Does not use internal or legacy types such as GraphModel, NodeModel, GraphObject, GraphViewEditorWindow, Stencil, or UnityEditor.Experimental.GraphView",
+        "Does not instruct the user to install a com.unity.graphtoolkit package",
+        "Every Graph Toolkit member, attribute and type used in the code exists in the public API with the documented casing and signature: PascalCase properties such as FirstConnectedPort and IsConnected, positional attribute constructor arguments, Hash128 for element IDs, and no invented methods"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "port-capacity-and-type-casting",
+      "prompt": "In my Graph Toolkit tool (Unity 6.6) the 'Next' output port on my nodes should only allow a single wire, and I want an int output to be connectable to a float input. How do I do both?",
+      "expectations": [
+        "Uses .WithCapacity(PortCapacity.Single) in the port builder chain for the single-wire port",
+        "Overrides Graph.IsConnectionAllowed(IPort output, IPort input) and checks output.DataType and input.DataType to allow int to float",
+        "States or implies that the graph only records the connection and the conversion itself happens in the importer or runtime code",
+        "Does not invent builder methods such as SetCapacity, MaxConnections, AllowCast, or attributes for capacity",
+        "Every Graph Toolkit member, attribute and type used in the code exists in the public API with the documented casing and signature: PascalCase properties such as FirstConnectedPort and IsConnected, positional attribute constructor arguments, Hash128 for element IDs, and no invented methods"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "state-machine-tool-with-conditions",
+      "prompt": "Unity 6000.7.0b4. Build an enemy AI state machine editor with Graph Toolkit's State Machine API: states Idle, Patrol and Chase, a float condition 'Distance to player' with a comparison dropdown, and a valueless 'Took damage' trigger condition. Also show how an importer would read the states, transitions and conditions into a runtime ScriptableObject.",
+      "expectations": [
+        "Defines a class deriving from StateMachine decorated with [StateMachine(...)] and creates assets via StateMachineDatabase.PromptInProjectBrowserToCreateNewAsset",
+        "States derive from State and are [Serializable]; they do not define ports",
+        "The distance condition derives from Condition<float> and overrides DisplayComparisonDropdown to return true; the trigger derives from the non-generic Condition",
+        "The importer loads with StateMachineDatabase.LoadStateMachineForImporter and walks GetStates(), GetOutgoingTransitions(), GetRules() and each rule's RootCondition",
+        "Handles IGroupCondition and IVariableCondition when compiling the condition tree, not only the custom condition types",
+        "Builds on the State Machine API types (StateMachine, State, Condition, ITransition, ITransitionRule) rather than emulating a state machine with Graph, Node, ContextNode or BlockNode, and does not use internal types such as StateModel, TransitionModel, GraphModel or ConditionModel",
+        "Every Graph Toolkit member, attribute and type used in the code exists in the public API with the documented casing and signature: PascalCase properties such as FirstConnectedPort and IsConnected, positional attribute constructor arguments, Hash128 for element IDs, and no invented methods"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "importer-to-runtime-asset",
+      "prompt": "I have a Graph Toolkit graph type QuestGraph with extension 'quest' and nodes StartNode, ObjectiveNode (string input 'Title', output 'Next') and EndNode. Write the ScriptedImporter that produces a QuestRuntime ScriptableObject listing the objectives in order, and explain how the runtime assembly must be set up.",
+      "expectations": [
+        "Uses [ScriptedImporter(version, \"quest\")] on a ScriptedImporter subclass and loads the graph with GraphDatabase.LoadGraphForImporter<QuestGraph>(ctx.assetPath)",
+        "Finds the entry node with GetNodes().OfType<StartNode>() and follows connections through GetOutputPortByName(...).FirstConnectedPort and GetNode()",
+        "Reads the objective title from the input port with TryGetValue when the port is unconnected and resolves the upstream node through FirstConnectedPort when it is connected",
+        "Adds the runtime object with ctx.AddObjectToAsset and makes it the main object with ctx.SetMainObject",
+        "States that the runtime assembly must not reference Unity.GraphToolkit.Editor and that the importer lives in an Editor assembly",
+        "Handles a null graph or a missing StartNode without throwing",
+        "Every Graph Toolkit member, attribute and type used in the code exists in the public API with the documented casing and signature: PascalCase properties such as FirstConnectedPort and IsConnected, positional attribute constructor arguments, Hash128 for element IDs, and no invented methods"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "version-gate-state-machine-on-6-6",
+      "prompt": "We're on Unity 6000.6.1f1 and want to build an Animator-like state machine editor for our AI using Graph Toolkit. Give me the StateMachine and State classes to start with.",
+      "expectations": [
+        "States clearly that the Graph Toolkit State Machine API requires Unity 6000.7 or newer and is not available on 6000.6",
+        "Does not present StateMachine, State or Condition<T> code as if it compiles on 6000.6",
+        "Offers a concrete way forward, such as upgrading to 6000.7 or modelling states as regular Graph nodes on 6000.6, and asks or notes which the user prefers",
+        "Does not suggest installing a package to obtain the State Machine API"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "graph-changed-delta-and-validation",
+      "prompt": "Graph Toolkit, Unity 6.6. When the user edits my graph I need to (a) show an error marker on any ObjectiveNode whose Title is empty and (b) react only to nodes that were added or removed instead of scanning everything. How?",
+      "expectations": [
+        "Overrides Graph.OnGraphChanged(GraphLogger logger) and reports with logger.LogError(message, node) so the marker is attached to the offending node",
+        "States that the GraphLogger.GraphChanges / ChangeKind change delta exists only from Unity 6000.7 and is not available on the user's 6.6 Editor",
+        "For 6.6, proposes a working alternative to a full rescan, such as caching node IDs (Hash128) in a non-serialized set on the graph and diffing against GetNodes() each call, and notes that title edits on existing nodes still need checking",
+        "Warns that the graph must not be modified inside OnGraphChanged and that modifications belong in a GraphLogAction, menu item or importer",
+        "Does not use graphViewChanged, GraphViewChange, or other GraphView-era APIs",
+        "Every Graph Toolkit member, attribute and type used in the code exists in the public API with the documented casing and signature: PascalCase properties such as FirstConnectedPort and IsConnected, positional attribute constructor arguments, Hash128 for element IDs, and no invented methods"
+      ]
+    }
+  ]
+}
