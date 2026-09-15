@@ -16,10 +16,10 @@ Contents
 
 ## 1. Assembly layout
 
-- `Editor/` (or an Editor-only asmdef): graph, nodes, importer, toolbar, views. A plain `Editor`
-  folder needs no setup. An asmdef must reference two module assemblies: `Unity.GraphToolkit.Editor`
-  (Graph, Node, attributes, GraphDatabase) and `Unity.GraphToolkit.Common.Editor` (`IPort`,
-  `IVariable`, `PortCapacity`, `VariableKind` and the other shared contracts).
+- `Editor/` (or an Editor-only asmdef): graph, nodes, importer, toolbar, views. Graph Toolkit is an
+  Editor module, so its assemblies are available to editor code like `UnityEditor` itself: neither a
+  plain `Editor` folder nor an Editor-only asmdef needs a reference entry for it. The official
+  samples' editor asmdefs use `IPort` and `PortCapacity` with an empty `references` list.
 - `Runtime/` asmdef: the runtime data model and executor. Must not reference
   `Unity.GraphToolkit.Editor`. Visualization calls live here under `#if UNITY_EDITOR`, because they
   need the editor to be running the game.
