@@ -84,7 +84,7 @@ there, not from memory. Read `references/runtime-and-visualization.md` as well w
 3. **Validation.** Override `OnGraphChanged(GraphLogger logger)` and report with
    `logger.LogError`, `LogWarning` or `Log`, passing the offending node or port as context so the
    marker appears on it. Never mutate the graph in this callback; put the fix in a `GraphLogAction`
-   attached to the message, a menu item, or the importer, and say so when the user asks about it.
+   attached to the message, a menu item, or the importer.
 4. **Structure, as requested.** Context and block nodes, subgraphs, blackboard variables, type casting
    through `IsConnectionAllowed`, a toolbar element, or a context menu. Details in `graph-api.md`.
 5. **Output.** A `ScriptedImporter` registered on the same extension compiles the graph into a plain
@@ -128,7 +128,7 @@ is the only accurate source for its member names.
    and each rule's `RootCondition` tree. That tree always contains the built-in kinds as well as the
    user's classes, so the compiler must handle `IGroupCondition` (recurse, honour `Operation`) and
    `IVariableCondition` (`Variable.Name`, `Comparison`, `Value`) before matching custom `Condition<T>`
-   types. Keep `Hash128` IDs as `Hash128`; they are not strings.
+   types.
 
 ## Editing a graph from code
 
