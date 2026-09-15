@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I'm building a dialogue editor for our narrative team in Unity 6.6. I want a node graph where each node is a line of dialogue with a speaker, and choices branch to other nodes. Can you scaffold this with Graph Toolkit? Files should go under Assets/Editor/Dialogue.",
+    "should_trigger": true
+  },
+  {
+    "query": "how do i make a port in GTK only accept one connection? right now designers keep plugging 3 wires into my 'Next' port and my importer only reads the first one",
+    "should_trigger": true
+  },
+  {
+    "query": "We have an old tool built on UnityEditor.Experimental.GraphView from 2022 LTS. Management wants it moved to the new Graph Toolkit module in Unity 6. Where do I start and what maps to what? The tool has ~15 node types and a custom inspector.",
+    "should_trigger": true
+  },
+  {
+    "query": "Write a ScriptedImporter that turns my QuestGraph asset (.quest extension, authored with Unity.GraphToolkit.Editor) into a ScriptableObject the game can load at runtime, without referencing any editor code from the runtime assembly",
+    "should_trigger": true
+  },
+  {
+    "query": "Using the state machine API from graph toolkit in unity 6.7, create an enemy AI editor with Idle, Patrol and Chase states, a float condition on distance to the player, and a trigger condition for taking damage",
+    "should_trigger": true
+  },
+  {
+    "query": "my custom node shows up in the add node menu under Math/Add/Add instead of Math/Add in graph toolkit. what am I doing wrong with the [Node] attribute?",
+    "should_trigger": true
+  },
+  {
+    "query": "In my graph tool I need the OnGraphChanged callback to tell me which nodes were added since last time instead of iterating the whole graph, the way graphViewChanged used to give me a delta. Is that possible with GraphLogger?",
+    "should_trigger": true
+  },
+  {
+    "query": "can you add a toolbar button to my GTK graph window that runs our bake step on the currently open graph asset and logs how many nodes it processed",
+    "should_trigger": true
+  },
+  {
+    "query": "Need a Merge node whose number of input ports is driven by an int field the designer edits in the inspector, like Shader Graph's Combine but for our own behaviour graph tool built on Graph Toolkit (Unity 6000.6.2f1).",
+    "should_trigger": true
+  },
+  {
+    "query": "While the game runs I'd like to see which node of my behaviour graph is executing, highlighted in the graph window, with the current values shown next to the ports. We author the graphs with Unity's graph toolkit and compile them to a ScriptableObject.",
+    "should_trigger": true
+  },
+  {
+    "query": "How do I add a Custom Function node to Shader Graph that takes a float and outputs a color, and expose it in the node search under my own category?",
+    "should_trigger": false
+  },
+  {
+    "query": "my Animator Controller state machine keeps getting stuck in the transition between Walk and Run, Has Exit Time is off, the Speed parameter is definitely above 0.5. what else could block a transition?",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a behavior tree for my enemy using the Unity Behavior package with a Patrol then Chase sequence and a blackboard variable for the player transform",
+    "should_trigger": false
+  },
+  {
+    "query": "VFX Graph question: how do I spawn particles along a skinned mesh surface and inherit the mesh velocity?",
+    "should_trigger": false
+  },
+  {
+    "query": "I want to draw a line chart of frame time over the last 5 seconds inside an EditorWindow using UI Toolkit. What's the best way to plot a graph like that, Painter2D?",
+    "should_trigger": false
+  },
+  {
+    "query": "implement Dijkstra shortest path over my waypoint graph in C#, nodes are Transforms with a list of neighbours, needs to run every frame for ~200 agents",
+    "should_trigger": false
+  },
+  {
+    "query": "Set up a finite state machine in plain C# for my player controller (Idle, Run, Jump) with an IState interface and a StateMachine class. No editor tooling, just runtime code.",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I write a custom ScriptedImporter for .csv files that outputs a ScriptableObject table with typed columns?",
+    "should_trigger": false
+  },
+  {
+    "query": "Our Timeline custom track needs a nicer clip inspector. How do I write a custom PropertyDrawer for the PlayableAsset fields?",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I make a custom EditorWindow with UI Toolkit that shows a TreeView of all my ScriptableObjects grouped by folder, with drag and drop reordering?",
+    "should_trigger": false
+  }
+]
