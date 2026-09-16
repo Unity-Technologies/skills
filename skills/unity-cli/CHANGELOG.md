@@ -32,6 +32,7 @@ Aligned to the CLI's `1.0.0-beta.10` release. Much of this release's surface was
 - `unity install` — noted the bounded retry on transient download failures and that `--resume` also recovers an interrupted module download.
 - Command index (SKILL.md) refreshed: `assets` added; `config` gains `resolve`; `build` gains `run`.
 - Refreshed the latest-version note to `1.0.0-beta.10`.
+- The `unity commands` note no longer links to the hub-only `apps/cli/docs/json-output.md`; it was the skill’s only relative link outside its own tree, so the standalone copy published to Unity-Technologies/skills is now self-contained.
 
 ## CLI `1.0.0-beta.9` (2026-09-08)
 

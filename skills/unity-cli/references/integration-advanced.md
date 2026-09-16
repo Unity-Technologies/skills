@@ -428,7 +428,7 @@ unity status --port 8765
 unity status --project megacity
 ```
 
-Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — with a matching exit code, so a script that polls `status` does not treat a booting Editor as ready. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — so a script that polls `status` does not treat a booting Editor as ready. Read the error code, not the exit code: `starting` yields `STATUS_NOT_READY`, and all three failure codes below exit 6. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_NOT_READY` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
 
 #### Sandboxed agent tooling can hide a running Editor
 
