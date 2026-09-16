@@ -225,7 +225,7 @@ unity install 6000.0.47f1 --yes --accept-eula
 # Force reinstall even if already present
 unity install 6000.0.47f1 --force
 
-# Resume an interrupted download (also recovers orphaned partials left by a crash or kill)
+# Resume an interrupted download — editor installer or module — (also recovers orphaned partials left by a crash or kill)
 unity install 6000.0.47f1 --resume
 
 # Dry-run: show what would be installed without doing it
@@ -248,7 +248,7 @@ unity install 6000.0.47f1 -m android -m ios       # repeated flag (same effect)
 unity install 6000.0.47f1 --no-elevate --yes --accept-eula
 ```
 
-When installing an editor with several modules, a failed module no longer aborts the whole batch — `unity install` (and `unity install-modules`) continue with the remaining items and exit non-zero if any failed. Each editor and module is listed as installed (✓), failed (✗), or pending (·); the NDJSON `result` frame carries the same breakdown as an `items` array (each entry has `uid`, `name`, `kind`, `status`), so scripts can tell exactly which modules succeeded even on a non-zero exit.
+A transient editor or module download failure (a dropped connection, a truncated transfer) is retried with the same bounded policy `install-modules` already uses (`--retries` / `UNITY_INSTALL_RETRIES`) before the install fails. When installing an editor with several modules, a failed module no longer aborts the whole batch — `unity install` (and `unity install-modules`) continue with the remaining items and exit non-zero if any failed. Each editor and module is listed as installed (✓), failed (✗), or pending (·); the NDJSON `result` frame carries the same breakdown as an `items` array (each entry has `uid`, `name`, `kind`, `status`), so scripts can tell exactly which modules succeeded even on a non-zero exit.
 
 **NDJSON progress frames** for `unity install` and `unity install-modules` include a `phase: 'download' | 'install'` field so scripts can switch to an indeterminate spinner during the install phase (which is genuinely indeterminate — NSIS on Windows only reports success/failure). During the install phase, `pct` is locked at 50 and only jumps to 100 on completion. Module download/install progress is nested under the parent editor via `parentItemUid`, so consumers see one editor group with its modules rather than one group per module.
 

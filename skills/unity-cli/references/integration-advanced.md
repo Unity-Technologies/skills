@@ -61,6 +61,8 @@ unity mcp --project-path /path/to/MyProject
 
 `unity mcp` no longer accepts `--instance <host:port>`: talking to an Editor requires that Editor's per-instance auth token, which a bare host and port can't carry, so the CLI always discovers running Editors itself — run from the project directory or pass `--project-path` to target one. Editors launched to create a new project (`-createproject`) are discovered too.
 
+The `capture_game_view` / `capture_scene_view` tools fall back to an OS-level screenshot of the whole desktop when the Editor’s main thread does not respond in time (a modal dialog, for example); the result says so in a note, since it captures the screen rather than the specific view. The server also declares support for `tools/list_changed` and notifies the client when the tool catalog changes, so a session started before any Editor was running picks up the Editor’s tools without a restart.
+
 #### mcp configure — register the server in an AI client
 
 Writes the Unity MCP server entry into an AI client's config in one step, preserving every other key in the file. 16 clients are supported: `claude`, `claude-code`, `cursor`, `vscode`, `vscode-insiders`, `copilot-cli`, `windsurf`, `cline`, `codex`, `kiro`, `trae`, `openclaw`, `antigravity`, `zed`, `continue`, `inspect`.
@@ -81,6 +83,8 @@ unity mcp configure claude --project-path /path/to/MyProject
 unity mcp configure vscode --yes
 unity mcp configure vscode --dry-run
 ```
+
+`--dry-run` prints only the entry that would be added or changed, not the whole config file. `continue` no longer writes a file — Continue reads `config.yaml`, not the deprecated `config.json` — and prints setup instructions instead. `codex` also relaxes Codex’s sandbox network policy so `unity mcp` and a direct `unity command` can reach the Editor over localhost, and refuses any edit to `config.toml` it cannot prove safe rather than corrupting the file. Every client config write is atomic, and a `--local` write refuses to follow a symlinked path component.
 
 ---
 
@@ -310,7 +314,13 @@ unity command <command> --runtime-path /path/to/port-file
 
 # Set a timeout (default: 30 seconds)
 unity command editor_play --timeout 60
+
+# Only the Editor’s own result value, as JSON — no command/parameters/target envelope
+# (implies --format json; cannot be combined with --detach)
+unity command recompile_status --result-only
 ```
+
+In the human table, `recompile`, `recompile_status`, `test_status` and `run_tests` results render as short readable text in the Result column instead of a JSON blob; `--format json` / `ndjson` output is unchanged.
 
 #### Querying the command list
 
@@ -352,6 +362,20 @@ Two traps worth knowing:
 
 - **`--group_by` is spelled with an underscore**, unlike every other flag on the CLI. That is deliberate and load-bearing, so don't "correct" it to `--group-by`.
 - **These flags only mean "listing" when no command name is given.** With a command name they are forwarded to that Pipeline command as ordinary parameters — `unity command my_cmd --query foo` passes `query: foo` to `my_cmd`. That is why each takes an *optional* value: a bare `--query` forwards boolean `true` to the command, while the listing path rejects a bare flag with a clear error rather than guessing.
+
+#### commands — the CLI's own command tree, as JSON
+
+**Not to be confused with `unity command` above** — `unity command` (singular) lists the *connected Editor's* Pipeline commands; `unity commands` (plural) lists *this CLI binary's own* commands, subcommands, arguments, and flags. Use it instead of parsing `--help` output when you need to introspect what the `unity` binary itself can do:
+
+```bash
+# The full command tree, machine-readable
+unity commands --format json
+
+# A compact human listing (name + description, one indented line of subcommand names)
+unity commands
+```
+
+Each node in `data.commands` carries `name`, `aliases`, `description`, `arguments` (positional, with `required`/`variadic`), `options` (this command's own flags: `long`/`short`/`valuePlaceholder`/`default`/`description`), `globalOptions` (same shape — flags inherited from every ancestor, so `--format`/`--json`/etc. show up on every node without repeating a root-level dump, and a mid-tree umbrella's own options show up on its descendants too), and `subcommands` (the same shape, recursively). Hidden and dev-only surfaces are excluded — the same visibility rule `--help` uses — so what you see is exactly what the current build actually exposes.
 
 #### Available in production — the common live commands
 
@@ -404,7 +428,7 @@ unity status --port 8765
 unity status --project megacity
 ```
 
-Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — with a matching exit code, so a script that polls `status` does not treat a booting Editor as ready. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
 
 #### Sandboxed agent tooling can hide a running Editor
 

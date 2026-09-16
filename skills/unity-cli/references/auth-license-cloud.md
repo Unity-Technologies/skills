@@ -37,6 +37,8 @@ unity auth logout user@example.com
 unity auth logout --yes
 ```
 
+**How sign-in is served.** Every command’s OAuth token read goes through a resident auth broker — a background `unity` process started on demand by the first command that needs a token, exiting on its own after two idle minutes. It seals the token store to the machine’s hardware where available (a non-exportable TPM key on Windows, TPM2 via `systemd-creds` on Linux, then DPAPI, the Secret Service, the Keychain and a local key file, in that order), and `unity doctor` reports the active tier. On macOS and Windows it verifies a connecting process’s code signature and refuses an unsigned or non-Unity-signed peer; set `UNITY_PEER_AUTH_MODE=identify-only` to log without refusing (for an Editor you built from source), and `UNITY_NO_AUTH_BROKER=1` to bypass the broker and read the OS keyring directly. `unity auth consumers` (below) lists the applications that have used this machine’s sign-in through it.
+
 #### Multiple accounts
 
 The CLI stores more than one signed-in account and keeps one of them *active*. `unity auth login` adds an account; these three manage the set.
@@ -130,6 +132,8 @@ unity license server status    # reachability + available seats
 ```
 
 `list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; as of `0.1.0-beta.8`, if the client is unavailable `list` reports a clear error and exits non-zero (matching `status`), rather than printing an empty list.
+
+`unity license status` also reports `floatingServer` (the licensing server this machine is configured against) and `machineId` (the identity the licensing client reports to it) — the two values to match against a lease record when a floating seat looks stuck. Both are always present in `--format json` / `ndjson`; human and `tsv` output shows them only when a floating server is configured.
 
 `activate` takes a single mode flag (combining them is a usage error). The default (no flag) and `--personal` activate the signed-in user's entitlements — sign in first with `unity auth login`. `--personal` also requires `--accept-eula` to acknowledge the Unity Personal license terms. `--serial` / `--file` work offline without sign-in. `--floating` requires a configured floating license server (exit `4` if none is set). `--generate-request` writes a `.alf` request for air-gapped activation instead of activating. `return` returns the active licenses, prompting for confirmation first — pass `--yes` to skip (required in non-interactive shells and with `--json`). All honor `--json` / `--format` and exit non-zero on failure (`2` bad usage, `3` sign-in required, `4` floating not configured, `6` licensing-client error).
 

@@ -10,6 +10,29 @@ documentation for a CLI version that has not shipped publicly is not recorded he
 release is out — so this file never names unreleased surface. Pending skill work is tracked
 alongside the CLI change itself, not here.
 
+## CLI `1.0.0-beta.10` (2026-09-14)
+
+Aligned to the CLI's `1.0.0-beta.10` release. Much of this release's surface was already documented ahead of it shipping — `unity context`, `unity watch test`, `unity commands`, `unity vcs blame`, `unity skill refresh`, and the Unity Accelerator settings (`unity config accelerator` / `--accelerator` / `unity diagnose accelerator`, listed under Deferred in the `1.0.0-beta.9` entry) — so this entry records what was still missing.
+
+### Added
+
+- **`unity assets inspect <file.unitypackage>`** — new command family. A new Assets section in `projects-templates.md` covers the offline listing (asset path, GUID, payload size, preview flag), the machine formats, and the constant-memory streaming.
+- **`unity build --list-targets` / `--list-profiles` / `--create-profile <target>`** and **`unity build run`** — the build discovery and Build Profile creation options, plus launching the most recent recorded build (`--path` for another). A new subsection under Build in `build-run-test.md`, rows in the Build options table, and the `BUILD_INVALID_TARGET` pointer at `--profile`.
+- **`unity open --wait`** (also `projects open` / `projects upgrade`) — documented under Projects in `projects-templates.md`: blocks until the Editor exits, exit `0` / `6`, macOS and Linux only, refused with exit `2` on Windows; plus the signal-killed-Editor reporting that applies with or without `--wait`.
+- **`ProjectSettings/UnityCliConfig.json` and `unity config resolve <key> [project]`** — the committed per-project build/test defaults layer (nine keys), the global `config set build.target …` layer beneath it, the precedence order, and the command that names which layer a value came from — in `config-hub.md`, with a pointer from Build.
+- **`unity command <name> --result-only`** — the envelope-free JSON result mode, in `integration-advanced.md`, alongside the readable rendering of `recompile` / `recompile_status` / `test_status` / `run_tests` results.
+- **`unity license status`'s `floatingServer` / `machineId` fields** — in `auth-license-cloud.md`.
+- **`UNITY_NO_AUTH_BROKER`, `UNITY_PEER_AUTH_MODE` / `UNITY_PEER_AUTH_LINUX_ALLOWED_HASHES`, `UNITY_CLI_HOME`, `UNITY_NO_EDITOR_IDENTITY_SERVER`** — added to the environment-variables table in SKILL.md, with a short paragraph under Auth explaining the on-demand resident auth broker, the hardware-sealed token store, and the peer code-signature check.
+
+### Changed
+
+- `unity mcp configure` — `continue` now prints `config.yaml` instructions instead of writing a file, `--dry-run` previews only the entry being changed, `codex` also relaxes the Codex sandbox network policy and refuses an unsafe `config.toml` edit, and every client config write is atomic; the MCP section also notes the desktop-screenshot fallback of `capture_game_view` / `capture_scene_view` and the `tools/list_changed` notification.
+- `unity status` — the `starting` state (Editor still booting) noted alongside `unreachable`.
+- `unity self-update` — noted that an interrupted download resumes on the next run and that a Brotli-compressed artifact is preferred when published.
+- `unity install` — noted the bounded retry on transient download failures and that `--resume` also recovers an interrupted module download.
+- Command index (SKILL.md) refreshed: `assets` added; `config` gains `resolve`; `build` gains `run`.
+- Refreshed the latest-version note to `1.0.0-beta.10`.
+
 ## CLI `1.0.0-beta.9` (2026-09-08)
 
 Aligned to the CLI's `1.0.0-beta.9` release. Several pieces of this release's surface were already documented ahead of it landing in the shipped binary — `unity version`, `unity test --affected`, and the `--child-modules`/`--list-modules` spellings — and needed no change here. This pass documents the rest of the shipped surface for the first time.
@@ -20,15 +43,14 @@ Aligned to the CLI's `1.0.0-beta.9` release. Several pieces of this release's su
 - **A `unity plugin` reference section**, new — this command family (`install`/`remove`/`upgrade`/`list`/`changelog`) shipped across earlier releases (`install`/`remove`/`upgrade` in `1.0.0-beta.7`) but had never had a dedicated write-up beyond a passing mention of `plugin install plastic`. Added now because `plugin upgrade`'s real version-comparison behavior and the new `plugin changelog <id>` needed somewhere to live, and documenting them in isolation without the surrounding command family would have been more confusing than useful.
 - **`--color <auto|always|never>` / `--no-color`** — the new global flag, added to the global-flags table.
 - **`unity auth consumers`** / **`unity auth revoke <application>`** — list and manage the applications using this machine's Unity sign-in through the auth broker.
-- **`unity config get|set|list|unset <key>`** — the generic key-value interface over the existing `proxy` / `proxy.bypass` / `update-check` settings, documented in `config-hub.md` alongside the purpose-built subcommands it shares storage with.
+- **`unity config get|set|list|unset <key>`** — the generic key-value interface over the existing `proxy` / `proxy.bypass` / `accelerator` / `update-check` settings, documented in `config-hub.md` alongside the purpose-built subcommands it shares storage with.
 - **`unity doctor`'s bundled third-party components section** — noted as a one-paragraph addition to the existing Doctor writeup; it's informational, not a check, so it didn't need more than that.
 - The always-on `cli telemetry` usage ping, the sign-in token store's machine-sealing, and the self-installed-vs-Homebrew PATH-conflict warning — each is a background/security behavior with no new command surface, so each got a sentence in the relevant existing section (Analytics, SKILL.md's Notes, and Self-update respectively) rather than a section of its own.
-
-- **A `unity vcs` reference section**, new (`version-control.md`) — the whole command family (`setup`/`status`/`sync`/`switch`/`doctor`/`providers`/`merge-setup`/`conflicts`/`explain`/`resolve`/`diff`/`blame`/`summarize`/`affected`/`hooks`, `vcs git` `migrate-lfs`/`worktree`, `vcs uvcs` `locks`/`changesets`/`review`) has shipped since `1.0.0-beta.7` but had no dedicated write-up until now. `SKILL.md`'s UVCS day-to-day section is reworded to point at it and to name `review` alongside the other wrapped reads.
-- **"Sandboxed agent tooling can hide a running Editor"**, a new `integration-advanced.md` section under `status`, plus a matching callout in `SKILL.md` and in the `unity status`-first scene/GameObject/asset editing workflow. Interim guidance: a restrictive sandbox around an agent's own shell commands can make `unity status`/`command`/`list` report no reachable Editor even when one is genuinely running, on Windows (a separate restricted account can't read the Editor's discovery file) and macOS (a network sandbox can block the loopback connection to it). Says plainly not to conclude the Editor is down from that alone, not to quietly substitute an undisclosed workaround (e.g. a separate headless Editor invocation) for a disclosed file edit, and never to suggest disabling the sandbox. Superseded once the CLI itself reports this case with its own distinct message — this section says so and should shrink to match at that point.
+- **"Sandboxed agent tooling can hide a running Editor"**, a new `integration-advanced.md` section under `status`, plus a matching callout in SKILL.md. Interim guidance: a restrictive sandbox around an agent's own shell commands can make `unity status`/`command`/`list` report no reachable Editor even when one is genuinely running, on Windows (a separate restricted account can't read the Editor's discovery file) and macOS (a network sandbox can block the loopback connection to it). Says plainly not to conclude the Editor is down from that alone, and never to suggest disabling the sandbox. Superseded once the CLI itself reports this case with its own distinct message — this section says so and should shrink to match at that point.
 
 ### Changed
 
+- **Extended the sandboxed-agent guidance into the scene/GameObject/asset editing workflow.** The "Sandboxed agent tooling can hide a running Editor" note (added above) was previously reachable only from the top-of-skill "Drive a running Editor" quickstart. The `unity status`-first Common workflow — the section that actually fires before any scene/GameObject/prefab/asset edit — had no mention of it, so a sandboxed agent hitting a false "no Editor" there had nothing telling it to doubt that result. Observed in the wild: a Codex-sandboxed agent took a `unity status` false negative at face value and improvised an undocumented headless-Editor workaround instead of saying so and falling back to a disclosed file edit, producing an asset that wasn't actually materialized until a later build ran. The workflow now rules out Safe Mode and sandbox interference side by side before permitting the file-edit fallback, and `integration-advanced.md`'s own guidance now names the improvised-workaround failure mode explicitly, not just silent file-editing.
 - Command index (SKILL.md) and global-flags/environment tables refreshed for the above.
 - `unity install`/`install-modules`'s child-modules flag examples now lead with `--child-modules`/`--no-child-modules` (matching `unity editors module add`), noting the old `--cm`/`--no-cm` shorts still work.
 - `unity modules list`'s column table now names the last column `Aliases` (renamed from `downloaderName` in `--format json`).
@@ -36,9 +58,7 @@ Aligned to the CLI's `1.0.0-beta.9` release. Several pieces of this release's su
 
 ### Deferred
 
-- The Unity Accelerator feature (`unity config accelerator`, `--accelerator`/`--no-accelerator`, `unity diagnose accelerator`, the `accelerator` config key, `unity doctor`'s Accelerator section) is withheld from this publish — it is still `[Unreleased]` in the CLI's own changelog as of this release, so nothing about it appears here.
-- One paragraph distinguishing `unity vcs uvcs review`'s four auth-shaped error codes is withheld from this publish for the same reason: it describes behavior a still-unreleased fix introduces (pre-fix, every failure surfaces as one generic error). The rest of that section — the commands themselves, released since `1.0.0-beta.7` — is unaffected.
-- Three more pieces of hub-ahead content are withheld for the same reason, having landed in the hub's own docs after this alignment pass began: `unity context` (`save`/`use`/`list`/`current`/`delete`), `unity commands` (the plural, machine-readable command-tree introspection), and `unity watch test`/`unity watch build`. None has a published `cli-v` release yet per the CLI's own changelog.
+- The `unity config accelerator` / `--accelerator` / `unity diagnose accelerator` feature itself is still `[Unreleased]` in the CLI's own changelog as of this release — despite the skill already documenting it from an earlier ahead-of-release pass. Left as-is (documenting a subset of the shipped surface is safe); this stamp does not newly assert that feature shipped.
 - Auth broker client libraries (the .NET/TypeScript SDKs for other products to use Unity sign-in) are not `unity` CLI commands, so nothing in this skill changes for them.
 
 ## CLI `1.0.0-beta.8` (2026-09-01)

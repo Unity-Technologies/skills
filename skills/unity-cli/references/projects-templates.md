@@ -24,6 +24,9 @@ unity projects info /path/to/MyProject --format json
 # Open a project in the editor
 unity open /path/to/MyProject
 
+# Block until the Editor exits and report its real outcome — macOS/Linux only (exit 0 clean, 6 failed)
+unity open /path/to/MyProject --wait
+
 # Open with a specific editor version
 unity open /path/to/MyProject --editor-version 6000.0.47f1
 
@@ -41,6 +44,8 @@ unity 6000.0.47f1 /path/to/MyProject
 The project argument is matched against the Hub registry first (exact name or path opens immediately; a glob like `"My Game*"` prompts when multiple match); with no registry match it falls back to treating the argument as a filesystem path. Path matching is tolerant of casing, separator direction, and a trailing slash — resolved against real filesystem path identity — so a registered project is found even when the path is spelled differently, while two genuinely distinct case-variant folders on a case-sensitive volume stay distinct. `unity open` forwards `--args` to the Editor correctly on all platforms (including Windows).
 
 **Signed-in Editor, no Hub required.** `unity open` starts a small background identity helper that answers the Editor's account lookup with the session `unity auth login` stored — your account, organization list (so Package Manager entitlements resolve), and the service addresses for your resolved `--cloudEnvironment` — so a Hub-less machine gets a signed-in Editor instead of an anonymous one. It steps aside whenever a real Hub is running or starting, exits on its own a few minutes after the Editor stops using it, and can be disabled with `UNITY_NO_EDITOR_IDENTITY_SERVER`. Signed out, the Editor just starts anonymous, as before.
+
+**`--wait` — a real exit code from an interactive open.** By default `unity open`, `unity projects open` and `unity projects upgrade` return once the hand-off to the Editor completes, watching it only briefly for an instant failure. `--wait` blocks for as long as the Editor runs and exits `0` when it exits cleanly or `6` (`OPEN_EDITOR_EXITED`, or the licensing diagnosis for a 198) when it fails. The Editor runs in its own process group: Ctrl-C is absorbed, the wait always runs to completion, and the Editor is never touched. macOS and Linux only for now — Windows refuses `--wait` with exit `2` rather than falling back to the bounded watch. With or without `--wait`, an Editor killed by a signal is reported as a failure instead of success. `projects create --open` / `projects new --open` do not take `--wait`.
 
 **Reserved flags — do NOT pass these via `--args`.** `-projectPath` is managed by the command (Unity's parser is last-wins, so forwarding it would silently redirect the open to a different project), and `-useHub`/`-hubIPC` are deliberately never passed — they tell the Editor a Unity Hub manages its session, which the CLI is not. Passing any of them fails fast, before launch, with exit code 6:
 
@@ -226,6 +231,14 @@ to 50 and caps at 500, and the envelope's `truncated` tells you when there was m
 **Unity Cloud only.** The reviews service resolves a per-organization cloud region, so a
 self-hosted workspace has no reviews API — those commands refuse with
 `VCS_UVCS_REVIEW_SELF_HOSTED` and point at the GUI rather than failing obscurely.
+
+**They need a signed-in session, and the three auth-shaped failures mean different things.**
+`unity auth login` is all you have to do; the short-lived gateway token these commands
+authenticate with is obtained for you. `NOT_SIGNED_IN` and `SESSION_EXPIRED` (both exit 3) mean
+sign in again. `UVCS_TOKEN_UNAVAILABLE` (exit 6) means that token could not be obtained at all —
+a connectivity or service problem, not a credential one, so re-running sign-in will not help.
+`VCS_UVCS_REVIEW_REQUIRE_AUTH` (exit 3) is the reviews service itself refusing a credential the
+CLI did obtain. Do not treat them as one condition: only the first two are worth a login retry.
 
 **`line` is one-based, and may be absent.** The service anchors a comment with a zero-based line in
 a string field whose `-1` means "not anchored to a line". The CLI does that arithmetic once: `line`
@@ -483,6 +496,16 @@ unity projects unlink vcs /path/to/MyProject --unlink-workspace
 `link vcs` shares the source-control flag set documented under `projects create`. `link cloud` / `link vcs` accept `--cloud-org <id-or-name>` (env `UNITY_CLOUD_ORG`).
 
 The `[url]` second operand attaches to a remote that already exists, instead of creating one — the one thing the flag form of `link vcs` cannot do. It is mutually exclusive with `--vcs`, `--git-namespace`, `--git-repo`, `--git-visibility`, `--git-default-branch`, `--git-remote-protocol`, `--git-description`, `--cloud-org`, and `--cloud-project` (all meaningless without a repository to create — the URL's own scheme already says which transport to use). `--git-token[-stdin]`, `--no-initial-commit`, and `--git-lfs` still apply, and the same ambient-auth / Tier A rules as `projects clone [url]` govern whether the push uses a supplied token or the machine's own git auth.
+
+### Assets — inspect a `.unitypackage` without importing it
+
+```bash
+# List a package’s contents: asset path, GUID, payload size, and whether a preview image is bundled
+unity assets inspect ./MyPackage.unitypackage
+unity assets inspect ./MyPackage.unitypackage --format json
+```
+
+Works offline, with no Editor installed and no open project. The archive is streamed rather than read into memory, so a multi-gigabyte package is inspected in constant memory. `--format json` / `tsv` / `ndjson` carry the raw byte size and a boolean preview flag for scripts; the human table shows readable sizes and ends with a summary of entry count and total size. A missing file fails with `ASSET_PACKAGE_NOT_FOUND` (exit 6).
 
 ---
 
