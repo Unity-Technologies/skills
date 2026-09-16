@@ -408,12 +408,12 @@ unity build /path/to/MyProject --list-profiles --format json
 unity build /path/to/MyProject --create-profile WebGL
 unity build /path/to/MyProject --profile WebGL --output-path ./Build/web
 
-# Launch the project’s most recent successful build without rebuilding
+# Launch the project’s most recent recorded build without rebuilding (recorded = built with a known --output-path)
 unity build run /path/to/MyProject
 unity build run /path/to/MyProject --path ./Build/other/MyGame.exe   # a different recorded build
 ```
 
-`--list-targets`, `--list-profiles` and `--create-profile` each do their job and exit — no build happens. A `--target` outside the classic catalog fails with `BUILD_INVALID_TARGET` and points at `--profile`. Every successful `unity build` records its output path, target, architecture and Editor version; `build run` launches that recording — a desktop player natively, a WebGL build from a loopback-only local HTTP server that opens in the default browser — and fails cleanly (exit 6) when no build has been recorded yet, when the recorded build’s platform cannot run on this OS, or when its output is gone.
+`--list-targets`, `--list-profiles` and `--create-profile` each do their job and exit — no build happens. A `--target` outside the classic catalog fails with `BUILD_INVALID_TARGET` and points at `--profile`. A successful `unity build` with a known output path — a built-in build (`--output-path` is required there) or a `--profile` / `--execute-method` build that passed `--output-path` — records that path together with the target, architecture and Editor version, and `build run` launches that recording: a desktop player natively, a WebGL build from a loopback-only local HTTP server that opens in the default browser. An `--execute-method` build without `--output-path` chooses its own destination inside the method, so it records nothing and leaves any earlier record in place; launch such a build with `build run --path <output>` instead. `build run` fails cleanly (exit 6) when no build has been recorded yet, when the recorded build’s platform cannot run on this OS, or when its output is gone.
 
 **Per-project defaults.** A committed `ProjectSettings/UnityCliConfig.json` declares `unity build` / `unity test` defaults (`build.target`, `build.outputPath`, `build.profile`, `build.timeout`, `test.mode`, `test.reportFormat`, `test.coverage`, `test.coverageOptions`, `test.timeout`) so they need not be repeated on every invocation; `unity config resolve <key> [project]` shows the resolved value and which layer supplied it. See [config-hub.md](config-hub.md).
 

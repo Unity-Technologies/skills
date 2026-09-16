@@ -130,10 +130,10 @@ An unknown key, a read-only key (none exist yet — the mechanism exists for a f
 
 A committed `ProjectSettings/UnityCliConfig.json` declares `unity build` / `unity test` defaults for a project so a team stops repeating them on every invocation and in every CI workflow. The CLI finds it by walking up from the working directory (or the explicit project path) to the project root, and reads nine keys: `build.target`, `build.outputPath`, `build.profile`, `build.timeout`, `test.mode`, `test.reportFormat`, `test.coverage`, `test.coverageOptions`, `test.timeout`. The same keys can be set globally with `unity config set build.target …`.
 
-Precedence, highest first: command-line flag, environment variable (only `build.timeout` / `test.timeout` have one), the project file, the global config layer, then the CLI’s built-in default.
+Precedence, highest first: command-line flag, environment variable (only `build.timeout` / `test.timeout` have one), the project file, the global config layer, then the CLI’s built-in default. A flag exists only on the `unity build` / `unity test` invocation itself, so `config resolve` never reports `flag`: its `source` is one of `env`, `project`, `global` or `default`.
 
 ```bash
-# Which value applies, and which layer supplied it (flag, env, project, global, or default)
+# Which value applies, and which layer supplied it: env, project, global, or default
 unity config resolve build.target /path/to/MyProject
 unity config resolve test.mode --format json     # {key, value, source}
 ```
