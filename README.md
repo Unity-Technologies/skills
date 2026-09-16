@@ -25,6 +25,7 @@ npx skills add Unity-Technologies/skills
 | `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
 | `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
 | `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
+| `polyspatial-playtest` | Prove gameplay works by recording a Play session as a PolySpatial `.qrec`, driving the game with simulated input, and querying per-frame scene state — and resolve annotation references people leave on recordings |
 
 ## Usage
 
