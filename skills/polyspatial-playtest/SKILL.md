@@ -120,11 +120,11 @@ Rules for measuring:
 To see the moment, replay and park on the frame, then capture:
 
 ```bash
-unity command polyspatial_playback --recording <recording>     # enters Play mode; wait for it
-unity command polyspatial_playback_status                      # poll until playingBack is true
-unity command polyspatial_playback_seek --frame 400 --pause true
+R=UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene
+unity command eval --code "return $R.StartPlaybackAt(\"<recordingPath>\", 400, true);"   # enters Play mode, replays, parks on frame 400; null on success
+unity command eval --code "return \$\"{$R.IsPlayingBack} {$R.CurrentFrame}\";"            # poll until "True 400"
 unity command capture_game_view --source screen --save_path Temp/annotation-400.png
-unity command polyspatial_record_stop                          # leaves Play mode
+unity command editor_stop                                                                 # leaves Play mode
 ```
 
 If the task is to change behavior, then go read the code that drives that entity (the hierarchy
@@ -137,17 +137,18 @@ frames or seconds, which value or change. Then:
 
 ```bash
 # 1. Open the scene to test (must be a saved scene; recording refuses untitled scenes).
-unity command polyspatial_record_start            # arms a .qrec and enters Play mode; returns its path
-unity command polyspatial_playback_status         # poll until inPlayMode and recording are true; note "frame"
+R=UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene
+unity command eval --code "return $R.StartRecording();"                      # arms a .qrec and enters Play mode; returns its path
+unity command eval --code "return \$\"{$R.IsLiveSession} {$R.LiveFrame}\";"  # poll until True; note the frame
 
 # 2. Drive the game. Timed sequences run over real frames; poll status until completed.
 unity command simulate_input_script --script '{"steps":[{"at":0.5,"key":"W","action":"hold","duration":1.0},{"at":2.0,"x":640,"y":360,"action":"click"}]}'
 unity command simulate_input_script_status        # "fired" lists time and Time.frameCount per event
 unity command click_ui_element --name "Play Button"   # uGUI by GameObject name; scrolls it into view
-unity command polyspatial_playback_status         # note "frame" again: the recording frames you drove
+unity command eval --code "return $R.LiveFrame;"  # note the frame again: the recording frames you drove
 
 # 3. Stop and wait for the file.
-unity command polyspatial_record_stop             # returns the .qrec path
+unity command editor_stop                          # the .qrec finalizes on exit
 unity command polyspatial_recording_metadata --recording <path>   # poll until it answers; frameCount
 
 # 4. Ask the recording.
@@ -167,12 +168,12 @@ Rules of evidence:
 - `polyspatial_entity_timeline --property` takes `position`, `worldPosition`, `rotation`,
   `worldRotation`, `scale` (the `world.rotation` spelling from scene_state output also works);
   frames are 1-based.
-- Frames from `polyspatial_playback_status` while recording are recording frames; `Time.frameCount`
+- `LiveFrame` while recording is the recording frame counter; `Time.frameCount`
   in `simulate_input_script_status` is the game's counter. Bracket with status before and after
   driving, or convert with `--start-time/--end-time` on `polyspatial_scene_changes`.
 - The Editor throttles when unfocused: expect frame rates that differ from a focused run, and use
   seconds, not frame counts, when timing input.
-- Leave Play mode with `polyspatial_record_stop` (or `editor_stop`); the scene that was open
+- Leave Play mode with `editor_stop`; the scene that was open
   before is restored. Never leave the Editor in Play mode.
 
 ## 3. Inspect an existing recording without an annotation
@@ -191,8 +192,9 @@ whole-scene keyframe dumps run to hundreds of kilobytes.
 
 - Entering or leaving Play mode reloads the domain: `unity command` may fail to connect for a few
   seconds. Retry; do not assume the Editor died.
-- `polyspatial_record_start` fails when already in Play mode, when the scene is untitled, or when
-  the scene has unsaved changes at playback time. Save first.
+- `StartRecording` returns `Error: ...` when already in Play mode or when the scene is untitled;
+  `StartPlaybackAt` refuses a scene with unsaved changes. Save first. Recording and playback have no
+  `polyspatial_*` commands of their own: drive them through `eval` as shown above.
 - Input screen coordinates are Game view pixels with the origin bottom-left; `capture_game_view`
   reports the size it rendered at.
 - Audio needs `UnityEngine.AudioSource` in PolySpatial Settings ▸ Generic Tracking Excluded Types

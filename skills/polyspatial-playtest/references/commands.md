@@ -15,15 +15,23 @@ back in the `result` field; several are NDJSON (one JSON object per line) so the
 A `changes` entry: `{ entity, component?, property, from, to, firstChangeFrame, lastChangeFrame, keyframes }`.
 A `changedEntities` entry: `{ entity, changedProperties, properties[], firstChangeFrame, lastChangeFrame }`.
 
-## Recording and playback control
+## Recording and playback (through `eval`)
+
+No `polyspatial_*` command enters Play mode. Call the public `UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene` API through `unity command eval --code "..."`:
+
+| Call | Result |
+|---|---|
+| `return R.StartRecording();` | The new `.qrec` path, or `Error: ...` (already in Play mode, untitled scene). Enters Play mode. |
+| `return $"{R.IsLiveSession} {R.LiveFrame}";` | `True <frame>` once the recorder runs; `LiveFrame` is the recording frame counter. |
+| `unity command editor_stop` | Leaves Play mode; the file finalizes. Poll `polyspatial_recording_metadata` for it. |
+| `return R.StartPlaybackAt("<path>", <frame>, true);` | Replays `<path>` parked on `<frame>`; `null` on success. Works from Edit mode, from a live session, or during another replay. |
+| `R.SeekTo(<frame>, true); return R.CurrentFrame;` | Seeks inside the running replay; backward seeks restart it in place (a few hundred ms). |
+| `return $"{R.IsPlayingBack} {R.CurrentFrame} {R.PlaybackEnded}";` | Replay status. |
+
+`R` stands for the full `UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene`; `eval` has no `using`, so spell it out.
 
 | Command | Flags | Result |
 |---|---|---|
-| `polyspatial_record_start` | `--shaders false` | `{ armed, path, shaders }`; enters Play mode. |
-| `polyspatial_record_stop` | | `{ stopping, path, note }`; leaves Play mode; poll `polyspatial_recording_metadata` for the path. |
-| `polyspatial_playback` | `--recording latest\|<name>\|<path>` | `{ playing, path }`; opens an empty scene and replays. |
-| `polyspatial_playback_seek` | `--frame N` or `--time s`, `--pause true` | The status object after the jump. Backward jumps restart the replay in place (a few hundred ms). |
-| `polyspatial_playback_status` | | `{ inPlayMode, paused, playingBack, recording, recordingPath, frame, frameCount, time, duration, ended }`; while recording, `frame` is the recorder's frame counter. |
 | `polyspatial_recording_list` | | One line per `.qrec`: `path`, `name`, `sizeKB`, `lastWriteUtc`. |
 | `polyspatial_recording_metadata` | `--recording` | `{ path, name, version, frameCount, recordingType, commandCount }`. |
 
