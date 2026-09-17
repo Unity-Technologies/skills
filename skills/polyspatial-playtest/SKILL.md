@@ -121,10 +121,10 @@ To see the moment, replay and park on the frame, then capture:
 
 ```bash
 R=UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene
-unity command eval --code "return $R.StartPlaybackAt(\"<recordingPath>\", 400, true);"   # enters Play mode, replays, parks on frame 400; null on success
-unity command eval --code "return \$\"{$R.IsPlayingBack} {$R.CurrentFrame}\";"            # poll until "True 400"
-unity command capture_game_view --source screen --save_path Temp/annotation-400.png
-unity command editor_stop                                                                 # leaves Play mode
+unity command eval --code "return $R.StartPlaybackAt(\"<recordingPath>\", 400, true);"   # rebuilds the recording in the open scene, parked on frame 400; null on success; no Play mode
+unity command eval --code "return \$\"{$R.IsPlayingBack} {$R.CurrentFrame}\";"            # "True 400"
+unity command capture_game_view --save_path Temp/annotation-400.png                       # camera capture; "screen" needs Play mode
+unity command eval --code "$R.StopPlayback(); return $R.IsPlayingBack;"                   # restores the scene's own objects
 ```
 
 If the task is to change behavior, then go read the code that drives that entity (the hierarchy

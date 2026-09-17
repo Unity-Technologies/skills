@@ -24,9 +24,11 @@ No `polyspatial_*` command enters Play mode. Call the public `UnityEditor.PolySp
 | `return R.StartRecording();` | The new `.qrec` path, or `Error: ...` (already in Play mode, untitled scene). Enters Play mode. |
 | `return $"{R.IsLiveSession} {R.LiveFrame}";` | `True <frame>` once the recorder runs; `LiveFrame` is the recording frame counter. |
 | `unity command editor_stop` | Leaves Play mode; the file finalizes. Poll `polyspatial_recording_metadata` for it. |
-| `return R.StartPlaybackAt("<path>", <frame>, true);` | Replays `<path>` parked on `<frame>`; `null` on success. Works from Edit mode, from a live session, or during another replay. |
-| `R.SeekTo(<frame>, true); return R.CurrentFrame;` | Seeks inside the running replay; backward seeks restart it in place (a few hundred ms). |
+| `return R.StartPlaybackAt("<path>", <frame>, true);` | Rebuilds `<path>` on a timeline inside the open scene, parked on `<frame>`; `null` on success. Never enters Play mode; the scene's own objects are deactivated until `StopPlayback`. |
+| `R.SeekTo(<frame>, true); return R.CurrentFrame;` | Rebuilds that frame directly, in either direction. |
+| `R.IsPaused = false;` / `R.IsPaused = true;` | Plays in real time / pauses. |
 | `return $"{R.IsPlayingBack} {R.CurrentFrame} {R.PlaybackEnded}";` | Replay status. |
+| `R.StopPlayback();` | Tears the timeline down and reactivates the scene's objects. |
 
 `R` stands for the full `UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene`; `eval` has no `using`, so spell it out.
 
