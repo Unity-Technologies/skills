@@ -1,6 +1,6 @@
 ---
 name: initialize-ai-navigation
-description: Sets up and configures the Unity AI Navigation system — NavMesh surfaces, agents, obstacles, links, modifiers, and area costs. Use this skill when the user asks about walkable navigation meshes, pathfinding agents, patrol routes, obstacle avoidance and carving, connecting NavMeshes with links, or troubleshooting navigation issues.
+description: Sets up and configures the Unity AI Navigation system, which includes NavMesh surfaces, agents, obstacles, links, modifiers, and area costs. Use this skill when the user asks about walkable navigation meshes, pathfinding agents, patrol routes, obstacle avoidance and carving, connecting NavMeshes with links, or troubleshooting navigation issues.
 ---
 
 Determine what the user needs and guide them through navigation setup. See [navigation-system.md](references/navigation-system.md) for expanded component details, API notes, code recipes, and troubleshooting.
