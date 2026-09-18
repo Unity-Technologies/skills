@@ -1,6 +1,6 @@
 ---
 name: unity-package-management
-description: Use when adding, removing, upgrading, or discovering Unity (UPM) packages programmatically from outside the Editor — headless or CI package installs via the C# UnityEditor.PackageManager.Client API, verifying package ids/versions against the Unity registry, or choosing which packages a game needs by genre, platform, and monetization. The Unity CLI does not manage UPM packages, so this skill covers that gap. Triggers on "install a Unity package", "add com.unity.*", "set up packages headless/CI", "which packages for a [genre] game".
+description: Adds, removes, upgrades, and discovers Unity (UPM) packages programmatically from outside the Editor via the C# UnityEditor.PackageManager.Client API. Use this skill for headless or CI package installs, verifying package IDs and versions against the Unity registry, or choosing which packages a game needs by genre, platform, and monetization, even if the user just says to install a com.unity.* package. The Unity CLI doesn't manage UPM packages; this skill covers that gap.
 allowed-tools:
   - Bash
   - Read
