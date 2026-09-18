@@ -38,8 +38,9 @@ just try `simulate_key` in Play mode and see whether the game reacts.
 ## 1. Start from an annotation reference
 
 A reference looks like `<recording>#<annotation-id>` (people copy it with the `Ref` button in
-Window ▸ PolySpatial ▸ Annotations). It may also arrive as a bare id or as a path to the
-annotation's `.json`. Resolve it first; never guess what it points at:
+Window ▸ PolySpatial ▸ Annotations, and CoCreate's Playtest sends a whole set at once, see
+[From a CoCreate Playtest](#from-a-cocreate-playtest)). It may also arrive as a bare id or as a
+path to the annotation's `.json`. Resolve it first; never guess what it points at:
 
 ```bash
 unity command polyspatial_annotation_list                    # every annotation, one JSON line each
@@ -120,15 +121,44 @@ Rules for measuring:
 To see the moment, replay and park on the frame, then capture:
 
 ```bash
+unity command polyspatial_playback --recording <recordingPath> --frame 400   # rebuilds the recording in the open scene, parked on frame 400; no Play mode
+unity command polyspatial_playback_seek --frame 430                          # any frame, either direction
+unity command capture_game_view --save_path Temp/annotation-400.png          # camera capture; "screen" needs Play mode
 R=UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene
-unity command eval --code "return $R.StartPlaybackAt(\"<recordingPath>\", 400, true);"   # rebuilds the recording in the open scene, parked on frame 400; null on success; no Play mode
-unity command eval --code "return \$\"{$R.IsPlayingBack} {$R.CurrentFrame}\";"            # "True 400"
-unity command capture_game_view --save_path Temp/annotation-400.png                       # camera capture; "screen" needs Play mode
-unity command eval --code "$R.StopPlayback(); return $R.IsPlayingBack;"                   # restores the scene's own objects
+unity command eval --code "$R.StopPlayback(); return $R.IsPlayingBack;"      # closes the replay and restores the scene's own objects
 ```
 
 If the task is to change behavior, then go read the code that drives that entity (the hierarchy
 path names the GameObjects), fix or implement, and prove it with section 2.
+
+### From a CoCreate Playtest
+
+CoCreate's Playtest hands over one message per triage: a header
+`Playtest session — N notes on <recording>.qrec (mm:ss recorded)`, then one
+`## Note k · <kind> · <time>` section per ticked note with `- Reference:`, `- Frame:` (a range for a
+span), `- Object:` or `- Objects:`, the person's words as a quote, and `- Image: note-k.png` when a
+still is attached. The `.qrec` itself arrives as a file attachment and its path closes the message.
+
+`kind` is what the person did in CoCreate (`cocreateKind` in the annotation; `cocreateData` is the
+JSON they left with it):
+
+- `screenshot`: a paused frame with no words yet. Read it as "look here" and describe what the state
+  shows at that frame.
+- `comment`: words about a frame. When `cocreateData.rect` is set (normalized, top-left origin) the
+  objects inside that rectangle are the note's `entityIds`.
+- `annotate`: a drawing over the frame; `note-k.png` shows it and `cocreateData.strokes` holds the
+  normalized strokes. The picture says where, the recorded state says what.
+- `select`: one picked object; `Object:` names it and `polyspatial_annotation_show` returns its
+  subtree.
+- `voice`: dictated while the game ran, so `Frame: a–b` spans the words; read the changes over the
+  whole span.
+- `scene`: left on the open scene in Edit mode, not on a recording. `polyspatial_annotation_show`
+  returns the annotation alone; `entityId` values are `GlobalObjectId` strings and `entityPath` is the
+  hierarchy path, so inspect those objects in the scene instead of running recording queries.
+
+Work the notes in order, resolve each reference before touching code, and report per note number
+("Note 2: …"). When a note asks for a change, prove it with section 2 and quote the new recording
+next to the one the note came from.
 
 ## 2. Verify by playing: record → drive → stop → query
 
@@ -137,18 +167,17 @@ frames or seconds, which value or change. Then:
 
 ```bash
 # 1. Open the scene to test (must be a saved scene; recording refuses untitled scenes).
-R=UnityEditor.PolySpatial.Utilities.RecordingPlaybackScene
-unity command eval --code "return $R.StartRecording();"                      # arms a .qrec and enters Play mode; returns its path
-unity command eval --code "return \$\"{$R.IsLiveSession} {$R.LiveFrame}\";"  # poll until True; note the frame
+unity command polyspatial_record_start                # arms a .qrec and enters Play mode; returns {armed, path}
+unity command polyspatial_playback_status             # poll until isLiveSession is true; note the frame
 
 # 2. Drive the game. Timed sequences run over real frames; poll status until completed.
 unity command simulate_input_script --script '{"steps":[{"at":0.5,"key":"W","action":"hold","duration":1.0},{"at":2.0,"x":640,"y":360,"action":"click"}]}'
 unity command simulate_input_script_status        # "fired" lists time and Time.frameCount per event
 unity command click_ui_element --name "Play Button"   # uGUI by GameObject name; scrolls it into view
-unity command eval --code "return $R.LiveFrame;"  # note the frame again: the recording frames you drove
+unity command polyspatial_playback_status         # note the frame again: the recording frames you drove
 
 # 3. Stop and wait for the file.
-unity command editor_stop                          # the .qrec finalizes on exit
+unity command polyspatial_record_stop              # leaves Play mode; the .qrec finalizes on exit
 unity command polyspatial_recording_metadata --recording <path>   # poll until it answers; frameCount
 
 # 4. Ask the recording.
@@ -173,7 +202,7 @@ Rules of evidence:
   driving, or convert with `--start-time/--end-time` on `polyspatial_scene_changes`.
 - The Editor throttles when unfocused: expect frame rates that differ from a focused run, and use
   seconds, not frame counts, when timing input.
-- Leave Play mode with `editor_stop`; the scene that was open
+- Leave Play mode with `polyspatial_record_stop` (or `editor_stop`); the scene that was open
   before is restored. Never leave the Editor in Play mode.
 
 ## 3. Inspect an existing recording without an annotation
@@ -192,9 +221,9 @@ whole-scene keyframe dumps run to hundreds of kilobytes.
 
 - Entering or leaving Play mode reloads the domain: `unity command` may fail to connect for a few
   seconds. Retry; do not assume the Editor died.
-- `StartRecording` returns `Error: ...` when already in Play mode or when the scene is untitled;
-  `StartPlaybackAt` refuses a scene with unsaved changes. Save first. Recording and playback have no
-  `polyspatial_*` commands of their own: drive them through `eval` as shown above.
+- `polyspatial_record_start` returns `Error: ...` when already in Play mode or when the scene is
+  untitled; `polyspatial_playback` refuses a scene with unsaved changes. Save first. Closing a replay
+  has no command yet: `eval` `RecordingPlaybackScene.StopPlayback()` as shown above.
 - Input screen coordinates are Game view pixels with the origin bottom-left; `capture_game_view`
   reports the size it rendered at.
 - Audio needs `UnityEngine.AudioSource` in PolySpatial Settings ▸ Generic Tracking Excluded Types
