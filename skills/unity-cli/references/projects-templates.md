@@ -60,7 +60,7 @@ All three spellings Unity accepts are rejected (`-useHub`, `--useHub`, `-useHub=
 Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template) and then asks whether to link the project to a Unity Cloud project — that last question defaults to **No**, so pressing Enter creates an unlinked project. In CI, pass `--non-interactive` or pipe stdin to suppress prompts and rely on stored defaults. The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
-unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.3d
+unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.urp-blank
 
 # Place the project in a specific directory
 unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47f1
@@ -130,7 +130,7 @@ Create a project without any interactive prompts — resolves missing options fr
 unity projects new MyGame
 
 # Override stored defaults with explicit values
-unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.3d
+unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.urp-blank
 
 # Open the project immediately after creation
 unity projects new MyGame --open
@@ -534,6 +534,19 @@ unity releases --limit 10 --skip 20 --format json
 
 ### Templates
 
+**Choosing a core template.** Pick by render pipeline, not just by 2D/3D. Default to the URP
+templates; the Built-in Render Pipeline templates are deprecated from Unity 6.5 and removed in
+6.7, so use them only when the user explicitly asks for Built-in. Verify with `templates list`
+for the target Editor — ids below are as of Unity 6000.3 to 6000.7:
+
+| Brief | Template id | Display name | Pipeline |
+|---|---|---|---|
+| 3D (default) | `com.unity.template.urp-blank` | Universal 3D | URP |
+| 2D (default) | `com.unity.template.universal-2d` | Universal 2D | URP + `com.unity.2d.*` packages (the JSON `renderPipeline` field is blank for this one — match by id) |
+| High-fidelity PC/console 3D | `com.unity.template.hdrp-blank` | High Definition 3D | HDRP |
+| VR / MR / AR | `com.unity.template.vr` / `.mixed-reality` / `.ar-mobile` | VR, Mixed Reality (MR), AR Mobile | URP |
+| Built-in, only on request | `com.unity.template.3d` / `com.unity.template.2d` | 3D / 2D (Built-In Render Pipeline) | Built-in; absent from 6.7+ |
+
 ```bash
 # List templates for an editor version (uses default editor if --editor is omitted)
 unity templates list --editor 6000.0.47f1 --format json
@@ -556,7 +569,7 @@ unity templates list --editor 6000.0.47f1 --type custom --format json
 # --custom and --type are mutually exclusive — using both is an error (exit 1)
 
 # Show template details
-unity templates info com.unity.template.3d --editor 6000.0.47f1 --format json
+unity templates info com.unity.template.urp-blank --editor 6000.0.47f1 --format json
 
 # Create a custom template from an existing Unity project
 # --name and --display-name are REQUIRED

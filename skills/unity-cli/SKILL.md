@@ -227,14 +227,21 @@ unity releases --stream lts --limit 5 --format json
 unity install lts --module android --module ios --yes --accept-eula   # add --module webgl, etc.
 unity editors --installed --format json                               # confirm it landed
 
-# 3. List the real template ids this Editor offers — don't guess them.
-unity templates list --editor lts --format json
-#    Common ids: com.unity.template.3d, com.unity.template.2d, and a URP template (id varies by version).
+# 3. List the real template ids this Editor offers — don't guess them — and pick by RENDER
+#    PIPELINE, not just by 2D/3D. Default to the URP templates:
+#      3D → com.unity.template.urp-blank      ("Universal 3D")
+#      2D → com.unity.template.universal-2d   ("Universal 2D": URP + the 2D packages)
+#    com.unity.template.3d and com.unity.template.2d are the Built-in Render Pipeline templates
+#    (displayName "… (Built-In Render Pipeline)"): deprecated from Unity 6.5, gone in 6.7. Use
+#    them only when the user explicitly asks for Built-in. Confirm the pick with the JSON
+#    `renderPipeline` field — it is blank for universal-2d on current releases, so match that
+#    one by id.
+unity templates list --editor lts --type core --format json
 
 # 4. Create the project. The first positional arg is the NAME; --path sets the parent directory.
 #    All options supplied, so it won't prompt; add --non-interactive in CI.
 unity projects create "MyGame" --path ~/UnityProjects \
-  --editor-version lts --template com.unity.template.3d
+  --editor-version lts --template com.unity.template.urp-blank
 ```
 
 **Source control — let the user choose.** The CLI publishes the new project to a fresh remote in
@@ -252,13 +259,13 @@ land in shell history or the process list. Pick based on the project — don't d
 # Git (GitHub) — drop --git-lfs if the game isn't asset-heavy. Add --no-initial-commit if you
 # want to add packages/assets BEFORE the first commit (see the new-unity-project flow).
 unity projects create "MyGame" --path ~/UnityProjects \
-  --editor-version lts --template com.unity.template.3d \
+  --editor-version lts --template com.unity.template.urp-blank \
   --vcs github --git-namespace my-org --git-repo my-game \
   --git-visibility private --git-default-branch main --git-token-stdin --git-lfs
 
 # Unity Version Control (UVCS) — handles binaries natively, so no LFS:
 unity projects create "MyGame" --path ~/UnityProjects \
-  --editor-version lts --template com.unity.template.3d \
+  --editor-version lts --template com.unity.template.urp-blank \
   --vcs uvcs --git-namespace my-org --git-repo my-game --vcs-region <region>
 ```
 

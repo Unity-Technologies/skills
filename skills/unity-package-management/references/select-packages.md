@@ -5,9 +5,10 @@ list, then install it via the C# PackageManager Client API (see the main `SKILL.
 
 **Principle:** install what the concept actually needs, not everything. A hyper-casual 2D
 prototype needs far less than a 3D multiplayer RPG. Prefer packages already provided by the
-chosen template (URP templates already include the render pipeline, Input System, etc.) — only
-add what's missing. Don't pin exact versions unless a minimum is required; `Client.Add` without
-a version resolves the latest compatible release.
+chosen template (the URP templates `com.unity.template.urp-blank` / `universal-2d` already
+include the render pipeline, Input System, uGUI/TextMeshPro, etc.) — only add what's missing.
+Don't pin exact versions unless a minimum is required; `Client.Add` without a version resolves
+the latest compatible release.
 
 The tables below are a starting point, not the whole registry. **Search the registry** to
 discover packages beyond this list, confirm an id exists, or check available versions before
@@ -48,18 +49,25 @@ HTTP (the npm `-/v1/search` endpoint is not available — it 404s). For keyword 
 | Need | Package | Notes |
 |---|---|---|
 | Modern input | `com.unity.inputsystem` | Preferred over the legacy Input Manager. |
-| Text / UI | `com.unity.ugui` | uGUI + TextMeshPro (bundled). UI Toolkit ships with the Editor. |
+| Text / UI | `com.unity.ugui` | uGUI + TextMeshPro (bundled). UI Toolkit ships with the Editor. Use one of these for HUDs and menus — never `OnGUI`. |
 | Camera framing | `com.unity.cinemachine` | Great for almost any 3D and many 2D games. |
 | Testing | `com.unity.test-framework` | Enables `unity test`; usually already present. |
 | Large/streamed assets | `com.unity.addressables` | Add when the game has many assets or needs content updates. |
 
-## Render pipeline (pick one; usually set by the template)
+## Render pipeline (set by the template — do not add or swap it here)
 
-| Choice | Package | Use when |
+The pipeline is decided by the template chosen in the **`unity-cli`** bootstrap step (default:
+`com.unity.template.urp-blank` for 3D, `com.unity.template.universal-2d` for 2D — both URP).
+Installing `com.unity.render-pipelines.universal` into a Built-in template project does **not**
+switch pipelines: no URP asset gets assigned, and materials render pink. To change pipeline after
+creation use the **`migrate-birp-to-urp`** skill instead. The rows below are for reading a
+`manifest.json`, not for adding packages:
+
+| Choice | Package | Notes |
 |---|---|---|
-| **URP** (Universal) | `com.unity.render-pipelines.universal` | Default for most 2D/3D, mobile, and WebGL. Broadest platform reach. |
-| **HDRP** (High-Definition) | `com.unity.render-pipelines.high-definition` | High-fidelity PC/console only. Not for mobile/WebGL. |
-| **Built-in** | (none) | Simplest/legacy; fine for tiny prototypes. |
+| **URP** (Universal) | `com.unity.render-pipelines.universal` | Default for all 2D/3D, mobile, and WebGL. Ships in the URP templates. |
+| **HDRP** (High-Definition) | `com.unity.render-pipelines.high-definition` | High-fidelity PC/console only; `com.unity.template.hdrp-blank`. Not for mobile/WebGL. |
+| **Built-in** | (none) | Legacy. Its templates are deprecated from Unity 6.5 and removed in 6.7; use only when the user explicitly asks. |
 
 ## By dimension & look
 
@@ -75,12 +83,12 @@ HTTP (the npm `-/v1/search` endpoint is not available — it 404s). For keyword 
 
 | Genre | Typical additions |
 |---|---|
-| Platformer / action | URP, Input System, Cinemachine, 2D feature (if 2D), AI Navigation (if 3D) |
-| Puzzle / match / card | URP or 2D feature, Input System, uGUI/TextMeshPro, Timeline (juice) |
-| Top-down / twin-stick | URP, Input System, Cinemachine, AI Navigation |
-| RPG / adventure | URP, Input System, Cinemachine, AI Navigation, Addressables, Timeline |
-| Racing / physics | URP, Input System, Cinemachine; Physics is built in |
-| Idle / hyper-casual | 2D feature or URP, Input System, uGUI/TextMeshPro (keep it lean) |
+| Platformer / action | Input System, Cinemachine, 2D feature (if 2D), AI Navigation (if 3D) |
+| Puzzle / match / card | Input System, uGUI/TextMeshPro, 2D feature (if 2D), Timeline (juice) |
+| Top-down / twin-stick | Input System, Cinemachine, 2D feature (if 2D), AI Navigation (if 3D) |
+| RPG / adventure | Input System, Cinemachine, AI Navigation, Addressables, Timeline |
+| Racing / physics | Input System, Cinemachine; Physics is built in |
+| Idle / hyper-casual | Input System, uGUI/TextMeshPro, 2D feature (if 2D) — keep it lean |
 | Multiplayer (any) | `com.unity.netcode.gameobjects` + Multiplayer Services → see **build-live-game** |
 
 ## By target platform
@@ -90,9 +98,9 @@ the **`unity-cli`** skill), not packages. Package-wise:
 
 | Platform | Consider |
 |---|---|
-| Mobile (iOS/Android) | Keep dependencies lean; URP over HDRP; Addressables for download size; monetization below |
-| WebGL | URP (not HDRP); small footprint; avoid heavy packages |
-| Desktop / Console | URP or HDRP depending on fidelity target |
+| Mobile (iOS/Android) | Keep dependencies lean; a URP template, never HDRP; Addressables for download size; monetization below |
+| WebGL | A URP template (not HDRP); small footprint; avoid heavy packages |
+| Desktop / Console | URP template by default; `hdrp-blank` only for a high-fidelity target |
 
 ## By monetization — install now, integrate via the dedicated skill
 
