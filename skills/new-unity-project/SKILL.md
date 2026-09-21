@@ -136,15 +136,16 @@ A fresh template renders correctly but looks like a default: no tonemapping, unt
 tier, flat colors. Left there, agents reach for `OnGUI` and guess shader names, which is where
 washed-out or magenta materials come from. Apply this floor **before** any gameplay work.
 
-**First, `unity pipeline install --project-path "<project-path>"` — with the Editor still
-closed.** Running C# in the Editor, and `unity command screenshot` below, both go through the
+**First, `unity pipeline install --project-path "<project-path>"`, before opening the
+Editor.** Running C# in the Editor, and `unity command screenshot` below, both need the
 project's `com.unity.pipeline` package. A project created in Step 4 does not have it, and Step 5
 does not add it: that step installs packages by launching the Editor binary with
-`-batchmode -executeMethod`, which never touches the package. **Order matters** — the install
-rewrites `Packages/manifest.json`, and on Windows a running Editor holds that file mapped, so
-installing afterwards fails with `PIPELINE_MANIFEST_WRITE_FAILED` and no retry clears it until
-the Editor closes. Skip the install entirely and everything below fails to connect, which looks
-exactly like the Safe Mode failure `unity-cli` describes but has a different cause.
+`-batchmode -executeMethod`, which never touches the package. Installing before the open is the
+supported order — the install updates `Packages/manifest.json`, which Unity reads at project
+load. Run it against an already-open project and the CLI reports
+`PIPELINE_MANIFEST_WRITE_FAILED`; ask the user to close the Editor and re-run. Without the
+package, everything below fails to connect, which looks like the Safe Mode failure `unity-cli`
+describes but has a different cause.
 
 **Then** `unity open "<project-path>"` (also what Step 7 needs), wait until `unity status`
 reports the Editor ready, and apply each item below by running C# in it. **`unity-cli` owns
