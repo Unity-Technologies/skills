@@ -133,35 +133,50 @@ Read the final list back to the user before installing; verify `manifest.json` a
 ## Step 6 — Visual baseline
 
 A fresh template renders correctly but looks like a default: no tonemapping, untouched quality
-tier, flat colours. Left there, agents reach for `OnGUI` and guess shader names, which is where
+tier, flat colors. Left there, agents reach for `OnGUI` and guess shader names, which is where
 washed-out or magenta materials come from. Apply this floor **before** any gameplay work, in the
-open Editor — `unity open "<project-path>"` (also what Step 7 needs), then `unity command eval`
-snippets (see `unity-cli`). Every item below is pipeline-correct for the URP templates from Step 4.
+open Editor — `unity open "<project-path>"` (also what Step 7 needs), then apply each item below
+by running C# in that Editor. **`unity-cli` owns those commands and their syntax** — don't
+re-derive them here. Every item is pipeline-correct for the URP templates from Step 4.
+
+**First, `unity pipeline install`.** Running C# in the Editor — and `unity command screenshot`
+below — both go through the project's `com.unity.pipeline` package. A project created in Step 4
+does not have it, and Step 5 does not add it: that step installs packages by launching the Editor
+binary with `-batchmode -executeMethod`, which never touches the package. Add it once, before the
+first Editor command. Skip it and everything below fails to connect, which looks exactly like the
+Safe Mode failure `unity-cli` describes but has a different cause.
 
 1. **Post-processing.** Global Volume with Tonemapping (ACES), low Bloom (intensity 0.5–1,
    threshold 0.9) and a subtle Vignette (≈ 0.25); set `renderPostProcessing = true` on the main
    camera's `UniversalAdditionalCameraData`. **REQUIRED SUB-SKILL:** `urp-postprocessing` — its
    code templates create the volume and check HDR and the Volume layer mask.
-2. **Camera and light.** 2D → orthographic, solid background colour from the brief's palette, and
+2. **Camera and light.** 2D → orthographic, solid background color from the brief's palette, and
    a `Light2D` of type Global in the scene if the template scene has none (the Sprite-Lit shaders
    render black without one). 3D → perspective; keep the template's directional light and skybox,
    main-light shadows on.
 3. **Quality tier.** Read `QualitySettings.names` first — tier names differ per template — then
    `QualitySettings.SetQualityLevel` to the one matching the primary target: the highest tier for
-   desktop, the lowest for mobile/WebGL. Leave colour space Linear and the Input System as the
+   desktop, the lowest for mobile/WebGL. Leave color space Linear and the Input System as the
    template set them.
 4. **UI stack.** HUD and menus use a uGUI Canvas + TextMeshPro or UI Toolkit — **never `OnGUI`**.
    **REQUIRED SUB-SKILL:** `ui` picks between them for the project.
 5. **Materials and shaders.** Under URP use `Universal Render Pipeline/Lit`, `…/Unlit`,
    `…/2D/Sprite-Lit-Default` or `…/2D/Sprite-Unlit-Default`. `Standard` and `Unlit/Color` render
-   pink or washed out under URP. Prefer `GraphicsSettings.defaultRenderPipeline.defaultMaterial`
+   pink or washed out under URP. Prefer `GraphicsSettings.currentRenderPipeline.defaultMaterial`
    / `.default2DMaterial` over `Shader.Find`, and treat a `null` from `Shader.Find` as an error.
+   `currentRenderPipeline`, not `defaultRenderPipeline`: a quality tier can carry its own pipeline
+   asset, and item 3 above just set the tier.
 6. **Pixel art only.** Point filter mode on sprites and a Pixel Perfect Camera — see
    `2d-pixel-perfect`.
 
-Save the scene, then confirm: `unity logs --level error` shows no render-pipeline or shader
-errors, and `unity command screenshot --output baseline.png` looks lit and tonemapped rather than
-flat grey.
+Save the scene, then confirm both of these. **Not with `unity logs`** — that reads the CLI's own
+log, never the Editor's, so it reports clean whatever the scene looks like:
+
+- No render-pipeline or shader errors Editor-side. Read the Editor console through `unity-cli`,
+  or read `Editor.log` directly — that skill's "Recovering from Safe Mode" section has the
+  per-platform paths.
+- `unity command screenshot --output baseline.png` looks lit and tonemapped rather than flat
+  gray.
 
 ## Step 7 — Save & first commit
 
