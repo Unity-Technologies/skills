@@ -118,7 +118,7 @@ Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verba
   large binary assets natively — no LFS), or a purely local `git init` + Unity `.gitignore`.
   Publish in one step with `unity projects create --vcs … --git-token-stdin --no-initial-commit`
   (tokens on stdin). Pass **`--no-initial-commit`** so the CLI doesn't commit the bare project
-  before packages and `.meta` files exist — you make the real first commit/check-in in Step 6.
+  before packages and `.meta` files exist — you make the real first commit/check-in in Step 7.
   See the `unity-cli` workflow for exact flags.
 
 ## Step 5 — Packages
@@ -134,17 +134,29 @@ Read the final list back to the user before installing; verify `manifest.json` a
 
 A fresh template renders correctly but looks like a default: no tonemapping, untouched quality
 tier, flat colors. Left there, agents reach for `OnGUI` and guess shader names, which is where
-washed-out or magenta materials come from. Apply this floor **before** any gameplay work, in the
-open Editor — `unity open "<project-path>"` (also what Step 7 needs), then apply each item below
-by running C# in that Editor. **`unity-cli` owns those commands and their syntax** — don't
-re-derive them here. Every item is pipeline-correct for the URP templates from Step 4.
+washed-out or magenta materials come from. Apply this floor **before** any gameplay work.
 
-**First, `unity pipeline install`.** Running C# in the Editor — and `unity command screenshot`
-below — both go through the project's `com.unity.pipeline` package. A project created in Step 4
-does not have it, and Step 5 does not add it: that step installs packages by launching the Editor
-binary with `-batchmode -executeMethod`, which never touches the package. Add it once, before the
-first Editor command. Skip it and everything below fails to connect, which looks exactly like the
-Safe Mode failure `unity-cli` describes but has a different cause.
+**First, `unity pipeline install --project-path "<project-path>"` — with the Editor still
+closed.** Running C# in the Editor, and `unity command screenshot` below, both go through the
+project's `com.unity.pipeline` package. A project created in Step 4 does not have it, and Step 5
+does not add it: that step installs packages by launching the Editor binary with
+`-batchmode -executeMethod`, which never touches the package. **Order matters** — the install
+rewrites `Packages/manifest.json`, and on Windows a running Editor holds that file mapped, so
+installing afterwards fails with `PIPELINE_MANIFEST_WRITE_FAILED` and no retry clears it until
+the Editor closes. Skip the install entirely and everything below fails to connect, which looks
+exactly like the Safe Mode failure `unity-cli` describes but has a different cause.
+
+**Then** `unity open "<project-path>"` (also what Step 7 needs), wait until `unity status`
+reports the Editor ready, and apply each item below by running C# in it. **`unity-cli` owns
+those commands and their syntax** — don't re-derive them here.
+
+**Items 1, 2, 5 and 6 assume a URP template**, which is the Step 4 default. If the user
+explicitly chose Built-in, don't run them as written: `UniversalAdditionalCameraData`, `Light2D`,
+the `urp-postprocessing` volume framework and every `Universal Render Pipeline/*` shader are URP
+types that do not exist there, so the generated C# won't compile. On Built-in, items 3 and 4
+still apply as written, post-processing means the legacy Post Processing Stack, and the shader
+names are `Standard` / `Unlit/Color`. Don't reach for `migrate-birp-to-urp` — the user asked for
+Built-in.
 
 1. **Post-processing.** Global Volume with Tonemapping (ACES), low Bloom (intensity 0.5–1,
    threshold 0.9) and a subtle Vignette (≈ 0.25); set `renderPostProcessing = true` on the main

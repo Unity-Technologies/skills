@@ -222,7 +222,8 @@ unity license status --format json   # if none active:      unity license activa
 #    Default to the latest LTS (most stable, ~2 years of patches). Reach for a Tech-stream
 #    release (--stream tech) only for a feature not yet in LTS; treat --stream beta/alpha as
 #    evaluation-only, never for a project you intend to ship. A deadline argues for LTS.
-#    (lts / latest aliases work wherever a version is accepted.)
+#    (lts / latest aliases work almost everywhere a version is accepted — `templates` is the
+#     exception; see step 3.)
 unity releases --stream lts --limit 5 --format json
 unity install lts --module android --module ios --yes --accept-eula   # add --module webgl, etc.
 unity editors --installed --format json                               # confirm it landed
@@ -236,7 +237,10 @@ unity editors --installed --format json                               # confirm 
 #    them only when the user explicitly asks for Built-in. Confirm the pick with the JSON
 #    `renderPipeline` field — it is blank for universal-2d on current releases, so match that
 #    one by id.
-unity templates list --editor lts --type core --format json
+#    NOTE: `templates` does NOT resolve the lts / latest aliases — unlike `install` and
+#    `projects create`, it passes --editor straight through and rejects anything that is not a
+#    concrete 6000.x.y. Use the version you just installed (read it from `editors --installed`).
+unity templates list --editor <6000.x.y> --type core --format json
 
 # 4. Create the project. The first positional arg is the NAME; --path sets the parent directory.
 #    All options supplied, so it won't prompt; add --non-interactive in CI.

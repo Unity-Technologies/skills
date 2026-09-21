@@ -547,6 +547,11 @@ for the target Editor — ids below are as of Unity 6000.3 to 6000.7:
 | VR / MR / AR | `com.unity.template.vr` / `.mixed-reality` / `.ar-mobile` | VR, Mixed Reality (MR), AR Mobile | URP |
 | Built-in, only on request | `com.unity.template.3d` / `com.unity.template.2d` | 3D / 2D (Built-In Render Pipeline) | Built-in; absent from 6.7+ |
 
+`--editor` here takes a **concrete** version. Unlike `install` and `projects create`, the
+`templates` commands do not resolve the `lts` / `latest` aliases — the value is passed straight
+through and anything that is not a `6000.x.y` fails with `UnityVersion: version argument is not a
+valid unity version`. Resolve the version first (`editors --installed`, `releases`).
+
 ```bash
 # List templates for an editor version (uses default editor if --editor is omitted)
 unity templates list --editor 6000.0.47f1 --format json
