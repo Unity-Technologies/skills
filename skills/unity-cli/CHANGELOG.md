@@ -33,6 +33,7 @@ Aligned to the CLI's `1.0.0-beta.10` release. Much of this release's surface was
 - Command index (SKILL.md) refreshed: `assets` added; `config` gains `resolve`; `build` gains `run`.
 - Refreshed the latest-version note to `1.0.0-beta.10`.
 - The `unity commands` note no longer links to the hub-only `apps/cli/docs/json-output.md`; it was the skill’s only relative link outside its own tree, so the standalone copy published to Unity-Technologies/skills is now self-contained.
+- **Template selection defaults to URP.** The bootstrap workflow in `SKILL.md` and the Templates section of `projects-templates.md` now name `com.unity.template.urp-blank` (Universal 3D) and `com.unity.template.universal-2d` (Universal 2D) as the defaults, mark `com.unity.template.3d` / `com.unity.template.2d` as the Built-in Render Pipeline templates (deprecated from 6.5, removed in 6.7), and note that `renderPipeline` is blank for `universal-2d` in `templates list` output. Every `projects create` / `projects new` / `templates info` example now uses `urp-blank`. Previously the skill's examples all used the Built-in `com.unity.template.3d` and said the URP id "varies by version".
 
 ## CLI `1.0.0-beta.9` (2026-09-08)
 
