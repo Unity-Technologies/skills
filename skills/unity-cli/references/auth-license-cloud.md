@@ -157,6 +157,10 @@ unity cloud org current                       # print the active default org id
 unity cloud org set-default <id-or-name>      # set active default org
 unity cloud org clear-default                 # revert to "All Organizations"
 
+# Create an organization
+unity cloud org create "<name>" --industry gaming
+unity cloud org create "<name>" --industry oil-and-gas --set-default
+
 # Projects in the active organization
 unity cloud project list --format json               # * marks the active default project
 
@@ -168,6 +172,18 @@ unity cloud project clear-default                     # drop this organization's
 # Override the active organization for a single call
 unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
 ```
+
+**Creating an organization takes a name and an industry.** The name is trimmed and capped at 40
+characters; `--industry` accepts either the kebab key (`consumer-electronics`, `oil-and-gas`) or the
+display spelling (`"Oil & gas"`), and an unknown value is rejected up front with the accepted list.
+Both are validated before anything is sent, so a typo costs no network call. Omitting `--industry`
+opens a picker on a terminal and is a usage error under `--non-interactive` or when output is
+redirected. `--set-default` makes the new organization active, exactly as `org set-default` would; if the
+setting cannot be written the organization is still reported as created, with a warning that the
+default did not take effect. A name already in use is reported as such rather than as an HTTP
+status. Machine output is a create-specific shape carrying `id` and `name` only — deliberately not
+`org list`'s row, since the create response omits `role` and the default marker describes a list
+rather than a single new organization.
 
 **The default project is per organization.** `set-default` stores the project's UUID against the
 active organization's Genesis id, so switching your active organization switches which default

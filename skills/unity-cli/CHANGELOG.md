@@ -4,11 +4,21 @@ All notable changes to the `unity-cli` skill documentation are recorded here. Th
 skill documents the published [`unity` CLI](https://public-cdn.cloud.unity3d.com/hub/prod/cli/);
 each entry notes the CLI version the skill was aligned to.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with one
-deliberate departure: there is no `Unreleased` section. Sections are cut per CLI release, and
-documentation for a CLI version that has not shipped publicly is not recorded here until that
-release is out — so this file never names unreleased surface. Pending skill work is tracked
-alongside the CLI change itself, not here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Sections are
+normally cut per CLI release once that release has shipped publicly, so pending skill work is
+usually tracked alongside the CLI change itself, not here. The `[Unreleased]` section below is
+the narrow exception: a surface documented ahead of its CLI release. It folds into that
+release's own dated section once the CLI actually ships it.
+
+## [Unreleased]
+
+### Added
+
+- **`unity assets export <asset-path...> --output <file.unitypackage>`**: new subcommand, the write-side companion to `unity assets inspect`. The Assets section in `projects-templates.md` (retitled to cover both) documents the flags (`--project`, `--no-dependencies`), the batchmode-Editor requirement, pre-spawn path validation (exit `6` on a missing, outside-project, or non-`Assets`/`Packages` path), and the `--format json`/`ndjson`/`tsv` shapes. Pending the command shipping in a CLI release.
+
+## CLI `1.0.0-beta.11` (2026-09-22)
+
+Aligned to the CLI's `1.0.0-beta.11` release. Cut automatically by the release that published it, from the skill as it stood in that release — so this entry covers the documentation changes that had already landed by then. Anything worth calling out individually is added here in a follow-up pass.
 
 ## CLI `1.0.0-beta.10` (2026-09-14)
 
@@ -33,7 +43,7 @@ Aligned to the CLI's `1.0.0-beta.10` release. Much of this release's surface was
 - Command index (SKILL.md) refreshed: `assets` added; `config` gains `resolve`; `build` gains `run`.
 - Refreshed the latest-version note to `1.0.0-beta.10`.
 - The `unity commands` note no longer links to the hub-only `apps/cli/docs/json-output.md`; it was the skill’s only relative link outside its own tree, so the standalone copy published to Unity-Technologies/skills is now self-contained.
-- **Template selection defaults to URP.** The bootstrap workflow in `SKILL.md` and the Templates section of `projects-templates.md` now name `com.unity.template.urp-blank` (Universal 3D) and `com.unity.template.universal-2d` (Universal 2D) as the defaults, mark `com.unity.template.3d` / `com.unity.template.2d` as the Built-in Render Pipeline templates (deprecated from 6.5, removed in 6.7), and note that `renderPipeline` is blank for `universal-2d` in `templates list` output. Every `projects create` / `projects new` / `templates info` example now uses `urp-blank`. Previously the skill's examples all used the Built-in `com.unity.template.3d` and said the URP id "varies by version".
+- **Template selection defaults to URP.** The bootstrap workflow in `SKILL.md` and the Templates section of `projects-templates.md` now name `com.unity.template.urp-blank` (Universal 3D) and `com.unity.template.universal-2d` (Universal 2D) as the defaults, mark `com.unity.template.3d` / `com.unity.template.2d` as the Built-in Render Pipeline templates (deprecated from 6.5, removed in 6.7), and note that `renderPipeline` is blank for `universal-2d` in `templates list` output. Every `projects create` / `projects new` / `templates info` example now uses `urp-blank`. Previously the skill's examples all used the Built-in `com.unity.template.3d` and said the URP id “varies by version”.
 
 ## CLI `1.0.0-beta.9` (2026-09-08)
 

@@ -134,6 +134,17 @@ Every check carries a machine-readable `code` (`LICENSE_NONE`, `EDITOR_NOT_INSTA
 
 ---
 
+### Diagnose update — why this install is or is not updating
+
+```bash
+unity diagnose update
+unity diagnose update --json
+```
+
+Reports how this install resolves updates: the channel it tracks, the manifest it reads, the version it found, and whichever condition is holding an update back. Reach for it when `unity self-update` reports nothing to do but a newer version is known to exist, or when an install seems pinned to an old version.
+
+---
+
 ### Diagnose proxy — proxy diagnostic report
 
 ```bash
@@ -296,6 +307,38 @@ Show the embedded release notes for the currently installed CLI version:
 unity changelog
 unity changelog --format json
 ```
+
+---
+
+### Docs — version-matched Unity documentation
+
+Open the documentation page for a class or topic in the default browser, matched
+to the editor version of the project you are in:
+
+```bash
+unity docs GameObject                    # scripting API reference
+unity docs --manual Coroutines           # the manual instead
+unity docs --search "physics raycast"    # the documentation search results
+unity docs --url Rigidbody.AddForce      # print the URL, do not open it
+```
+
+The version is read from the current project's
+`ProjectSettings/ProjectVersion.txt` — no editor has to be installed. Outside a
+project, the current documentation is used. `--editor-version` overrides it and
+accepts either a full version (`6000.0.26f1`) or a version branch (`6000.0`); an
+unparseable value is a usage failure rather than a silent fallback to the wrong
+version's docs.
+
+**For an agent, `--url` is the useful mode:** it prints the resolved address to
+stdout and opens nothing, so it composes into a citation or a review comment.
+`--format json` carries the same address plus the `version` the page was matched
+to (`null` when no project version was found), which is how a caller tells a
+version-matched answer from a fallback one.
+
+A topic that cannot name a documentation page — a phrase, or anything with a
+path separator — falls back to the documentation search for that section rather
+than composing an address that would 404. A trailing `.html` is dropped, so a
+page name pasted out of a browser address bar resolves.
 
 ---
 
