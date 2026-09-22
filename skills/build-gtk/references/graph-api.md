@@ -230,12 +230,10 @@ public override void OnGraphChanged(GraphLogger logger)
                 UndoEndRecordGraph();
             }));
 
-    // 6.7 and newer only: the change delta
+    // 6.7 and newer only: the change delta. Added and modified nodes are reported; removed nodes are
+    // not, only removed ports are (inside ChangedPorts with ChangeKind.Removed).
     foreach (var change in logger.GraphChanges.ChangedNodes)
-    {
-        if ((change.ChangeKinds & ChangeKind.Removed) != 0) { /* the node left the graph; key your own state by change.ID */ }
-        else if (change.Node is ObjectiveNode objective) { /* added or modified */ }
-    }
+        if (change.Node is ObjectiveNode objective) { /* added or modified: check it */ }
 }
 ```
 
@@ -244,9 +242,11 @@ public override void OnGraphChanged(GraphLogger logger)
 Messages also go to the Console. `GraphLogAction(string description, Action<object> action)` shows a
 fix button on the marker.
 
-**6.7** `GraphLogger.GraphChanges` and `ChangeKind` are the change delta. They do not exist on 6.6:
-there, `OnGraphChanged` gives no delta, so keep a `[NonSerialized] HashSet<Hash128>` of node IDs on
-the graph and diff it against `GetNodes()` each call to find additions and removals.
+**6.7** `GraphLogger.GraphChanges` and `ChangeKind` are the change delta. They do not exist on 6.6.
+The delta lists added and modified elements only; removed nodes, variables and subgraph nodes are
+not reported (removed ports are, under `ChangedNode.ChangedPorts`). So on every version, detecting a
+removed node means keeping a `[NonSerialized] HashSet<Hash128>` of node IDs on the graph and diffing
+it against `GetNodes()` each call; on 6.6 that diff is also the only way to find additions.
 
 `GraphChanges`: `ChangedNodes`, `ChangedVariables`, `ChangedConstantNodes`, `ChangedSubgraphNodes`.
 Entry types and their element property: `ChangedNode.Node` (`INode`), `ChangedVariable.Variable`,

@@ -1,16 +1,15 @@
 ---
 name: build-gtk
 description: >-
-  Unity Graph Toolkit (GTK) expert for Unity 6.6 and newer. Builds node-based Editor tools with the
-  public Graph API (Graph, Node, ports, node options, context and block nodes, subgraphs, blackboard
-  variables, OnGraphChanged validation, scripted importers that compile a graph into a runtime asset,
-  GraphVisualization debug views, custom toolbar buttons and context menus) and, on Unity 6.7 and newer,
-  the State Machine API (StateMachine, State, transitions, rules, generic Condition classes,
-  SelfTransition, custom state and condition UI). Use for any request that mentions Graph Toolkit, GTK, Graph Tools Foundation
-  (GTF), Unity.GraphToolkit.Editor, a custom graph editor or node editor, a state machine editor tool,
-  or migrating a GraphView / UnityEditor.Experimental.GraphView tool, even when the user only says
-  "node graph", "visual editor", "dialogue graph" or "behaviour graph tool". Not for Shader Graph, VFX
-  Graph, Animator Controller state machines, or using the Unity Behavior package as an end user.
+  Builds node-based Editor tools on Unity Graph Toolkit (GTK) for Unity 6.6 and newer, using the
+  public Graph API for graphs, nodes, ports, subgraphs and validation, and the State Machine API on
+  Unity 6.7 and newer for states, transitions and conditions. It also compiles authored graphs into
+  runtime assets with a scripted importer and adds live debug views, toolbar buttons and context
+  menus. Make sure to use this skill whenever the user mentions Graph Toolkit, GTK, Graph Tools
+  Foundation (GTF) or Unity.GraphToolkit.Editor, asks for a custom graph editor, node editor or state
+  machine editor tool, wants to migrate a GraphView or UnityEditor.Experimental.GraphView tool, or only
+  says "node graph", "visual editor", "dialogue graph" or "behaviour graph tool". Not for Shader Graph,
+  VFX Graph, Animator Controller state machines, or using the Unity Behavior package as an end user.
 required_editor_version: ">=6000.6"
 ---
 
@@ -72,10 +71,17 @@ State Machine API is not available there. Do not emulate it with the Graph API u
   `[UseWithStateMachine]`. Abstract classes are never listed.
 - Every authoring class is `[Serializable]` and lives in an Editor-only assembly, either an `Editor`
   folder or an asmdef restricted to the Editor platform.
-- Only the public API compiles for users. `GraphModel`, `NodeModel`, `StateModel`, `GraphObject`,
-  `GraphViewEditorWindow`, `GraphTool`, `Stencil`, `BaseGraphTool` and
-  `GraphElementsExtensionMethodsCache` are internal implementation or belong to the retired Graph Tools
-  Foundation and GraphView APIs. If one of these appears in a draft, stop and re-read the references.
+- Only the public API compiles for users. If a name from the left column appears in a draft, stop and
+  use the right column:
+
+  | Never write | Write instead |
+  |---|---|
+  | `GraphModel`, `GraphObject`, `GraphTool`, `Stencil`, `BaseGraphTool` | `Graph` and `GraphDatabase` |
+  | `NodeModel`, `PortModel`, `WireModel` | `Node`, `IPort`, `Wire` |
+  | `StateModel`, `TransitionModel`, `ConditionModel` | `State`, `ITransition`, `Condition<T>` |
+  | `GraphViewEditorWindow`, `GraphElementsExtensionMethodsCache`, `ModelView` | the window is provided; `NodeView<T>` on 6000.7 for custom UI |
+  | `UnityEditor.Experimental.GraphView`, `graphViewChanged`, `Port.Create` | no equivalent; model the tool as `Graph` and `Node` classes |
+  | `com.unity.graphtoolkit` in the manifest | nothing; the module is built in |
 
 ## Workflow A: build a graph tool
 
@@ -159,7 +165,7 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
 | An execution-flow port with no data type | `context.AddInputPort("In")` with no type; its `DataType` is `Untyped`. Add `.WithConnectorUI(PortConnectorUI.Arrowhead)` for a flow look | Flow ports carry no value; typing them invites wrong connections |
 | Hide a node type from the Add menu | Make it `abstract`, or move it to another assembly without `[UseWithGraph]`, or set `GraphOptions.DisableAutoInclusionOfNodesFromGraphAssembly` and opt nodes in explicitly | Every concrete node class in the graph's assembly is listed automatically |
 | Group nodes in the Add menu | `[Node("Category/Sub")]`. The class or title name is appended after the path | The attribute's first argument is a folder path, not the node's title |
-| Know what changed, like the old `graphViewChanged` | 6000.7+: `OnGraphChanged` and `logger.GraphChanges.ChangedNodes` with `ChangeKinds` flags. 6000.6: no delta exists; diff a cached `HashSet<Hash128>` of node IDs against `GetNodes()` | `GraphChanges` was added in 6000.7 |
+| Know what changed, like the old `graphViewChanged` | 6000.7+: `OnGraphChanged` and `logger.GraphChanges.ChangedNodes` with `ChangeKinds` flags for added and modified nodes. Removed nodes on any version, and everything on 6000.6: diff a cached `HashSet<Hash128>` of node IDs against `GetNodes()` | `GraphChanges` was added in 6000.7 and never reports removed nodes, only removed ports |
 | Several kinds of subgraph | `GraphOptions.SupportsSubgraphs` on the main graph, `[Subgraph(typeof(MainGraph))]` on each subgraph `Graph` class | Without the attribute the main graph type doubles as the only subgraph type |
 | Ports on a subgraph node | Blackboard variables of kind `VariableKind.Input` or `Output` inside the subgraph | Subgraph nodes have no `OnDefinePorts`; their ports mirror the subgraph's variables |
 | Node icon or USS look | `[Node(category, iconPath, title, stylesheet)]`; `d_` prefix for the dark-theme icon file | The Editor picks the `d_` file in the dark theme and falls back otherwise |
