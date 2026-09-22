@@ -25,7 +25,7 @@ npx skills add Unity-Technologies/skills
 | `validate-urp-render-graph-renderer-feature` | Reviews a Unity 6+ URP `ScriptableRendererFeature` built on Render Graph |
 | `shader-graph-create-custom-node` | Custom Shader Graph nodes from HLSL |
 | `setup-multiplayer-services` | Multiplayer topology, sessions, lobbies, matchmaking, and discovery via Unity Multiplayer Services |
-| `gtk` | Graph Toolkit (GTK) — build node-based Editor tools with the Graph API (Unity 6.6+) and state machine tools with the State Machine API (Unity 6.7+), compile them to runtime assets, and debug them live |
+| `build-gtk` | Graph Toolkit (GTK) — build node-based Editor tools with the Graph API (Unity 6.6+) and state machine tools with the State Machine API (Unity 6.7+), compile them to runtime assets, and debug them live |
 
 ## Usage
 

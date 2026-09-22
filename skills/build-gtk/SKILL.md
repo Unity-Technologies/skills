@@ -1,5 +1,5 @@
 ---
-name: gtk
+name: build-gtk
 description: >-
   Unity Graph Toolkit (GTK) expert for Unity 6.6 and newer. Builds node-based Editor tools with the
   public Graph API (Graph, Node, ports, node options, context and block nodes, subgraphs, blackboard
