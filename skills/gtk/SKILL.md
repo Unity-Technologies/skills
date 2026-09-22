@@ -11,13 +11,23 @@ description: >-
   or migrating a GraphView / UnityEditor.Experimental.GraphView tool, even when the user only says
   "node graph", "visual editor", "dialogue graph" or "behaviour graph tool". Not for Shader Graph, VFX
   Graph, Animator Controller state machines, or using the Unity Behavior package as an end user.
-compatibility: Unity 6000.6 or newer. The State Machine API sections need Unity 6000.7 or newer. Editor-only; no package install required.
+required_editor_version: ">=6000.6"
 ---
 
 # Unity Graph Toolkit (GTK)
 
 Build Editor graph tools and state machine tools on Unity's Graph Toolkit module, using only its
 public API in the `Unity.GraphToolkit.Editor` namespace.
+
+## Important
+
+- Create a restore point you can roll back to if your changes fail.
+- Do only what's asked. Don't change unrelated assets or files. Avoid long explanations.
+- Before you go forward with a workflow or diagnosis, open and read the reference file(s) named in
+  that workflow and the [Topic map](#topic-map) page(s) that cover the thing you intend to do. Name
+  the file(s) you read in your response. This is because your training knowledge about Unity might be
+  out of date, incorrect, or for the wrong Unity version, and Graph Toolkit changed between 6000.4,
+  6000.6 and 6000.7.
 
 ## References
 
@@ -141,35 +151,39 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
 
 ## Decisions
 
-| The user wants | Do this |
-|---|---|
-| Limit how many wires a port accepts | `.WithCapacity(PortCapacity.Single)` (or `Multi`, `None`) in the port builder |
-| Connect an `int` output to a `float` input | Override `Graph.IsConnectionAllowed(IPort output, IPort input)` |
-| One port that accepts several types, like Shader Graph | 6000.7+: `.WithDataTypes(typeof(float), typeof(int), typeof(Vector3))` on the builder. 6000.6: an untyped port plus `IsConnectionAllowed` |
-| An execution-flow port with no data type | `context.AddInputPort("In")` with no type; its `DataType` is `Untyped`. Add `.WithConnectorUI(PortConnectorUI.Arrowhead)` for a flow look |
-| Hide a node type from the Add menu | Make it `abstract`, or move it to another assembly without `[UseWithGraph]`, or set `GraphOptions.DisableAutoInclusionOfNodesFromGraphAssembly` and opt nodes in explicitly |
-| Group nodes in the Add menu | `[Node("Category/Sub")]`. The class or title name is appended after the path |
-| Know what changed, like the old `graphViewChanged` | 6000.7+: `OnGraphChanged` and `logger.GraphChanges.ChangedNodes` with `ChangeKinds` flags. 6000.6: no delta exists; diff a cached `HashSet<Hash128>` of node IDs against `GetNodes()` |
-| Several kinds of subgraph | `GraphOptions.SupportsSubgraphs` on the main graph, `[Subgraph(typeof(MainGraph))]` on each subgraph `Graph` class |
-| Ports on a subgraph node | Blackboard variables of kind `VariableKind.Input` or `Output` inside the subgraph |
-| Node icon or USS look | `[Node(category, iconPath, title, stylesheet)]`; `d_` prefix for the dark-theme icon file |
-| Show which node runs and what flows through ports at runtime | GraphVisualization API, see `runtime-and-visualization.md` |
-| An Animator-like state machine editor | Workflow B on 6000.7+. On 6000.6, explain it is not available |
-| Extra UI inside a node | `NodeView<MyNode>` on 6000.7+. On 6000.6, only USS, `DefaultColor` and `FillAmount` |
+| The user wants | Do this | Why |
+|---|---|---|
+| Limit how many wires a port accepts | `.WithCapacity(PortCapacity.Single)` (or `Multi`, `None`) in the port builder | Ports default to multiple wires, so the framework enforces the limit only if you declare it |
+| Connect an `int` output to a `float` input | Override `Graph.IsConnectionAllowed(IPort output, IPort input)` | Ports of different types refuse to connect by default; the graph only records the wire, your importer converts |
+| One port that accepts several types, like Shader Graph | 6000.7+: `.WithDataTypes(typeof(float), typeof(int), typeof(Vector3))` on the builder. 6000.6: an untyped port plus `IsConnectionAllowed` | `WithDataTypes` does not exist on 6000.6 |
+| An execution-flow port with no data type | `context.AddInputPort("In")` with no type; its `DataType` is `Untyped`. Add `.WithConnectorUI(PortConnectorUI.Arrowhead)` for a flow look | Flow ports carry no value; typing them invites wrong connections |
+| Hide a node type from the Add menu | Make it `abstract`, or move it to another assembly without `[UseWithGraph]`, or set `GraphOptions.DisableAutoInclusionOfNodesFromGraphAssembly` and opt nodes in explicitly | Every concrete node class in the graph's assembly is listed automatically |
+| Group nodes in the Add menu | `[Node("Category/Sub")]`. The class or title name is appended after the path | The attribute's first argument is a folder path, not the node's title |
+| Know what changed, like the old `graphViewChanged` | 6000.7+: `OnGraphChanged` and `logger.GraphChanges.ChangedNodes` with `ChangeKinds` flags. 6000.6: no delta exists; diff a cached `HashSet<Hash128>` of node IDs against `GetNodes()` | `GraphChanges` was added in 6000.7 |
+| Several kinds of subgraph | `GraphOptions.SupportsSubgraphs` on the main graph, `[Subgraph(typeof(MainGraph))]` on each subgraph `Graph` class | Without the attribute the main graph type doubles as the only subgraph type |
+| Ports on a subgraph node | Blackboard variables of kind `VariableKind.Input` or `Output` inside the subgraph | Subgraph nodes have no `OnDefinePorts`; their ports mirror the subgraph's variables |
+| Node icon or USS look | `[Node(category, iconPath, title, stylesheet)]`; `d_` prefix for the dark-theme icon file | The Editor picks the `d_` file in the dark theme and falls back otherwise |
+| Show which node runs and what flows through ports at runtime | GraphVisualization API, see `runtime-and-visualization.md` | Graph Toolkit has no runtime; the game must push state back into the open window |
+| An Animator-like state machine editor | Workflow B on 6000.7+. On 6000.6, explain it is not available | The State Machine API does not exist before 6000.7 |
+| Extra UI inside a node | `NodeView<MyNode>` on 6000.7+. On 6000.6, only USS, `DefaultColor` and `FillAmount` | `NodeView<T>` was added in 6000.7 |
 
 ## Constraints
 
 - Use member names exactly as the references spell them: properties are PascalCase
   (`FirstConnectedPort`, `IsConnected`), attributes take positional constructor arguments, and IDs are
   `Hash128`. When a member is not listed in the references, look it up at the URL pattern below rather
-  than guessing its name or casing.
-- Link to the Script Reference or manual instead of restating them.
-- Keep runtime assemblies free of `Unity.GraphToolkit.Editor`. Editor-side visualization code inside a
-  runtime assembly goes under `#if UNITY_EDITOR`.
-- Keep the user's existing tool structure. Do only what is asked; do not restyle or reorganize nodes
-  that were not mentioned.
-- Do not print Graph Toolkit internals or private types as a workaround. If the public API cannot do
-  something, say so and point at the community thread list below.
+  than guessing its name or casing, because a guessed member fails to compile and the user cannot tell
+  a typo from a missing feature.
+- Link to the Script Reference or manual instead of restating them, so the answer stays correct when
+  the docs change.
+- Keep runtime assemblies free of `Unity.GraphToolkit.Editor`, and put visualization code inside a
+  runtime assembly under `#if UNITY_EDITOR`, because the module is Editor-only and any reference to it
+  breaks the player build.
+- Keep the user's existing tool structure and do not restyle or reorganize nodes that were not
+  mentioned, because node and port names are lookup keys that importers and saved assets depend on.
+- Do not use Graph Toolkit internals or private types as a workaround, because they are not accessible
+  from user code and change without notice. If the public API cannot do something, say so and point at
+  the community thread list below.
 
 ## Verify
 
@@ -181,17 +195,37 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
 3. With an importer, select the asset and confirm the produced runtime object is the main asset in
    the Inspector.
 4. Re-read `references/pitfalls.md` and fix anything it flags.
+5. If a step fails or the Console reports an error, go back and reread the reference file and the
+   [Topic map](#topic-map) page for that step before retrying; the fix is usually a member name or a
+   version gate you missed.
+
+## Final report
+
+Give the user a short checklist: the files you created or changed and where they go, how to create
+and open the first asset, what the importer produces, and which Editor version the code targets. List
+what is left for them to decide or do next, such as more node types, the runtime executor, or the debug
+view, and any Console error you could not verify because no Editor was available.
 
 ## Topic map
 
-- Manual: https://docs.unity.com/en-us/engine/6000.6/manual/extending-the-editor/gtk-index
-  Swap `6000.6` for the project's minor version. Child pages: `implement-a-graph-tool`,
-  `implement-nodes`, `implement-node-options`, `implement-context-nodes`, `implement-block-nodes`,
-  `type-cast-ports`, `add-custom-toolbar-actions`, `add-subgraph-support`, `graph-processing`.
-- Script Reference: `https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`
+Prefer `WebFetch` over `WebSearch`; it is faster and lands on the exact page. Only fetch what you need.
+Replace `<VERSION>` before fetching:
+
+- `docs.unity.com/en-us/engine/<VERSION>` and `docs.unity3d.com/<VERSION>/Documentation`: the project's
+  Editor version from `ProjectSettings/ProjectVersion.txt`, for example `6000.6` or `6000.7`.
+- `docs.unity3d.com/Packages/com.unity.graphtoolkit-samples@<VERSION>`: the samples package
+  version shown in the Package Manager, for example `0.6`.
+
+Pages:
+
+- Manual index: `https://docs.unity.com/en-us/engine/<VERSION>/manual/extending-the-editor/gtk-index`.
+  Child pages under it: `implement-a-graph-tool`, `implement-nodes`, `implement-node-options`,
+  `implement-context-nodes`, `implement-block-nodes`, `type-cast-ports`, `add-custom-toolbar-actions`,
+  `add-subgraph-support`, `graph-processing`.
+- Script Reference: `https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`
   and `...<Type>.<Member>.html`. Generic types use `_1`, for example `Condition_1.html`. State machine
   types exist from `6000.7`.
-- Samples: https://docs.unity3d.com/Packages/com.unity.graphtoolkit-samples@0.6/manual/index.html
+- Samples: `https://docs.unity3d.com/Packages/com.unity.graphtoolkit-samples@<VERSION>/manual/index.html`.
   Install `com.unity.graphtoolkit-samples` by name in the Package Manager, then import Texture Maker
   (importer), Visual Novel Director (custom runtime and debug view) or Dungeon Graph Generator
   (building a graph from code).

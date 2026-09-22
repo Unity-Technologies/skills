@@ -3,9 +3,10 @@
 All types live in `Unity.GraphToolkit.Editor` unless stated. Members marked **6.7** exist only on
 Unity 6000.7 and newer. Every signature below was taken from the module source; when something is
 not listed here, look it up at
-`https://docs.unity3d.com/6000.6/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`.
+`https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`,
+with `<VERSION>` the project's Editor version, for example `6000.6`.
 
-Contents
+## Contents
 
 1. Graph class and asset lifecycle
 2. Nodes

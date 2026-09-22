@@ -2,6 +2,17 @@
 
 Check every item before handing off. Each entry: symptom, cause, fix.
 
+## Contents
+
+- Wrong API generation
+- Discovery and menus
+- Ports and options
+- Lifecycle and mutation
+- Serialization
+- Custom UI (6.7)
+- Visualization
+- Importers
+
 ## Wrong API generation
 
 - **Symptom:** code uses `GraphModel`, `NodeModel`, `StateModel`, `GraphObject`, `GraphTool`,

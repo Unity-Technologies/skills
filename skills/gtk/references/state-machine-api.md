@@ -2,10 +2,11 @@
 
 All types live in `Unity.GraphToolkit.Editor`. None of this exists on Unity 6000.6 or older: the
 public Script Reference for these types starts at
-`https://docs.unity3d.com/6000.7/Documentation/ScriptReference/Unity.GraphToolkit.Editor.StateMachine.html`.
+`https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.StateMachine.html`
+with `<VERSION>` at least `6000.7`.
 There is no manual chapter yet, so this file is the primary map.
 
-Contents
+## Contents
 
 1. Concepts
 2. StateMachine class and asset lifecycle

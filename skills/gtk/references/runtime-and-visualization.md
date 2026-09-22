@@ -5,7 +5,7 @@ registered on the graph's extension compiles the authored graph into a plain run
 time, the game loads that asset, and, optionally, editor-only code mirrors execution back into the
 open graph window through the GraphVisualization API.
 
-Contents
+## Contents
 
 1. Assembly layout
 2. The importer
