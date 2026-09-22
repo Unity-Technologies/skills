@@ -1,6 +1,6 @@
 ---
 name: setup-vivox-voice-chat
-description: Adds and configures in-game voice chat and text chat for Unity multiplayer games using Unity Vivox. Use this skill when the user asks about voice chat or comms, microphone setup and permissions, mute and volume controls, voice activity detection (VAD), push-to-talk, proximity or 3D spatial voice, team, party, or lobby voice channels, direct messages, or in-game text chat, even if they don't mention Vivox. Use it when the user mentions VivoxService, com.unity.services.vivox, or migrating from the legacy Vivox client APIs.
+description: Adds and configures in-game voice and text chat with Unity Vivox. Use when the user asks about voice chat, microphone permissions, mute controls, proximity voice, team and lobby channels, or direct messages.
 required_packages:
   com.unity.services.vivox: ">=16.4.0"
 ---

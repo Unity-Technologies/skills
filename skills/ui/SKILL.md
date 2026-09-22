@@ -1,11 +1,6 @@
 ---
 name: ui
-description: >-
-  Builds, edits, and explains game UI (menus, HUDs, screens, panels, and other visual interface
-  elements) routing to UI Toolkit, uGUI, or IMGUI based on project context. Use this
-  skill for any UI request that doesn't name a framework, including questions about existing UI
-  structure, styling and layout changes, and new UI generation, so the project's UI system is
-  detected before any UI code is written.
+description: Routes Unity UI requests to the right framework skill (UI Toolkit, uGUI, or IMGUI) and answers UI comparison questions. Use for menus, HUDs, panels, or editor UI when the request doesn't name a framework.
 ---
 
 Determine the appropriate UI system for the project and route to the correct specialized skill.

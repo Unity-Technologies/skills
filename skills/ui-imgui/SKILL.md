@@ -1,11 +1,6 @@
 ---
 name: ui-imgui
-description: >-
-  Generates and modifies Unity IMGUI (Immediate Mode GUI) editor code: EditorWindows, custom
-  Inspectors, PropertyDrawers, and scripts using OnGUI or OnInspectorGUI. Use this skill when
-  maintaining existing IMGUI editor code or when the user requests IMGUI or OnGUI. Not
-  for new editor windows or tools, which default to UI Toolkit (ui-uitk) unless the project uses
-  IMGUI exclusively.
+description: Generates and modifies Unity IMGUI editor code such as EditorWindows, custom Inspectors, PropertyDrawers, and OnGUI scripts. Use for IMGUI or OnGUI or maintaining existing IMGUI code.
 ---
 
 **Before proceeding:** If the user is asking about creating a **new** editor window, custom inspector, or PropertyDrawer without explicitly mentioning IMGUI/OnGUI, recommend using UI Toolkit (CreateGUI) instead, as it's the modern approach. Only proceed with IMGUI if:

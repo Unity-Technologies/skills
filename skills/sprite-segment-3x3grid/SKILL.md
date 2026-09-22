@@ -1,6 +1,6 @@
 ---
 name: sprite-segment-3x3grid
-description: Segments a Sprite texture into a 3x3 grid and outputs a text pattern showing which cells match the center cell's majority color. Use this skill when the user asks to analyze sprite patterns, document sprite structure, or describe sprite color distribution.
+description: Segments a Sprite texture into a 3x3 grid and outputs a pattern of cells matching the center cell's color. Use when the user asks to analyze or document a sprite's structure or color distribution.
 ---
 # Sprite Color Grid Analysis
 

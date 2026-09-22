@@ -1,6 +1,6 @@
 ---
 name: optimize-web
-description: Optimizes Unity 6 WebGL and WebGPU builds for smaller downloads, faster initial load, and efficient browser runtime performance. Use this skill when a web build is too large, stutters, or drains battery, or when the user asks about CDN or server compression, resource stripping, shader variant reduction, KTX textures, or web profiling.
+description: Optimizes Unity WebGL and WebGPU builds for smaller downloads and faster load. Use when a web build is too large or stutters, or the user asks about compression, stripping, shader variants, or web profiling.
 ---
 ## Performance Notes
 - Take your time to do this thoroughly.

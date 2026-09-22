@@ -1,6 +1,6 @@
 ---
 name: implement-in-app-purchases
-description: Implements, configures, and debugs Unity In-App Purchases (IAP), covering store connection, product catalogs, consumable, non-consumable, and subscription purchases, receipt validation, entitlements, restore transactions, and Apple and Google Play store extensions. Use this skill when the user asks about real-money purchases, microtransactions (MTX), or store monetization, even if they don't mention Unity IAP. Also use it for direct-to-customer (D2C) purchases via Stripe or Coda, and migrations from native billing (StoreKit, Google BillingClient) or third-party plugins such as RevenueCat, Adapty, Essential Kit, or Unipay.
+description: Implements, configures, and debugs Unity In-App Purchases, including subscriptions, receipt validation, and direct-to-customer payments via Stripe or Coda. Use when asked about real-money purchases or microtransactions, or migrating from native store billing, RevenueCat, or Adapty.
 ---
 
 # Unity In-App Purchasing

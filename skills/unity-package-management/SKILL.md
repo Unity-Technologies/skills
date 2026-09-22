@@ -1,6 +1,6 @@
 ---
 name: unity-package-management
-description: Adds, removes, upgrades, and discovers Unity (UPM) packages programmatically from outside the Editor via the C# UnityEditor.PackageManager.Client API. Use this skill for headless or CI package installs, verifying package IDs and versions against the Unity registry, or choosing which packages a game needs by genre, platform, and monetization, even if the user just says to install a com.unity.* package. The Unity CLI doesn't manage UPM packages; this skill covers that gap.
+description: Adds, removes, upgrades, and discovers Unity (UPM) packages from outside the Editor. Use for headless or CI package installs, verifying package IDs and versions, or choosing which packages a game needs. The Unity CLI doesn't manage packages.
 allowed-tools:
   - Bash
   - Read

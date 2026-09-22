@@ -1,6 +1,6 @@
 ---
 name: generate-editor-search-query
-description: Generates Unity Search (Quick Search) queries and opens the Search window for read-only asset or scene-object lookups in the Editor. Use this skill, even if the user doesn't mention Unity Search, when asked to find, filter, or list assets or scene objects, such as materials, prefabs, scripts, GameObjects, components, or references. Don't use this skill for repository or filesystem searches, web searches, project overviews, or how-to programming questions.
+description: Generates Unity Search queries and opens the Search window to find assets or scene objects. Use when the user asks to find, filter, or list assets, GameObjects, components, or references in the Editor, not on disk.
 enabled: true
 modes: [agent, ask]
 ---

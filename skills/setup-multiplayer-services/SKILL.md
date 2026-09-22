@@ -1,11 +1,6 @@
 ---
 name: setup-multiplayer-services
-description: >-
-  Guides the development of real-time online multiplayer experiences using Unity Multiplayer
-  Services. Use this skill when the user asks about topology choice, player grouping, hosting,
-  matchmaking, discovery, network setup, or session-based play such as rooms, parties, and lobbies.
-  Not for leaderboards, cloud saves, or backend features with no real-time connection between
-  players; those belong to the build-live-game skill.
+description: Guides real-time online multiplayer with Unity Multiplayer Services. Use when the user asks about network topology, hosting, matchmaking, or session-based play such as rooms, parties, and lobbies, not backend features.
 ---
 
 # Multiplayer SDK (Unity Multiplayer Services)

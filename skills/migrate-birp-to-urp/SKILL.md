@@ -1,6 +1,6 @@
 ---
 name: migrate-birp-to-urp
-description: Plans, executes, and troubleshoots migrations from Unity's Built-in Render Pipeline (BiRP) to the Universal Render Pipeline (URP). Use this skill when the user asks to upgrade, convert, or migrate a project, scene, material, or shader to URP, fix pink or magenta materials, review lighting, quality, or post-processing after migrating, or diagnose visual problems after a render-pipeline change.
+description: Plans, executes, and troubleshoots migration from the Built-in Render Pipeline to URP. Use when asked to convert a project, scene, material, or shader to URP, or to fix visuals broken by the change.
 ---
 Classify the request, inspect the current project state, choose the correct migration path, and validate the Built-in to URP migration outcome carefully.
 

@@ -1,6 +1,6 @@
 ---
 name: new-unity-project
-description: Guides the creation of a brand-new Unity game or project from scratch, gathering the concept, target platforms, and monetization before creating the project, source control, and packages. Use this skill when the user asks to start, make, or bootstrap a new game or Unity project, including prototypes, game jams, and blank projects. Doesn't scaffold gameplay code.
+description: Guides creating a new Unity project, gathering concept, platforms, and monetization before setting up the project, source control, and packages. Use when the user asks to start a new game or prototype.
 allowed-tools:
   - Bash
   - Read

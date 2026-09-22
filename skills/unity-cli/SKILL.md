@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Controls the Unity Editor from the command line via the Unity CLI, creating or modifying GameObjects, editing scenes and assets, inspecting the hierarchy, and running C# in a live Editor instead of manually editing scene files. Use this skill when the user asks to install or manage Unity Editors, manage projects, manage licenses or modules, read logs, browse releases, build or test projects, configure the Unity MCP server, or run any other Unity CLI operation. For a guided flow for a brand-new game, use the new-unity-project skill instead.
+description: Controls the Unity Editor and projects from the command line, driving a running Editor to edit scenes and assets or run C#. Use when asked to install or manage Editors, licenses, or projects, set up version control, build, test, configure the Unity MCP server, or run any unity command.
 allowed-tools:
   - Bash
 ---

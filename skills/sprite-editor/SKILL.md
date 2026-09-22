@@ -1,6 +1,6 @@
 ---
 name: sprite-editor
-description: Edits Unity sprite properties — rectangles, borders, pivots, outlines, and slicing (automatic, grid, isometric) — by generating C# editor scripts using ISpriteEditorDataProvider APIs. Use this skill when the user works with sprite assets, sprite sheets, texture atlases, or sprite slicing.
+description: Edits Unity sprite rectangles, borders, pivots, outlines, and slicing by generating C# scripts. Use when the user works with sprite sheets or sprite slicing.
 modes: [agent, ask]
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: levelplay-unity-integration
-description: Integrates the LevelPlay Mediation SDK via the Ads Mediation package. Use this skill when the user asks about adding or monetizing with ads (rewarded, interstitial, or banner) even if they don't mention LevelPlay. Use it for ad network and mediation setup, ATT and privacy configuration, impression-level revenue (ILRD), SDK initialization and ad unit IDs, Android Gradle or iOS CocoaPods dependency issues for ads, and migrations from Unity Ads, manging the Ads Mediation package, fixing LevelPlay namespace errors, deprecated IronSource.Agent APIs, or older LevelPlay SDK versions.
+description: Integrates the LevelPlay ad mediation SDK via the Ads Mediation package. Use when the user asks about adding rewarded, interstitial, or banner ads, mediation or ad privacy setup, Android or iOS ad dependency build failures, or migrating from Unity Ads or IronSource APIs.
 ---
 
 # LevelPlay Unity package/SDK Integration

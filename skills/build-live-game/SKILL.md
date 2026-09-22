@@ -1,6 +1,6 @@
 ---
 name: build-live-game
-description: Builds and operates live games using Unity Services. Use this skill when the user asks about backend-driven or live-ops features — player accounts and authentication, cloud saves, leaderboards, matchmaking, lobbies, achievements, player progression, battle or season passes, virtual economies, server-authoritative logic, cloud code, anti-cheat, remote config, feature flags, A/B testing, analytics, or cloud resource deployment — even if they don't mention Unity Services.
+description: Builds and operates live games with Unity Services. Use when the user asks about backend or live-ops features such as player accounts, cloud save, leaderboards, achievements, progression and battle passes, economies, cloud code, or remote config.
 ---
 
 # Build a Live Game With Unity Gaming Services

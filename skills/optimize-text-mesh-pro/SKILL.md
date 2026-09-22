@@ -1,13 +1,6 @@
 ---
 name: optimize-text-mesh-pro
-description: >
-  Optimizes TextMeshPro (TMP) rendering, memory, and font setup: font asset
-  stacks, dynamic fallback atlases, padding and sampling ratios, SDF quality,
-  AutoSize discipline, and Memory Profiler font-data capture. Use
-  this skill when the user asks about TMP font assets, font fallbacks, CJK or
-  multilingual text rendering, text performance or memory issues, worldspace vs UGUI, or profiler
-  markers for text generation and glyph rasterization. Not for UI Toolkit
-  layout (ui-uitk) or non-TMP uGUI (ui-ugui).
+description: Optimizes TextMeshPro rendering, memory, and font setup, including font asset stacks, fallback atlases, SDF quality, and worldspace text. Use when the user asks about TMP fonts, CJK or multilingual text, or text performance.
 ---
 
 # Optimize TextMeshPro
