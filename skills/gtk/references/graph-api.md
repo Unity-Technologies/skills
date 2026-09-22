@@ -233,7 +233,7 @@ public override void OnGraphChanged(GraphLogger logger)
     // 6.7 and newer only: the change delta
     foreach (var change in logger.GraphChanges.ChangedNodes)
     {
-        if ((change.ChangeKinds & ChangeKind.Removed) != 0) { /* change.Node is gone; use change.ID */ }
+        if ((change.ChangeKinds & ChangeKind.Removed) != 0) { /* the node left the graph; key your own state by change.ID */ }
         else if (change.Node is ObjectiveNode objective) { /* added or modified */ }
     }
 }

@@ -4,7 +4,7 @@ All types live in `Unity.GraphToolkit.Editor`. None of this exists on Unity 6000
 public Script Reference for these types starts at
 `https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.StateMachine.html`
 with `<VERSION>` at least `6000.7`.
-There is no manual chapter yet, so this file is the primary map.
+There is no manual walkthrough page yet; the Script Reference is the authoritative source and this file is the map of it.
 
 ## Contents
 

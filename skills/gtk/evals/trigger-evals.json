@@ -4,7 +4,7 @@
     "should_trigger": true
   },
   {
-    "query": "how do i make a port in GTK only accept one connection? right now designers keep plugging 3 wires into my 'Next' port and my importer only reads the first one",
+    "query": "in my GTK dialogue tool designers keep plugging 3 wires into the 'Next' output and my importer silently reads only the first one. I want the port to accept a single wire, the graph to show an error marker if an old asset still has several, and the importer to refuse to compile until it's fixed. Can you do all three?",
     "should_trigger": true
   },
   {
@@ -20,7 +20,7 @@
     "should_trigger": true
   },
   {
-    "query": "my custom node shows up in the add node menu under Math/Add/Add instead of Math/Add in graph toolkit. what am I doing wrong with the [Node] attribute?",
+    "query": "cleaning up our graph toolkit tool's Add menu: nodes show up as Math/Add/Add instead of Math/Add, two base classes we never meant to expose are listed, and the icons don't switch in the dark theme. Can you go through the [Node] attributes and class declarations and fix the menu layout, hide the bases, and wire up the dark icons?",
     "should_trigger": true
   },
   {

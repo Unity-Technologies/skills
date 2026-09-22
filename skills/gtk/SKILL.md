@@ -118,8 +118,8 @@ there, not from memory. Read `references/runtime-and-visualization.md` as well w
 
 ## Workflow B: build a state machine tool (Unity 6.7 and newer)
 
-Read `references/state-machine-api.md` now; there is no manual chapter for this API yet, so that file
-is the only accurate source for its member names.
+Read `references/state-machine-api.md` now; there is no manual walkthrough for this API yet, so that
+file and the Script Reference are the only accurate sources for its member names.
 
 1. **State machine class.** `[StateMachine(AssetExtension)] [Serializable] class MySM : StateMachine`
    plus a menu item calling `StateMachineDatabase.PromptInProjectBrowserToCreateNewAsset<MySM>()`.
@@ -194,6 +194,9 @@ The state machine equivalents are `UndoBeginRecordStateMachine`, `Connect(fromSt
    menu, connect them, save, close and reopen. The Console must show no errors or warnings.
 3. With an importer, select the asset and confirm the produced runtime object is the main asset in
    the Inspector.
+3b. When you wrote runtime code (an executor, a debug view), add `Debug.Log` lines that prove the
+   behaviour, such as the state entered or the node executed, enter Play mode, and read them. Remove or
+   guard them once the behaviour is confirmed.
 4. Re-read `references/pitfalls.md` and fix anything it flags.
 5. If a step fails or the Console reports an error, go back and reread the reference file and the
    [Topic map](#topic-map) page for that step before retrying; the fix is usually a member name or a
@@ -216,15 +219,21 @@ Replace `<VERSION>` before fetching:
 - `docs.unity3d.com/Packages/com.unity.graphtoolkit-samples@<VERSION>`: the samples package
   version shown in the Package Manager, for example `0.6`.
 
-Pages:
+Pages, all under `https://docs.unity.com/en-us/engine/<VERSION>/`, served as markdown when the `.md`
+suffix is kept:
 
-- Manual index: `https://docs.unity.com/en-us/engine/<VERSION>/manual/extending-the-editor/gtk-index`.
-  Child pages under it: `implement-a-graph-tool`, `implement-nodes`, `implement-node-options`,
-  `implement-context-nodes`, `implement-block-nodes`, `type-cast-ports`, `add-custom-toolbar-actions`,
-  `add-subgraph-support`, `graph-processing`.
-- Script Reference: `https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`
-  and `...<Type>.<Member>.html`. Generic types use `_1`, for example `Condition_1.html`. State machine
-  types exist from `6000.7`.
+- Manual index: `manual/extending-the-editor/gtk-index.md`
+- Implementing a graph tool: `manual/extending-the-editor/gtk-index/implementing-a-graph-tool.md`, with
+  child pages `implement-a-graph-tool.md`, `implement-nodes.md`, `implement-node-options.md`,
+  `implement-context-nodes.md`, `implement-block-nodes.md`, `type-cast-ports.md`,
+  `add-custom-toolbar-actions.md`, `add-subgraph-support.md`, `graph-processing.md` under that folder
+- Graph window and panels: `manual/extending-the-editor/gtk-index/landing-graph-interface.md`, with
+  `graph-window.md`, `blackboard.md`, `graph-inspector.md`, `minimap.md` under it
+- Script Reference: `script-reference/unity/graphtoolkit/editor/<type>.md` and
+  `.../<type>/<member>.md`, all lowercase, generic arity dropped (`condition.md` for `Condition<T>`).
+  Example: `script-reference/unity/graphtoolkit/editor/graph/ongraphchanged.md`. State machine types
+  exist from `6000.7`. The older form `https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.<Type>.html`
+  also resolves, as HTML.
 - Samples: `https://docs.unity3d.com/Packages/com.unity.graphtoolkit-samples@<VERSION>/manual/index.html`.
   Install `com.unity.graphtoolkit-samples` by name in the Package Manager, then import Texture Maker
   (importer), Visual Novel Director (custom runtime and debug view) or Dungeon Graph Generator
