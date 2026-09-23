@@ -2,7 +2,8 @@
 name: project_auditor_fixes
 description: "Instructions for how to use Project Auditor to find and fix a list of issues."
 version: 1.0.0
-—
+---
+
 Using Project Auditor
 Project Auditor carries out a static analysis scan of the Unity Project and reports a list of CSV issues that may be fixed.  Trigger, poll, read.
 
