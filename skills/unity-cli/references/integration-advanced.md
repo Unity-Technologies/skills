@@ -82,9 +82,12 @@ unity mcp configure cursor --local
 unity mcp configure claude --project-path /path/to/MyProject
 unity mcp configure vscode --yes
 unity mcp configure vscode --dry-run
+
+# Register a different Unity MCP server than the default `editor` one
+unity mcp configure claude --server <id>
 ```
 
-`--dry-run` prints only the entry that would be added or changed, not the whole config file. `continue` no longer writes a file — Continue reads `config.yaml`, not the deprecated `config.json` — and prints setup instructions instead. `codex` also relaxes Codex’s sandbox network policy so `unity mcp` and a direct `unity command` can reach the Editor over localhost, and refuses any edit to `config.toml` it cannot prove safe rather than corrupting the file. Every client config write is atomic, and a `--local` write refuses to follow a symlinked path component.
+`--server <id>` picks which Unity MCP server the entry points at; it defaults to `editor`, which is the one you want unless you have been told otherwise. `--dry-run` prints only the entry that would be added or changed, not the whole config file. `continue` no longer writes a file — Continue reads `config.yaml`, not the deprecated `config.json` — and prints setup instructions instead. `codex` also relaxes Codex’s sandbox network policy so `unity mcp` and a direct `unity command` can reach the Editor over localhost, and refuses any edit to `config.toml` it cannot prove safe rather than corrupting the file. Every client config write is atomic, and a `--local` write refuses to follow a symlinked path component.
 
 ---
 
@@ -158,6 +161,7 @@ The CLI resolves a small set of external tools and runtimes it needs for specifi
 # What's resolved, and from where (PATH, or a CLI-managed copy under the external-modules dir)
 unity plugin list
 unity plugin list --versions      # probe each installed component's real version (costs a subprocess per component)
+unity plugin list --refresh       # re-fetch the registry document instead of reading the cached one
 
 # Install one by id or alias
 unity plugin install plastic      # same target as `unity plugin install cm` / `unity plugin install uvcs`
@@ -322,6 +326,8 @@ unity command recompile_status --result-only
 
 In the human table, `recompile`, `recompile_status`, `test_status` and `run_tests` results render as short readable text in the Result column instead of a JSON blob; `--format json` / `ndjson` output is unchanged.
 
+**`--caller [label]` and `--skill [name]` are analytics labels, not behavior.** `--caller` records what invoked the CLI and `--skill` records the agent skill driving the invocation; neither changes what the command does. A caller the CLI recognizes is recorded as given, anything else as `other`. They exist so an integration can identify itself — an agent running this skill has no reason to set them by hand, and both are inert when analytics are off.
+
 #### Querying the command list
 
 A mature project's Pipeline catalog gets long, so the **listing** form of `unity command` (no command name) accepts query flags that filter, group, sort, and page it — the fastest way for an agent to find the right command without pulling the whole catalog:
@@ -392,7 +398,7 @@ The Pipeline package ships a set of built-in scene/GameObject commands. The comm
 | `add_component` | Add a component to a GameObject |
 | `rename_gameobject` / `delete_gameobject` | Rename or delete a GameObject |
 | `save_scene` / `save_all` | Save the active scene, or all dirty scenes and assets |
-| `create_script` → `recompile` → `attach_script` | Add a new C# script, rebuild, then attach it to a GameObject |
+| `create_script` → `recompile` → `attach_script` | Add a new C# script, rebuild, then attach it to a GameObject (`unity recompile` does the middle step and reports compile errors) |
 
 The **authoritative** catalog is always `unity command --format json` — every registered command with its full parameter schema. The table above just jump-starts common tasks so you don't have to dump-and-grep first.
 
@@ -405,6 +411,28 @@ rather than assuming it.
 If no editor with a reachable Pipeline server is found, the command errors with guidance (make sure the editor is running and its Pipeline server is up).
 
 `unity command` no longer accepts `--instance <host:port>` — the CLI discovers running Editors itself, so run from the project directory or pass `--project-path` to target one.
+
+#### job — track a detached Editor command
+
+`unity command --detach` returns a job id instead of blocking until the Editor finishes, which is what you want for anything long-running (a build, a test run, a heavy import). `unity job` is how you follow that job afterwards.
+
+```bash
+# Start the work and get a job id back
+unity command run_tests --detach
+
+# Check on it, wait for it, or give up on it
+unity job status <job-id>
+unity job wait <job-id>
+unity job cancel <job-id>
+
+# Wait, but stop after 10 minutes instead of waiting indefinitely
+unity job wait <job-id> --timeout 600
+
+# Poll less often (default: every 500 ms)
+unity job wait <job-id> --poll-interval 2000
+```
+
+`wait` blocks until the job finishes and then prints its result, exactly as the non-detached command would have. `--timeout` counts seconds and `0` — the default — waits indefinitely; `--poll-interval` counts milliseconds. All three subcommands take the same Editor-targeting flags as `unity command` (`--project-path`, `--runtime`, `--runtime-path`).
 
 #### list — discover a connected Editor's tools
 
@@ -600,9 +628,11 @@ public static class MyPipelineCommands
   state (scene graph, assets, serialized objects); set it `false` only for pure, thread-safe work.
 - `RuntimeOnly = true` hides the command from an Editor server's listing (Player/dev-build only); reach
   such a command with `unity command <command> --runtime <runtime>`. 
-- After adding or changing a command, rebuild with `unity command recompile` (poll
-  `unity command recompile_status` until `completed`), then `unity list` to confirm it registered. The
-  Pipeline package also ships built-in commands, including `eval` / `eval_file` (run C# in the Editor).
+- After adding or changing a command, rebuild with `unity recompile` — it triggers the recompile, polls
+  to completion and reports any compile errors in one call — then `unity list` to confirm it registered.
+  (The raw `unity command recompile` + polling `unity command recompile_status` until `completed` still
+  works, and is what `unity recompile` does for you.) The Pipeline package also ships built-in commands,
+  including `eval` / `eval_file` (run C# in the Editor).
 
 ---
 
