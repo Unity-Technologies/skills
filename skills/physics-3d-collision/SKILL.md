@@ -1,6 +1,6 @@
 ---
 name: physics-3d-collision
-description: Diagnoses 3D PhysX collision and trigger problems. Use when OnCollisionEnter or OnTriggerEnter doesn't fire, objects pass through each other, raycasts miss, or a MeshCollider misbehaves. Also answers 2D and DOTS physics best-effort.
+description: Diagnoses 3D PhysX collision and trigger problems. Use when OnCollisionEnter or OnTriggerEnter doesn't fire, objects pass through each other, raycasts miss, or a MeshCollider misbehaves. Also answers 2D and DOTS physics best-effort if no dedicated skill is available.
 ---
 
 # Skill: physics-3d-collision (PhysX MonoBehaviour)
