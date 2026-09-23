@@ -290,22 +290,8 @@ LevelPlay SDK requires certain capabilities to function properly:
 
 ### App Transport Security (ATS) Configuration
 
-To ensure ads load correctly, configure App Transport Security in your Info.plist:
+App Transport Security requires encrypted, certificate-verified connections by default. Keep it on for the app as a whole and only add exceptions for the specific ad-network domains that still serve legacy cleartext creatives:
 
-**Option 1: Allow arbitrary loads (easiest, less secure)**
-
-Add this to your Info.plist:
-```xml
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSAllowsArbitraryLoads</key>
-    <true/>
-</dict>
-```
-
-**Option 2: Allow specific domains (more secure)**
-
-If you prefer to only allow specific ad network domains:
 ```xml
 <key>NSAppTransportSecurity</key>
 <dict>
@@ -318,12 +304,14 @@ If you prefer to only allow specific ad network domains:
             <key>NSExceptionAllowsInsecureHTTPLoads</key>
             <true/>
         </dict>
-        <!-- Add other ad network domains as needed -->
+        <!-- Add other ad network domains here, one entry per domain -->
     </dict>
 </dict>
 ```
 
-**Note:** Most ad networks require HTTP access for legacy ad creatives. Without proper ATS configuration, some ads may fail to load.
+**Do not set `NSAllowsArbitraryLoads` to `true`.** It turns off transport security for every connection the app makes, including its own backend and login traffic, not just ads, and App Review commonly rejects it without a justification. If the user asks for it, explain this and add scoped exceptions instead. When only in-app web content or media needs relaxed rules, prefer `NSAllowsArbitraryLoadsInWebContent` or `NSAllowsArbitraryLoadsForMedia`, which keep enforcement on for everything else.
+
+**Note:** Some ad networks still serve legacy creatives over HTTP. Add a scoped exception for each such network's domain; don't relax ATS globally to make those ads load.
 
 **When to configure:** Before building for iOS. This can be done in Unity's PostProcessBuild or manually in Xcode after export.
 
