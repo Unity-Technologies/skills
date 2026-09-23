@@ -1,0 +1,16 @@
+# Grants a remote workflow permission to fetch a short-lived, scoped GitHub
+# token for this repository, so it can publish here without a long-lived
+# credential. See:
+# https://github.com/Unity-Technologies/github-actions-workflows/blob/main/docs/workflows/fetch-remote-github-token/README.md
+#
+# The internal staged skills repository is becoming the source of truth for
+# every skill, and this repository becomes its publication target. The entry
+# below is what lets that publish run.
+#
+# The `@.*` suffix allows the workflow to run from any branch. That is
+# deliberate while the sync is being built and proven; narrow it to
+# `@refs/heads/main` before the sync ships, so a run from an arbitrary branch
+# cannot obtain write access to this public repository.
+workflows:
+allow-fetch-token:
+    - unity/skills/.github/workflows/publish-to-public.yml@.*
