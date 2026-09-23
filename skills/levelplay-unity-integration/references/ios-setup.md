@@ -290,30 +290,14 @@ LevelPlay SDK requires certain capabilities to function properly:
 
 ### App Transport Security (ATS) Configuration
 
-App Transport Security requires encrypted, certificate-verified connections by default. Keep it on for the app as a whole and only add exceptions for the specific ad-network domains that still serve legacy cleartext creatives:
+**No ATS configuration is needed. Leave App Transport Security at its iOS default.** With ATS on, the LevelPlay SDK tells the auction to return secure ads only, so ads load without any `Info.plist` changes.
 
-```xml
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSExceptionDomains</key>
-    <dict>
-        <key>ironsrc.com</key>
-        <dict>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-            <key>NSExceptionAllowsInsecureHTTPLoads</key>
-            <true/>
-        </dict>
-        <!-- Add other ad network domains here, one entry per domain -->
-    </dict>
-</dict>
-```
+**Do not add ATS exceptions for ads:**
+- **Never set `NSAllowsArbitraryLoads` to `true`.** It turns off transport security for every connection the app makes, including its own backend and login traffic, not just ads, and App Review commonly rejects it without a justification. If the user asks for it, explain this and leave ATS at the default.
+- **Don't set `NSAllowsArbitraryLoadsInWebContent` either.** On its own it makes the SDK request insecure ads, which iOS still blocks outside web views.
+- **Don't add `NSExceptionDomains` entries for ad networks.** The SDK doesn't read them.
 
-**Do not set `NSAllowsArbitraryLoads` to `true`.** It turns off transport security for every connection the app makes, including its own backend and login traffic, not just ads, and App Review commonly rejects it without a justification. If the user asks for it, explain this and add scoped exceptions instead. When only in-app web content or media needs relaxed rules, prefer `NSAllowsArbitraryLoadsInWebContent` or `NSAllowsArbitraryLoadsForMedia`, which keep enforcement on for everything else.
-
-**Note:** Some ad networks still serve legacy creatives over HTTP. Add a scoped exception for each such network's domain; don't relax ATS globally to make those ads load.
-
-**When to configure:** Before building for iOS. This can be done in Unity's PostProcessBuild or manually in Xcode after export.
+**Expected validation warning:** LevelPlay's integration validation reports "App Transport Security settings MISSING" when these keys are absent. That warning is expected with the default configuration. Don't resolve it by adding `NSAllowsArbitraryLoads`.
 
 ### Recommended Xcode Build Settings
 
