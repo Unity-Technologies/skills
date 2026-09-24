@@ -19,7 +19,10 @@ using TMPro;
 /// while FindObjectsByType&lt;TMP_Text&gt; found 13, so a Text-only pass reports success having
 /// localized almost nothing.
 ///
-/// Only call LocalizeAll() after confirming with the user — it modifies and saves every scene.
+/// LocalizeAll() modifies and saves every scene under Assets/, so it enforces its own safeguards
+/// in code rather than relying on the caller: it refuses to run in batch mode, asks the user to
+/// save or discard unsaved scene changes, and shows a blocking confirmation dialog listing the
+/// scenes it will rewrite. Nothing is written unless the user clicks the confirm button.
 /// It also reports what it did NOT convert; see the return value of LocalizeHierarchy.
 /// </summary>
 public static class L10nBatchProcessor
@@ -34,14 +37,69 @@ public static class L10nBatchProcessor
         // dirty and save assets it must not touch. Measured on a real project: unscoped found 20
         // scenes where the project has 1, and all 19 extras were inside read-only packages
         // (com.unity.addressables test fixtures).
-        string[] scenes = AssetDatabase.FindAssets("t:Scene", new[] { "Assets" });
-        foreach (var guid in scenes)
+        var scenePaths = AssetDatabase.FindAssets("t:Scene", new[] { "Assets" })
+            .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
+            .ToList();
+
+        // The safeguards live here, in the code path that does the writes, so skipping a
+        // sentence in the documentation cannot skip them.
+        //
+        // 1. Batch mode: EditorUtility.DisplayDialog returns true without showing anything when
+        //    the Editor runs headless, which would turn the confirmation below into a no-op.
+        if (Application.isBatchMode)
         {
-            var path = AssetDatabase.GUIDToAssetPath(guid);
-            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
-            unmatched.AddRange(LocalizeHierarchy(mapping, table, path));
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
+            throw new System.InvalidOperationException(
+                "L10nBatchProcessor.LocalizeAll rewrites every scene and needs a user to confirm it " +
+                "in an interactive Editor. It does not run in batch mode.");
+        }
+
+        // 2. Unsaved work: OpenScene(..., Single) below closes whatever is open. Let the user save
+        //    or discard it first; Cancel aborts the whole run.
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            throw new System.OperationCanceledException(
+                "Localization batch cancelled: the open scenes have unsaved changes.");
+        }
+
+        // 3. Explicit confirmation of the destructive write, naming what will change.
+        const int listed = 10;
+        var preview = string.Join("\n", scenePaths.Take(listed));
+        if (scenePaths.Count > listed)
+        {
+            preview += $"\n... and {scenePaths.Count - listed} more";
+        }
+        var confirmed = EditorUtility.DisplayDialog(
+            "Localize all scenes?",
+            $"This opens {scenePaths.Count} scene(s) under Assets/, attaches LocalizeStringEvent " +
+            $"components to matching text, and saves each scene. It cannot be undone from here; " +
+            $"use version control to revert.\n\n{preview}",
+            $"Localize {scenePaths.Count} scene(s)",
+            "Cancel");
+        if (!confirmed)
+        {
+            throw new System.OperationCanceledException("Localization batch cancelled by the user.");
+        }
+
+        // Restore the user's scene layout afterwards, so the batch doesn't leave them looking at
+        // whichever scene happened to be processed last.
+        var originalSetup = EditorSceneManager.GetSceneManagerSetup();
+        try
+        {
+            foreach (var path in scenePaths)
+            {
+                var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                unmatched.AddRange(LocalizeHierarchy(mapping, table, path));
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+            }
+        }
+        finally
+        {
+            // An untitled scene has no path to reopen, so only restore a layout made of saved scenes.
+            if (originalSetup.Length > 0 && originalSetup.All(s => !string.IsNullOrEmpty(s.path)))
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
         }
         return unmatched;
     }
