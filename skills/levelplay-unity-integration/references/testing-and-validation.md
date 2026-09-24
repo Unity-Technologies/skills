@@ -122,6 +122,7 @@ real ad networks on device.
 **Before running the Test Suite:**
 - **Unity Ads is pre-installed** — the Ads Mediation package includes the Unity Ads adapter by default, so you have at least one network ready without any additional setup. For ads to fill on device, verify your LevelPlay dashboard has active instances configured for your ad units.
 - **Enable Development Build** in **Build Profiles** (called **Build Settings** in Unity versions before Unity 6) before building to device. Without it, SDK console output won't be visible, making it very difficult to diagnose issues if something doesn't work as expected.
+- **Expect an ATS warning on iOS.** Integration validation reports "App Transport Security settings MISSING" when the app uses the default ATS configuration, which is the recommended setup. Ignore it; don't add `NSAllowsArbitraryLoads` to make it go away. See [ios-setup.md](ios-setup.md#app-transport-security-ats-configuration).
 
 ## Test Suite Setup
 
