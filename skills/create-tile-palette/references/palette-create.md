@@ -1,11 +1,6 @@
----
-name: tilemap-palette-create
-description: Creates a Tile Palette asset. Use when the user wants to organize tiles for 2D level design or create a new Tile Palette from scratch. The user can specify the Grid layout, eg. Rectangular, Hexagonal, Isometric.
-required_packages:
-  com.unity.2d.tilemap: ">=1.0.0"
----
-
 # Tilemap Palette Creation
+
+Requires package: `com.unity.2d.tilemap` >=1.0.0
 
 ## Workflow
 
@@ -40,4 +35,4 @@ Ensure that there is a `GridPalette` as a sub-asset of the Tile Palette asset.
 
 ## References
 
-Code Template: "scripts/CreatePaletteTemplate.cs"
+Code Template: "../scripts/CreatePaletteTemplate.cs"
