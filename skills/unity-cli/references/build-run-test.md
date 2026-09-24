@@ -22,6 +22,10 @@ unity run /path/to/MyProject --allow-install -- -executeMethod Builder.Build
 unity run /path/to/MyProject --timeout 300 -- -executeMethod Builder.Build
 # Equivalent via env var:
 UNITY_RUN_TIMEOUT=300 unity run /path/to/MyProject -- -executeMethod Builder.Build
+
+# Write the Editor log to a file (also streams to the console by default)
+unity run /path/to/MyProject --log-file ./run.log -- -executeMethod Builder.Build
+unity run /path/to/MyProject -l ./run.log --no-tail -- -executeMethod Builder.Build
 ```
 
 `unity run` always launches the editor in batch mode and forwards the args after `--` to the Unity executable, then returns the editor's exit code.
@@ -38,6 +42,8 @@ Reserved-flag matching is spelling-insensitive: Unity accepts `-projectPath`, `-
 
 When `--timeout <seconds>` is set, the process receives SIGTERM at the deadline; if still alive after 2 s it receives SIGKILL. The command exits with code 6 (EXIT_COMMAND_FAILURE) on timeout.
 
+**`-l, --log-file <path>`** writes the Editor log to that path instead of Unity's default log location — the same idea `unity build` already has, now first-class on `run` too. Forwarding `-- -logFile <path>` by hand still works and is unaffected when `--log-file` is not passed, but `-logFile` becomes a reserved flag (rejected, same as `-batchmode`) the moment `--log-file` supplies a path, so the two spellings can't fight over Unity's last-wins parser. The log also streams to the console while the run happens (stdout in human format, stderr otherwise); `--no-tail` writes the file only.
+
 #### run --command — execute a registered Editor command headlessly
 
 `unity run --command <name>` runs a registered `[CliCommand]` Editor command in a single invocation: the CLI starts the Editor in batch mode, waits for the project's Pipeline server, runs the command with the arguments after `--` parsed against the command's `[CliArg]` schema (no hand-written `Environment.GetCommandLineArgs()` parsing), prints the return value, and shuts the Editor down. A running Editor with the project already open is reused (and left running) instead of spawning a second one. Requires the `com.unity.pipeline` package (`unity pipeline install` — see [integration-advanced.md](integration-advanced.md)).
@@ -48,7 +54,13 @@ unity run /path/to/MyProject --command my_command -- --count 3 --label demo
 
 # JSON result envelope (data carries the return value); bound the wait
 unity run /path/to/MyProject --command my_command --format json --timeout 120
+
+# Write the Editor log to a file — there was no route to this at all before
+# --log-file, since args after -- are the command's own and never reach Unity
+unity run /path/to/MyProject --command my_command --log-file ./run.log -- --name Ada
 ```
+
+`--log-file` (with `-l` short form) and `--no-tail` work the same way here as in plain mode: the log streams to the CLI's own stderr by default (this mode already reserves stdout for the command result), and `--no-tail` writes the file only. **It only takes effect when this invocation spawns the Editor.** If the project is already open in an Editor this command didn't start, the log destination was fixed at that Editor's launch and the CLI warns instead of leaving you watching a path nothing will write; under `--format json`/`ndjson` (where warnings don't render) the result envelope carries a `logFileApplied` boolean instead — omitted entirely when `--log-file` was never requested, `true`/`false` otherwise.
 
 **Worked example.** Given this command in the project (authoring details in [integration-advanced.md](integration-advanced.md)):
 
@@ -313,6 +325,35 @@ Options: `--mode EditMode|PlayMode`, `--filter <pattern>`, `--editor-version <ve
 
 ---
 
+### Recompile — compile check without a build
+
+`unity recompile` answers "does my code compile?" against a **running Editor**, in seconds, with no artifacts produced. It is the Unity analogue of `tsc --noEmit`. Reach for it instead of `unity build` whenever you only need to know whether the scripts are valid — a build is minutes of work to answer the same question.
+
+```bash
+unity recompile                                  # the Editor for the current project
+unity recompile --project-path /path/to/MyGame   # pick one when several are running
+unity recompile --strict                         # warnings fail too
+unity recompile --format json                    # structured diagnostics
+```
+
+It triggers an asset refresh plus script recompile, polls until compilation finishes, prints each diagnostic with its file, line, column, code and message, and sets an exit code — so it drops straight into a pre-commit hook or a CI step.
+
+**Requires a running Editor with the Pipeline package.** That is what makes it fast (the Editor is already warm) and it means no build target has to be configured. There is no batch-mode fallback: with no reachable Editor it reports which Editors it found and what to do, and exits `7`.
+
+**It cannot report errors that put the Editor into Safe Mode.** An Editor that *boots* with compile errors loads no Pipeline package, so there is nothing to ask and you get exit `7`. This command reports errors you introduce into an Editor that is **already running** — the normal edit loop, where a failed compile keeps the server alive. See the Safe Mode note in `SKILL.md` for the recovery loop.
+
+**Exit codes are the whole point for CI.** `0` compiled (or nothing needed recompiling), `6` compilation reported errors, `7` **no Editor could be reached, so whether the code compiles is unknown**. Treat `6` as terminal and `7` as worth retrying after fixing the environment — you never have to match on the message text. Several Editors running is a `6`: pick one with `--project-path`.
+
+`7` covers an Editor that is *running* but unreachable, not just a missing one — a hung Editor, or your own sandbox refusing the loopback connection. If you are a sandboxed agent, read a `7` as "ask again once the sandbox allows loopback", never as a compile failure.
+
+**Warnings do not fail by default.** `--strict` makes them fail. Warnings are read from the Editor console rather than the compile result (the Pipeline package only ever reports errors from a compile), bounded to the entries this compile produced; if the console cannot be read, the command says so on stderr rather than reporting "no warnings".
+
+Diagnostics go to **stderr** in human and `tsv` output, so stdout stays clean for parsing. `--format json` / `ndjson` carry `errors` and `warnings` arrays plus `status`, `failed` and `compilationFailed` — note `compilationFailed: true` alongside `failed: false` is normal immediately after a compile that fixed the errors, and is not a failure.
+
+Options: `--project-path <path>`, `--timeout <seconds>` (default 120), `--focus` (bring the Editor forward first; off by default because an unfocused Editor still compiles), `--strict`.
+
+---
+
 ### Build
 
 The first-class build workflow. Rule of thumb vs `unity run`: building a player → `unity build`; anything else headless → `unity run`.
@@ -320,6 +361,8 @@ The first-class build workflow. Rule of thumb vs `unity run`: building a player 
 Pick one build strategy: a Unity 6+ Build Profile (`--profile`), a built-in desktop player build (`--target` with a desktop target, `--output-path` required), or a custom `--execute-method` (your method is responsible for the actual build, including honoring `--output-path`). Non-desktop targets need `--profile` or `--execute-method`.
 
 The build log is always written to the log file **and** streamed to stdout at the same time; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`).
+
+**How the outcome is decided — do not gate CI on Unity's exit code alone.** For a built-in build (`--profile`, or `--target` without `--execute-method`) the CLI does not trust Unity's process exit code by itself: a real Editor exits `0` from a player build its own log reports as failed. When the log carries Unity's terminal verdict, that verdict decides the outcome, so a failed build exits **6** even where the Unity process exited `0`, and the provenance manifest records the failure. A log with no verdict falls back to the exit code, and an `--execute-method` build always does — your method owns the code it returns, including when it deliberately tolerates a build it reports on itself. A build that succeeds with errors still in its log reports them on stderr rather than dropping them; they also ride `editorErrors` under `--format json`.
 
 ```bash
 # Build with a custom build method
