@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Use when interacting with Unity CLI from the terminal, or to control a running/connected Unity Editor from the command line — create or modify GameObjects, edit scenes and assets, inspect the hierarchy, and run C# in a live Editor instead of hand-editing scene or asset files. Also install, upgrade or uninstall editors, create, list or open projects, manage modules, manage licenses, check auth status, read logs, browse Unity releases, build/test projects, configure the Unity MCP server for AI agents, or run any other Unity CLI operation. For a guided idea-to-running-project flow for a brand-new game, use the new-unity-project skill instead.
+description: Use when interacting with Unity CLI from the terminal, or controlling a connected Unity Editor to create or modify GameObjects, scenes, and assets, inspect the hierarchy, or run C#. Also for installing editors, managing projects, modules, licenses and auth, reading logs and releases, building/testing projects, configuring Unity MCP, or inspecting Build Automation targets/builds and Pipeline Automation apps/pipelines/jobs. For a guided idea-to-running-project flow for a brand-new game, use the new-unity-project skill instead.
 allowed-tools:
   - Bash
 ---
@@ -33,7 +33,7 @@ Requires the project's `com.unity.pipeline` package (Unity 6.0+) — add it once
 
 The package also ships a deeper `unity-pipeline` agent skill, invisible to clients inside `Library/PackageCache` — in a project with the package, run `unity skill install <client> --local` once to mirror it beside this skill.
 
-> **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, and `unity list` can't connect at all. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
+> **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, `unity list`, and `unity recompile` can't connect at all. Note what that means for `unity recompile` specifically: it reports errors you introduce into an Editor that is **already running**, but an Editor that *started* with broken code never loads the package, so there is nothing to ask and it exits `7` rather than reporting the errors. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
 > **Running as a sandboxed coding agent and `unity status` reports no instances?** A restrictive sandbox can hide an Editor that is genuinely running from this CLI's view of it — don't treat that alone as proof the Editor is down. Full detail in [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
 
@@ -49,12 +49,12 @@ If not found, install it:
 
 **macOS / Linux**
 ```bash
-curl -fsSL https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.sh | UNITY_CLI_CHANNEL=beta bash
+curl -fsSL https://unity.com/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 ```powershell
-$env:UNITY_CLI_CHANNEL='beta'; irm https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.ps1 | iex
+irm https://unity.com/install.ps1 | iex
 ```
 
 After installing, open a new shell so `unity` is on PATH, then verify with `unity --version`. If the install script fails or the binary is still not found, tell the user and stop; if the command itself fails with a permissions error or crash, the installation may be broken — suggest re-running the install script.
@@ -114,6 +114,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_RUN_TIMEOUT` | `--timeout` | Timeout for `unity run` in seconds. |
 | `UNITY_TEST_TIMEOUT` | `--timeout` | Timeout for `unity test` in seconds. |
 | `UNITY_CLOUD_ORG` | `--cloud-org` | Active Unity Cloud organization id or name for a single call. |
+| `UNITY_CLOUD_PROJECT` | `--cloud-project` | Cloud project ID; used by Cloud Build inventory. Pipeline Automation inventory is organization-scoped. |
 | `UNITY_SERVICE_ACCOUNT_ID` | — | Service account client ID for non-interactive (CI) auth. |
 | `UNITY_SERVICE_ACCOUNT_SECRET` | — | Service account client secret for non-interactive (CI) auth. |
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
@@ -145,6 +146,7 @@ Append `-h` or `--help` to any command or subcommand, at any level: `unity --hel
 | 3 | Authentication failure |
 | 4 | Precondition not met (e.g. no license active, floating server not configured) |
 | 6 | Command-specific failure |
+| 7 | Network or transient service failure for cloud automation inventory (see its reference for exact mappings). |
 | 8 | `unity test` only — the tests ran and one or more **failed**. Every other way a test run fails (compile error, unavailable license, editor crash, `--timeout`) keeps `6`, so CI can retry an infrastructure failure and never retry a failing test. |
 | 130 | Interrupted — Ctrl+C / SIGINT (128 + 2) |
 | 143 | Terminated by SIGTERM (128 + 15) — e.g. `kill` or a CI/runner timeout. Emitted by long-running commands that install a signal handler to clean up first (currently `unity build`, which scrubs the temporary Android keystore). |
@@ -163,16 +165,33 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | Commands | Reference file |
 |---|---|
 | `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
+| `pipeline cloud-build` (targets / builds, each list / get), `pipeline automation` (apps / pipelines / jobs, each list / get) | [cloud-automation.md](references/cloud-automation.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
-| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `releases`, `templates` (list / info / create / pack / delete), `assets` (`inspect`) | [projects-templates.md](references/projects-templates.md) |
+| `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `open`, `close`, `releases`, `templates` (list / info / create / pack / delete), `assets` (`inspect` / `export`) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check / accelerator / get / set / list / unset / resolve), `context` (save / use / list / current / delete), `hub install` | [config-hub.md](references/config-hub.md) |
-| `run`, `test`, `build` (+ `build run`), `watch` (`test`) | [build-run-test.md](references/build-run-test.md) |
-| `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy`, `diagnose accelerator` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), connected editors (`pipeline` / `command` / `commands` / `status` / `list`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `run`, `test`, `build` (+ `build run`), `recompile`, `watch` (`test`) | [build-run-test.md](references/build-run-test.md) |
+| `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `docs`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy`, `diagnose accelerator`, `diagnose update` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
+| `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
 ## Common workflows
+
+### Inspect cloud builds or Pipeline Automation resources
+
+Read [cloud-automation.md](references/cloud-automation.md) for all ten read-only
+commands, context/authentication, target filters and sorting, output fields,
+pagination, errors, and redaction. `pipeline cloud-build` reads Build Automation;
+`pipeline automation` reads Pipeline Automation. Neither needs a running Editor
+or the local Pipeline package. Use numeric organization IDs for service accounts.
+These commands don't trigger builds/jobs, fetch logs/artifacts, or change
+configuration.
+
+JSON/NDJSON return full API-shaped results under `data`, as Collab does; NDJSON
+has one terminal result, without item frames. Preserve native fields and free-form
+metadata, subject to the reference's bounded secret protections and public-API
+redaction assumption. Table projections remain separate. Explicit local build
+targets retain `_local`; missing targets aren't local.
 
 ### Edit a scene, GameObject, or asset — `unity status` first
 
@@ -458,6 +477,6 @@ unity logs --follow --level info
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
 - The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping regardless of analytics/consent state — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
-- The CLI is currently in **beta** (latest: `1.0.0-beta.10`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta, so keep `UNITY_CLI_CHANNEL=beta` in the install command until GA ships, after which that part can be dropped.
+- The CLI is currently in **beta** (latest: `1.0.0-beta.11`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta. The install command needs no channel setting: until GA ships it installs the latest beta, and afterward the stable release.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.
