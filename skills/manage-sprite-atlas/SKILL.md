@@ -1,6 +1,6 @@
 ---
 name: manage-sprite-atlas
-description: Manage SpriteAtlas using prebuild pipeline with IPreprocessBuildWithReport (DEFAULT approach). Use it to configure master atlases, variant atlases, texture settings, packing settings, and platform-specific configurations. Use when the user asks about creating sprite atlases, optimizing sprites, configuring atlas settings, adding sprites to atlases, creating variant atlases, implementing automated atlas generation, or runtime sprite atlas access. Always use prebuild approach unless user explicitly requests manual authoring.
+description: Manages SpriteAtlas assets through a prebuild pipeline, covering master and variant atlases, packing settings, and platform overrides. Use when asked to create or optimize sprite atlases.
 ---
 
 # Unity SpriteAtlas V2

@@ -1,6 +1,6 @@
 ---
 name: audio-setup-mixers
-description: Scans the scene and audio assets to appropriately route Audio Sources into existing Audio Mixer Groups, classifying each source by what it plays. Use when the user asks about cleaning up mixer assignments, routing audio through a mixer, or which group a sound belongs in. Creating mixers and groups, and setting volumes, are not automated — the skill inventories what exists and asks the user to add anything missing.
+description: Routes Audio Sources into existing Audio Mixer Groups, classifying each source by what it plays. Use when the user asks about cleaning up mixer assignments, routing audio through a mixer, or which group a sound belongs in.
 ---
 # Audio Mixer Setup
 

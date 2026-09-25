@@ -1,16 +1,6 @@
 ---
 name: optimize-text-mesh-pro
-description: >
-  Covers TextMeshPro font stacks, dynamic fallback atlases, padding and
-  sampling ratios, SDF16, AutoSize discipline, worldspace vs UGUI, and Memory
-  Profiler font-data capture. Use when the user mentions TextMeshPro,
-  Text Mesh Pro, TMP (TextMeshPro), font asset, dynamic atlas, TMP localization,
-  CJK (Chinese, Japanese, Korean) fonts, font alignment across
-  scripts, mixed western and eastern fonts, text rendering performance, profiler
-  markers related to text generation or glyph rasterization, font fallback
-  strategy, font normalization, multilingual or localized text rendering, SDF
-  font quality, or text-related memory issues—not for UI Toolkit layout
-  (unity-ui-toolkit) or non-TMP uGUI (unity-ui).
+description: Optimizes TextMeshPro rendering, memory, and font setup, including font asset stacks, fallback atlases, SDF quality, and worldspace text. Use when the user asks about TMP fonts, CJK or multilingual text, or text performance.
 ---
 
 # Optimize TextMeshPro

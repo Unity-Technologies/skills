@@ -1,6 +1,6 @@
 ---
 name: 2d-pixel-perfect
-description: Sets up, diagnoses, and fixes pixel perfect 2D rendering in Unity projects. Use when working on any retro-style or pixel art 2D game.
+description: Sets up, diagnoses, and fixes pixel perfect 2D rendering with PixelPerfectCamera in URP or Built-in. Use when a retro-style or pixel art 2D game looks blurry, jittery, or misaligned. Not for HD 2D or high-resolution art.
 ---
 
 Set up, diagnose, and fix pixel perfect 2D rendering in Unity projects.

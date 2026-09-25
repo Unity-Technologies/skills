@@ -1,6 +1,6 @@
 ---
 name: implement-in-app-purchases
-description: Implement, configure, and debug Unity In-App Purchases (IAP) — store connection, product catalog, consumable/non-consumable/subscription purchases, two-step pending-confirm flow, receipt validation, entitlement checking, restore transactions, Apple extensions (promotional purchases, Ask-to-Buy, code redemption), and Google Play extensions (subscription upgrade/downgrade), D2C Capabilities(direct to customer), 3rd party payment provider (Stripe/Coda) via Unity IAP/Unity Cloud. Use when the user needs to add, modify, debug, or migrate from native Android/iOS billing, 3rd party packages(RevenueCat/Adapty/Essential Kit/Unipay supported) to IAP. Triggers on microtransactions (MTX), monetization, real-money purchases, store purchases, buying items, support D2C, purchase via Stripe/Coda, migrate from native billing(Google's BillingClient or Apple's StoreKit/SKPaymentQueue/SKProduct)/RevenueCat/Adapty/EssentialKit/Unipay.
+description: Implements, configures, and debugs Unity In-App Purchases, including subscriptions, receipt validation, and direct-to-customer payments via Stripe or Coda. Use when asked about real-money purchases or microtransactions, or migrating from native store billing, RevenueCat, or Adapty.
 ---
 
 # Unity In-App Purchasing
