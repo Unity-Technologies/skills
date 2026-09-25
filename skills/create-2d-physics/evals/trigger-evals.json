@@ -1,0 +1,17 @@
+[
+  {"query": "my player falls straight through the floor in my 2D platformer", "should_trigger": true},
+  {"query": "add a Rigidbody 2D and a box collider to this crate sprite", "should_trigger": true},
+  {"query": "raycast down from my character with 2D Physics Core and snap it onto the first shape it hits", "should_trigger": true},
+  {"query": "spawn a thousand bouncing balls using the new low-level 2D physics API", "should_trigger": true},
+  {"query": "OnTriggerEnter2D never gets called when my coin and player overlap", "should_trigger": true},
+  {"query": "work out whether this project uses the old 2D physics or 2D Physics Core, then add a bouncing ball with whichever it is", "should_trigger": true},
+  {"query": "set up a hinge so my 2D drawbridge swings down when the rope is cut", "should_trigger": true},
+  {"query": "add a Physics Pose component to the moving platform and make it kinematic", "should_trigger": true},
+  {"query": "OnCollisionEnter never fires between my two cubes, both have a Rigidbody and a BoxCollider", "should_trigger": false},
+  {"query": "port the latest upstream Box2D v3 changeset into our vendored copy of the engine", "should_trigger": false},
+  {"query": "slice this sprite sheet into 16x16 sprites", "should_trigger": false},
+  {"query": "my 3D ragdoll explodes the moment it spawns", "should_trigger": false},
+  {"query": "create a rule tile for my grass terrain so the edges connect", "should_trigger": false},
+  {"query": "animate my 2D character's walk cycle when it moves", "should_trigger": false},
+  {"query": "set up a NavMesh so enemies path around the walls", "should_trigger": false}
+]

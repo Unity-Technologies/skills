@@ -1,0 +1,110 @@
+{
+  "skill_name": "create-2d-physics",
+  "evals": [
+    {
+      "id": 1,
+      "name": "core-project-detected",
+      "prompt": "This is the script that makes my ground. Add a ball that drops from above onto it.\n\nusing UnityEngine;\nusing Unity.U2D.Physics;\n\npublic class GroundSpawner : MonoBehaviour\n{\n    private void Start()\n    {\n        var groundDef = PhysicsBodyDefinition.defaultDefinition;\n        groundDef.type = PhysicsBody.BodyType.Static;\n        var ground = PhysicsWorld.defaultWorld.CreateBody(groundDef);\n        ground.CreateShape(PolygonGeometry.CreateBox(new Vector2(16f, 1f)));\n    }\n}",
+      "expectations": [
+        "The response identifies that the project uses 2D Physics Core, based on the script in the prompt",
+        "The ball is created through the Unity.U2D.Physics API, such as PhysicsWorld.defaultWorld and CreateBody, not with Rigidbody2D or CircleCollider2D",
+        "The ball's body type is set explicitly to dynamic",
+        "The code does not use the UnityEngine.LowLevelPhysics2D namespace"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "legacy-project-detected",
+      "prompt": "This is my player script. Make my player jump when I press space.\n\nusing UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    private void FixedUpdate()\n    {\n        var body = GetComponent<Rigidbody2D>();\n        body.linearVelocity = new Vector2(5f, body.linearVelocity.y);\n    }\n}",
+      "expectations": [
+        "The response identifies that the project uses the Rigidbody 2D system, based on the script in the prompt",
+        "The jump is applied to the existing Rigidbody2D, through AddForce or by setting its linearVelocity",
+        "The response does not use any Unity.U2D.Physics types"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "no-signal-asks",
+      "prompt": "Add physics to the crates in my 2D game so the player can knock them over.",
+      "expectations": [
+        "The response asks which 2D physics system to use before writing any physics code",
+        "It offers three routes: legacy components (Rigidbody 2D and Collider 2D), 2D Physics Core components, and 2D Physics Core in script",
+        "It notes that the 2D Physics Core components need the com.unity.2d.physics package",
+        "It does not pick a system on the user's behalf"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "core-bulk-script",
+      "prompt": "Using 2D Physics Core in script, spawn 50 dynamic circles above a static ground.",
+      "expectations": [
+        "The code uses PhysicsWorld.defaultWorld rather than creating a new world",
+        "Body types are set with the type property and PhysicsBody.BodyType, Static for the ground and Dynamic for the circles",
+        "The code does not use the obsolete bodyType property or RigidbodyType2D",
+        "Types come from the Unity.U2D.Physics namespace, not UnityEngine.LowLevelPhysics2D",
+        "The code does not use Rigidbody2D, CircleCollider2D or any other legacy component"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "legacy-missing-collider",
+      "prompt": "My sprite has a Rigidbody 2D but drops straight through the ground. How do I fix it?",
+      "expectations": [
+        "The response says the sprite needs a Collider 2D component, such as a BoxCollider2D or CircleCollider2D",
+        "The response says the ground also needs a Collider 2D",
+        "The response stays in the Rigidbody 2D system and does not suggest 2D Physics Core types",
+        "The response does not suggest 3D components such as Rigidbody or BoxCollider"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "core-hinge-degrees",
+      "prompt": "In 2D Physics Core script, hang a dynamic body from a static anchor with a hinge joint, and limit its swing to between -45 and 45 degrees.",
+      "expectations": [
+        "The joint is created through the Unity.U2D.Physics API, not with HingeJoint2D",
+        "The anchor body is static and the swinging body is dynamic",
+        "The angle limits are given as -45 and 45 degrees, not converted to radians"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "legacy-ground-raycast",
+      "prompt": "Check whether my 2D player is grounded with a raycast straight down that only hits the Ground layer. The player uses a Rigidbody 2D.",
+      "expectations": [
+        "The raycast uses Physics2D.Raycast, not Physics.Raycast",
+        "The raycast is limited to the Ground layer with a layer mask",
+        "The code checks the returned RaycastHit2D for a hit, through its collider or its implicit bool conversion",
+        "No 2D Physics Core types are used"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "legacy-trigger-not-firing",
+      "prompt": "OnTriggerEnter2D never fires when my player walks into a coin. Both have a BoxCollider2D and the coin's is set to Is Trigger.",
+      "expectations": [
+        "The response says at least one of the two objects needs a Rigidbody 2D for trigger messages to be sent",
+        "The response stays in the Rigidbody 2D system and does not suggest 2D Physics Core or 3D physics"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "core-debug-visuals",
+      "prompt": "How do I see the shapes of the bodies I create with the 2D Physics Core API while debugging?",
+      "expectations": [
+        "The response points to 2D Physics Core's own physics renderer or the world's draw options",
+        "It does not suggest Gizmos or Debug.DrawLine",
+        "It does not suggest adding a GameObject or sprite to see the bodies"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "core-old-namespace",
+      "prompt": "My project uses Unity 6000.3. In 2D Physics Core script, create a dynamic box body that falls onto a static ground.",
+      "expectations": [
+        "The code uses the UnityEngine.LowLevelPhysics2D namespace, not Unity.U2D.Physics",
+        "The ground body is set to static and the box body to dynamic",
+        "The code does not use Rigidbody2D, BoxCollider2D or any other legacy component"
+      ]
+    }
+  ]
+}
