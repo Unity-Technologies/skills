@@ -332,6 +332,8 @@ To localize an entire project efficiently, use a batch processing script that ha
 
 Only proceed once the user has confirmed. The batch processor template is in [resources/L10nBatchProcessor.cs](resources/L10nBatchProcessor.cs).
 
+`LocalizeAll` also enforces this itself, so do not remove or bypass these checks when adapting the template: it refuses to run in batch mode, prompts the user to save or discard unsaved scene changes, and shows a blocking Editor dialog that lists the scenes it will rewrite. Tell the user to watch the Editor and click the confirm button; if they cancel, it throws `OperationCanceledException` and writes nothing. Report that as a cancellation, not an error to work around.
+
 It walks **both** `Text` and `TMP_Text`, and `LocalizeAll` **returns the labels it could not match**
 (as `scene :: object :: "text"`). Print that list. It is the whole point of the return value: a run
 that wires 20 labels and silently leaves 9 alone looks identical to a complete one otherwise. The
