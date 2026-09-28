@@ -7,10 +7,9 @@
 # every skill, and this repository becomes its publication target. The entry
 # below is what lets that publish run.
 #
-# The `@.*` suffix allows the workflow to run from any branch. That is
-# deliberate while the sync is being built and proven; narrow it to
-# `@refs/heads/main` before the sync ships, so a run from an arbitrary branch
-# cannot obtain write access to this public repository.
+# Only the workflow on the internal repository's `main` branch may publish,
+# so a run from any other branch cannot obtain write access to this public
+# repository.
 workflows:
 allow-fetch-token:
-    - unity/skills/.github/workflows/publish-to-public.yml@.*
+    - unity/skills/.github/workflows/publish-to-public.yml@refs/heads/main
