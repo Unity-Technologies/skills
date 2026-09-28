@@ -1,6 +1,6 @@
 ---
 name: generate-editor-search-query
-description: Generates Unity Search queries and opens the Search window to find assets or scene objects. Use when the user asks to find, filter, or list assets, GameObjects, components, or references in the Editor, not on disk.
+description: Generates Unity Search / Quick Search queries and opens the Unity Search window for read-only Unity Editor asset or scene-object lookup requests. Always use when the user asks to find, search, show, locate, filter, look up, query, or list concrete assets or scene objects in the current project or scene, even if Unity Search is not named. Covers materials, textures, prefabs, scenes, scripts, shaders, GameObjects, components, Lights, Cameras, UI objects, labels, paths, references, selected or named assets, and asset types. Also use when the user explicitly mentions Unity Search, Quick Search, Search window, open Search, or asks what Unity Search query to use. Do not use for general project overview, project structure, folder-purpose summaries, gameplay/system explanations, how-to programming questions, web search, repository text search, build logs, package installation, menu or settings search, modifying results, or non-Unity filesystem search unless the user explicitly asks to use Unity Search.
 enabled: true
 modes: [agent, ask]
 ---
@@ -82,7 +82,7 @@ Run C# in the Editor only to open the Search window. This is an Editor UI action
 
 When opening Search:
 
-1. Escape the query safely in the generated C# string.
+1. Base64-encode the query (UTF-8) and embed only the base64 text in the generated C# string, decoding it back to a string inside the snippet.
 2. Prefer asset and scene providers for this v1 skill.
 3. Fall back to active providers if a provider is unavailable.
 4. Log the query that was opened.
