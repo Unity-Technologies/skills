@@ -1,6 +1,6 @@
 ---
 name: localization
-description: "Sets up and configures Unity Localization, including locales, String/Asset Tables, CJK font support, and Addressables workflows. Use when the user wants to add languages to a project, translate UI text, support Asian (CJK) languages with TMP fonts, or mentions i18n, l10n, multilingual support, or making a game support multiple languages."
+description: Sets up and configures Unity Localization, including locales, String and Asset Tables, and CJK fonts. Use when the user asks to add languages, translate UI text, or mentions i18n or multilingual support.
 ---
 
 This guide covers setting up and configuring Unity Localization, including locales, String and Asset Tables, Addressables integration, and CJK font support via Asset Tables.

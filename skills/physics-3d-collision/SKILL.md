@@ -1,13 +1,6 @@
 ---
 name: physics-3d-collision
-description: >-
-  3D PhysX collision and trigger diagnostics for MonoBehaviour-based Unity projects. Primary scope:
-  OnCollisionEnter / OnTriggerEnter not firing, objects passing through each other, Physics.Raycast
-  missing, ragdoll explosion, AddForce stops working after settling, MeshCollider rules, and similar
-  3D PhysX symptoms. Adjacent topics (2D physics, OTS / Unity Physics package): provides a brief
-  best-effort answer with a scope disclaimer and a documentation link, rather than refusing
-  outright. When dedicated specialist skills (physics-2d, physics-dots) are installed, those should
-  handle their respective domains and this skill defers to them.
+description: Diagnoses 3D PhysX collision and trigger problems. Use when OnCollisionEnter or OnTriggerEnter doesn't fire, objects pass through each other, raycasts miss, or a MeshCollider misbehaves. Also answers 2D and DOTS physics best-effort if no dedicated skill is available.
 ---
 
 # Skill: physics-3d-collision (PhysX MonoBehaviour)

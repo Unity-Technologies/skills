@@ -1,6 +1,6 @@
 ---
 name: setup-vivox-voice-chat
-description: Add and configure in-game voice chat and text chat for Unity multiplayer games using Unity Vivox. Covers microphone setup and mic permissions on Android/iOS, voice activity detection (VAD) tuning, voice volume and mute controls in a settings UI (VoiceVadMinimumVolume, mic slider, mute button, speaking indicator), proximity/3D spatial voice for FPS/co-op games, team/party/lobby/guild voice channels, push-to-talk, muting self and other players, whisper/direct messages, in-game text chat, and Vivox SDK init + Unity Authentication sign-in. Use when the user asks to add voice chat, voice comms, microphone/mic support, a voice-chat settings UI, mute button, VAD threshold, push-to-talk, proximity or spatial voice, team voice, party chat, lobby chat, direct messages, or mentions Vivox, VivoxService, com.unity.services.vivox, JoinGroupChannelAsync, JoinPositionalChannelAsync, LoginAsync, or migrating from legacy Vivox (Client.Instance / LoginSession / AccountId).
+description: Adds and configures in-game voice and text chat with Unity Vivox. Use when the user asks about voice chat, microphone permissions, mute controls, proximity voice, team and lobby channels, or direct messages.
 required_packages:
   com.unity.services.vivox: ">=16.4.0"
 ---

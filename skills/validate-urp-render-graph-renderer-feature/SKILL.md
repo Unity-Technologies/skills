@@ -1,6 +1,6 @@
 ---
 name: validate-urp-render-graph-renderer-feature
-description: Use when the user wants to review or validate a Unity 6+ URP ScriptableRendererFeature that uses the Render Graph API. Checks for correctness issues - resource wiring, material binding, execution structure, descriptor usage, global resource exposure, and Render Graph best practices.
+description: Reviews a Unity 6 URP ScriptableRendererFeature that uses the Render Graph API, checking resource wiring, material binding, execution structure, and best practices. Use to validate a renderer feature.
 ---
 # Skill: Validate a Unity URP Render Graph Renderer Feature
 
