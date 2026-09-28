@@ -82,7 +82,7 @@ Run C# in the Editor only to open the Search window. This is an Editor UI action
 
 When opening Search:
 
-1. Escape the query safely in the generated C# string.
+1. Base64-encode the query (UTF-8) and embed only the base64 text in the generated C# string, decoding it back to a string inside the snippet.
 2. Prefer asset and scene providers for this v1 skill.
 3. Fall back to active providers if a provider is unavailable.
 4. Log the query that was opened.
