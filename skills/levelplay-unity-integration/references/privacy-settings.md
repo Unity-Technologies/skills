@@ -477,7 +477,7 @@ public class PrivacyComplianceManager : MonoBehaviour
 
 ## Deprecated / Legacy APIs
 
-**⚠️ The APIs below are superseded across all supported versions. Use the current `LevelPlayPrivacySettings` APIs shown in the sections above instead.**
+**⚠ The APIs below are superseded across all supported versions. Use the current `LevelPlayPrivacySettings` APIs shown in the sections above instead.**
 
 > **`SetGDPRConsents(Dictionary)` is NOT in this list.** It is the **current GDPR API on SDK 9.4.x** — not a legacy API. It only becomes `[Obsolete]` on SDK 9.5.0+, where `SetGDPRConsent(bool)` replaces it. See [GDPR Consent Management](#gdpr-consent-management) above for the version-appropriate call. Do not treat the per-network dictionary as deprecated if you are on 9.4.x.
 

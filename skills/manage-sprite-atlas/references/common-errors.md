@@ -8,10 +8,10 @@ This document covers invalid V2 patterns, API corrections, and common mistakes t
 - [Critical API Corrections](#critical-api-corrections)
   - [❌ Format Casting in TextureImporterPlatformSettings](#-format-casting-in-textureimporterplatformsettings)
   - [❌ SetMasterAtlasPath() - Method Does Not Exist](#-setmasteratlaspath---method-does-not-exist)
-  - [⚠️ Platform-Specific Format Limitations](#️-platform-specific-format-limitations)
-  - [⚠️ PackAtlases() Requires Runtime SpriteAtlas[]](#️-packatlases-requires-runtime-spriteatlas)
-  - [⚠️ Always scope AssetDatabase.FindAssets to the folders you mean](#️-always-scope-assetdatabasefindassets-to-the-folders-you-mean)
-  - [⚠️ AssetImporter.GetAtPath() Takes Single Argument](#️-assetimportergetatpath-takes-single-argument)
+  - [⚠ Platform-Specific Format Limitations](#-platform-specific-format-limitations)
+  - [⚠ PackAtlases() Requires Runtime SpriteAtlas[]](#-packatlases-requires-runtime-spriteatlas)
+  - [⚠ Always scope AssetDatabase.FindAssets to the folders you mean](#-always-scope-assetdatabasefindassets-to-the-folders-you-mean)
+  - [⚠ AssetImporter.GetAtPath() Takes Single Argument](#-assetimportergetatpath-takes-single-argument)
 
 ## Invalid V2 Patterns (Do Not Use)
 
@@ -70,14 +70,14 @@ SpriteAtlas masterRuntime = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(masterPat
 variant.SetMasterAtlas(masterRuntime);
 ```
 
-### ⚠️ Platform-Specific Format Limitations
+### ⚠ Platform-Specific Format Limitations
 
 - **PVRTC is NOT supported** in SpriteAtlas V2
 - Use **ASTC** for Android (`ASTC_6x6`, `ASTC_4x4`)
 - Use **ASTC or ETC2** for iOS (`ASTC_4x4`, `ETC2_RGBA8`)
 - Use **ETC2** for desktop (`ETC2_RGBA8`)
 
-### ⚠️ PackAtlases() Requires Runtime SpriteAtlas[]
+### ⚠ PackAtlases() Requires Runtime SpriteAtlas[]
 
 ```csharp
 // ❌ WRONG - Passing SpriteAtlasAsset[] causes compilation error
@@ -91,7 +91,7 @@ SpriteAtlas[] atlases = AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Asset
 SpriteAtlasUtility.PackAtlases(atlases, EditorUserBuildSettings.activeBuildTarget, false);
 ```
 
-### ⚠️ Always scope AssetDatabase.FindAssets to the folders you mean
+### ⚠ Always scope AssetDatabase.FindAssets to the folders you mean
 
 ```csharp
 // ❌ WRONG - does not compile. There is no SearchMode overload.
@@ -112,7 +112,7 @@ read-only. Measured on a real project: an unscoped `t:Scene` search returned 20 
 project itself has 1, and all 19 extras were package test fixtures. A batch operation that then
 writes to what it found will fail, or worse, target assets it must not modify.
 
-### ⚠️ AssetImporter.GetAtPath() Takes Single Argument
+### ⚠ AssetImporter.GetAtPath() Takes Single Argument
 
 ```csharp
 // ❌ WRONG - No such overload
