@@ -609,7 +609,7 @@ Only after verifying all ads work correctly:
 
 1. **Window > Package Manager** → Packages: In Project → select **Advertisement Legacy** → **Remove**
 
-⚠️ Do not remove until all ad implementations are tested and working.
+⚠ Do not remove until all ad implementations are tested and working.
 
 ---
 

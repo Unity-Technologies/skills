@@ -1,6 +1,6 @@
 # Manual Authoring (Advanced - Not Default)
 
-> ⚠️ **WARNING**: Manual authoring is NOT the default approach. Only use these patterns when the user EXPLICITLY requests manual control or editor preview during development.
+> ⚠ **WARNING**: Manual authoring is NOT the default approach. Only use these patterns when the user EXPLICITLY requests manual control or editor preview during development.
 
 > 🚨 **DEFAULT APPROACH**: Use prebuild generation with `IPreprocessBuildWithReport` instead. See the main SKILL.md Quick Start section.
 

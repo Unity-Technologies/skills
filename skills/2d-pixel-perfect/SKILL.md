@@ -7,7 +7,7 @@ Set up, diagnose, and fix pixel perfect 2D rendering in Unity projects.
 
 ---
 
-## ⚠️ There Are Two Completely Separate Implementations
+## ⚠ There Are Two Completely Separate Implementations
 
 Pixel perfect rendering in Unity is **not one system** — it is two separate, incompatible implementations, one per render pipeline. **Always detect the pipeline before writing or diagnosing any code.** 
 
@@ -33,9 +33,9 @@ Pixel perfect rendering in Unity is **not one system** — it is two separate, i
 
 ## Critical Reminders
 
-⚠️ **Detect the render pipeline first** — URP and Built-in use different Pixel Perfect Camera components that are not interchangeable.
-⚠️ **Filter Mode = Point is the #1 fix** — bilinear filtering is Unity's default and is almost always the cause of blurry sprites.
-⚠️ **Anti-Aliasing must be disabled** — in Quality Settings and on the camera. AA actively blurs pixel edges.
+⚠ **Detect the render pipeline first** — URP and Built-in use different Pixel Perfect Camera components that are not interchangeable.
+⚠ **Filter Mode = Point is the #1 fix** — bilinear filtering is Unity's default and is almost always the cause of blurry sprites.
+⚠ **Anti-Aliasing must be disabled** — in Quality Settings and on the camera. AA actively blurs pixel edges.
 
 ## Key Principles
 

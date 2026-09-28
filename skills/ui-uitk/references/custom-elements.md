@@ -17,7 +17,7 @@ Guide for creating custom VisualElements using Unity 6+ `[UxmlElement]` and `[Ux
 
 Unity 6+ uses attribute-based custom elements. The old factory pattern (`IUxmlFactory`, `UxmlTraits`) is **deprecated**.
 
-### ⚠️ CRITICAL: Namespace Declaration
+### ⚠ CRITICAL: Namespace Declaration
 
 **Never include assembly names in UXML namespace declarations:**
 

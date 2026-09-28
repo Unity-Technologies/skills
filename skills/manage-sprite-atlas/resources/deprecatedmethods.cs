@@ -9,7 +9,7 @@ using UnityEditor.U2D;
 public static class DeprecatedMethodsDocumentation
 {
     /// <summary>
-    /// ⚠️ DEPRECATED: SetBuildSettings method.
+    /// ⚠ DEPRECATED: SetBuildSettings method.
     /// This method was used in early V1/V2 preview versions but is no longer available.
     ///
     /// REPLACEMENT: Use SpriteAtlasImporter for all configuration settings.
@@ -29,7 +29,7 @@ public static class DeprecatedMethodsDocumentation
     }
 
     /// <summary>
-    /// ⚠️ DEPRECATED: GetBuildSettings method.
+    /// ⚠ DEPRECATED: GetBuildSettings method.
     /// Use SpriteAtlasImporter to read configuration instead.
     /// </summary>
     [System.Obsolete("GetBuildSettings is deprecated. Read from SpriteAtlasImporter instead.")]
@@ -44,7 +44,7 @@ public static class DeprecatedMethodsDocumentation
     }
 
     /// <summary>
-    /// ⚠️ DEPRECATED: Direct modification of SpriteAtlas after creation.
+    /// ⚠ DEPRECATED: Direct modification of SpriteAtlas after creation.
     /// In V2, SpriteAtlas is read-only at runtime and cannot be modified in editor.
     ///
     /// REPLACEMENT: Modify SpriteAtlasAsset before saving, then reimport.
@@ -62,7 +62,7 @@ public static class DeprecatedMethodsDocumentation
     }
 
     /// <summary>
-    /// ⚠️ DEPRECATED: Using AssetDatabase.LoadAssetAtPath<SpriteAtlas>() in editor.
+    /// ⚠ DEPRECATED: Using AssetDatabase.LoadAssetAtPath<SpriteAtlas>() in editor.
     /// SpriteAtlas is runtime-only and cannot be loaded in editor context.
     ///
     /// REPLACEMENT: Use SpriteAtlasAsset for editor operations.
@@ -78,7 +78,7 @@ public static class DeprecatedMethodsDocumentation
     }
 
     /// <summary>
-    /// ⚠️ DEPRECATED: Manual packing in editor using SpriteAtlasUtility.
+    /// ⚠ DEPRECATED: Manual packing in editor using SpriteAtlasUtility.
     /// SpriteAtlasUtility.PackAtlases() is for preview only, not build-time packing.
     ///
     /// REPLACEMENT: Use the prebuild pipeline with IPreprocessBuildWithReport.
