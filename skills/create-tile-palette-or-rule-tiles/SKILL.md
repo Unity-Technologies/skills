@@ -1,6 +1,6 @@
 ---
-name: create-tile-palette
-description: Create a tile palette from sprites or textures. Make sure to use this skill when the user wants to create tiles for 2D level design, even if they don't explicitly ask about tile palettes or tile assets.
+name: create-tile-palette-or-rule-tiles
+description: Create a 2D tile palette from sprites or textures, or change which tile Unity paints based on surrounding tiles. Make sure to use this skill when the user wants to create tile palettes or self-connecting tiles, even if they don't explicitly ask about tile palettes or tile assets.
 ---
 
 # Create a tile palette
