@@ -6,13 +6,29 @@ This is a read-only Editor UI action. It must not create, modify, delete, import
 
 ## Editor-side snippet
 
-Replace `QUERY_HERE` with the generated Unity Search query. If the query contains double quotes, double them inside the verbatim C# string.
+Base64-encode the generated Unity Search query (UTF-8) and embed only the base64 text, decoding it
+back to a string inside the snippet. Never embed the raw query text in the C# string or in the
+shell command: a query containing `"` would break out of a verbatim C# string, and a query
+containing `'` would break the shell's single-quoting around `--code`. Base64's alphabet
+(`A-Z a-z 0-9 + / =`) cannot close either quote, so it stays safe in both places at once.
+
+Encode it without putting the raw query on a command line either. Write the query to a
+temporary file with your file-writing tool (not with `echo` or a shell variable), then encode
+that file, stripping the newline `base64` adds:
+
+```sh
+base64 < query.txt | tr -d '\n'
+```
+
+Delete the temporary file afterwards.
+
+Replace `QUERY_BASE64` with that output.
 
 Run it through the Editor with `unity command eval --code '<snippet>'`. Fully qualified, with no
 `using` directives, because `eval` compiles a statement block rather than a file.
 
 ```csharp
-const string query = @"QUERY_HERE";
+var query = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String("QUERY_BASE64"));
 
 var candidates = new[]
 {
