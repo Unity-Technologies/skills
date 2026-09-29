@@ -304,14 +304,7 @@ If the project already has a `StoreController` for Apple App Store or Google Pla
 Before initiating purchase, use `GetEligiblePaymentProviders()` to confirm that at least one payment provider is available for the current user and region. Call this after `Connect()` and `FetchProducts()` succeed:
 
 ```csharp
-var svc = store.PaymentProviderStoreExtendedService;
-if (svc == null)
-{
-    // No payment provider service — hide purchase UI or show an error
-    return;
-}
-
-var eligible = await svc.GetEligiblePaymentProviders();
+var eligible = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
 if (eligible == null || eligible.Providers.Count == 0)
 {
     // No payment providers available — hide purchase UI or show an error
@@ -346,8 +339,7 @@ Then initiate purchase with the `catalogListingId`:
 ```csharp
 public async void Buy(string catalogListingId)
 {
-    var svc = store.PaymentProviderStoreExtendedService;
-    var eligibility = svc != null ? await svc.GetEligiblePaymentProviders() : null;
+    var eligibility = await store.PaymentProviderStoreExtendedService?.GetEligiblePaymentProviders();
     if (eligibility?.Providers.Count > 0)
     {
         // Show the Purchase Options UI — lets the player pick native, D2C, or webshop
@@ -495,14 +487,8 @@ Returns `null` when the product wasn't fetched through the PaymentProvider store
 Skip the picker entirely and open the webshop for a specific listing (or the generic Unity webshop when `catalogListingId` is null):
 
 ```csharp
-var svc = store.PaymentProvidersExtendedPurchaseService;
-if (svc == null)
-{
-    // No payment provider purchase service — surface an error or hide the entry point
-    return;
-}
-
-await svc.RedirectToWebshop("coins_100_offer_usd");
+await store.PaymentProvidersExtendedPurchaseService?
+    .RedirectToWebshop("coins_100_offer_usd");
 ```
 
 The SDK fetches the webshop URL, runs the registered compliance callback (`SetComplianceCheck`), and opens the URL on approval. Network failures propagate as exceptions on the returned `Task`; compliance rejection routes through the standard `OnPurchaseFailed` path.
