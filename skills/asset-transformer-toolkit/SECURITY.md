@@ -13,7 +13,3 @@ This skill has the agent write C# and run it inside the user's live Unity Editor
 - **Only the user's own Editor.** The code runs in the Editor open on this machine. It can't reach another machine or another user's Editor.
 - **Narrow purpose.** The scripts create or modify RuleSet assets through the documented Asset Transformer API, then validate them against the checklist in `references/`.
 - **No remote code.** The agent runs C# it writes from this skill's own recipes. Nothing downloaded from outside is executed.
-
-## Background
-
-This skill ran code through the AI Assistant's built-in `RunCommand` tool before it moved to the public catalog. Automated checks don't flag it, because it never names `unity command eval`, so this file records the capability explicitly. Ziyi Zhang accepted this risk on 2026-09-25.
