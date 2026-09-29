@@ -15,7 +15,3 @@ This skill has the agent run C# inside the user's open Unity Editor through `uni
 - **No remote code.** The agent runs C# it writes from this skill's own recipes. Nothing downloaded from outside is executed.
 - **Query passed base64-encoded, not interpolated as text.** The generated Unity Search query is base64-encoded before it is embedded in the C# snippet, and decoded back to a string inside the snippet. A query containing `"` can't break out of the C# string, and a query containing `'` can't break the shell's single-quoting around `--code` — base64's alphabet (`A-Z a-z 0-9 + / =`) contains neither character, so the query text can never change the code that runs.
 - **Read-only.** The snippet only opens the Search window; it does not select, rename, delete, move, import, edit, or save anything.
-
-## Background
-
-Pending owner review.
