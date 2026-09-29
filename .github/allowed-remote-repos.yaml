@@ -1,15 +1,4 @@
-# Grants a remote workflow permission to fetch a short-lived, scoped GitHub
-# token for this repository, so it can publish here without a long-lived
-# credential. See:
-# https://github.com/Unity-Technologies/github-actions-workflows/blob/main/docs/workflows/fetch-remote-github-token/README.md
-#
-# The internal staged skills repository is becoming the source of truth for
-# every skill, and this repository becomes its publication target. The entry
-# below is what lets that publish run.
-#
-# Only the workflow on the internal repository's `main` branch may publish,
-# so a run from any other branch cannot obtain write access to this public
-# repository.
+# Lets the skills publish workflow open PRs that update this repo's skills/.
 workflows:
 allow-fetch-token:
     - unity/skills/.github/workflows/publish-to-public.yml@refs/heads/main
