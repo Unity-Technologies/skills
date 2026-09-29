@@ -14,7 +14,3 @@ This skill has the agent run C# inside the user's open Unity Editor through `uni
 - **Capability gate.** `eval` is only available when the project's Pipeline package provides it.
 - **No remote code.** The agent runs C# it writes from this skill's own recipes. Nothing downloaded from outside is executed.
 - **Named commands first.** When a dedicated `unity command` covers a step, the skill uses it instead of `eval`.
-
-## Background
-
-The `unity command eval` wording was added when this skill moved from the AI Assistant's built-in `RunCommand` tool to the `unity` CLI, not by the skill's original author. Ziyi Zhang, who made that change, accepted this risk on 2026-09-25.
