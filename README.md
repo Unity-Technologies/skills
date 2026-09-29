@@ -30,7 +30,7 @@ Many skills drive your open Unity Editor directly instead of hand-editing scene 
 
 ## Contributing
 
-Want to add a skill? See [CONTRIBUTING.md](CONTRIBUTING.md) for the folder layout, `SKILL.md` format, and PR flow.
+These skills are maintained by Unity and published here automatically, so this repo doesn't accept pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Issues and feedback
 
