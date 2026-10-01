@@ -145,6 +145,18 @@ unity editors prune --format json
 
 The report lists version, architecture, path, size, and status, then the total reclaimable size. With `--remove` in a non-interactive shell and no `-y, --yes`, it refuses rather than deleting unprompted. "Unused" is judged against the **project registry** (`unity projects list`), so an editor used only by a project you never registered counts as unused — register it first, or verify with `unity editors prune` before adding `--remove`.
 
+**`--remove-missing` is a separate, safer candidate class:** editors registered with `unity editors add` (typically internal branch builds) whose recorded install path no longer resolves on disk at all.
+
+```bash
+# Also report editors whose install path is already gone
+unity editors prune --remove-missing
+
+# Drop those entries from the editor list (prompts to confirm)
+unity editors prune --remove-missing --yes
+```
+
+Unlike `--remove`, this never touches the filesystem — the folder is already gone, so there is nothing to delete, and confirming only updates the registry. It doesn't require the running-editor check to succeed, since nothing can be running out of a folder that no longer exists. The two flags are independent and neither implies the other; `--format json`/`ndjson` carry the missing-path rows under `data.missing`.
+
 #### editors verify
 
 Structurally verifies an installed editor: checks that its files and modules are actually present on disk. It's the command to reach for when an editor launches oddly, a module seems half-installed, or a download was interrupted.
