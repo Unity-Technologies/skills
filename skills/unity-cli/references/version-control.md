@@ -404,6 +404,7 @@ unity vcs git worktree add feature/lighting
 unity vcs git worktree add feature/lighting --into ../lighting --seed full
 unity vcs git worktree add feature/lighting --install-editor
 unity vcs git worktree add feature/lighting --dry-run
+unity vcs git worktree add feature/lighting --no-register
 unity vcs git worktree remove ../lighting
 unity vcs git worktree remove ../lighting --discard-changes --force
 ```
@@ -412,6 +413,10 @@ unity vcs git worktree remove ../lighting --discard-changes --force
 `PackageCache/`**: it is three quarters of a real `Library`'s bytes, and copying it finishes
 *later* than withholding it, because UPM refills it from its own global store during the import
 either way.
+
+`--no-register` leaves the new worktree out of the Hub project registry, so it does not show up in
+`unity projects list` or in the Hub. Use it for a short-lived checkout you do not want to keep
+track of.
 
 `remove` requires the path, so a bare run can never delete the checkout you are standing in.
 
