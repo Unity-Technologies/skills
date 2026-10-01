@@ -406,13 +406,21 @@ usage error.
 
 | Command | Args | Key options |
 |---|---|---|
-| `jira server add` | — | `--organization-id`, `--url`, `--username`, `--key` (API token), `--name` — all required |
+| `jira server add` | none | `--organization-id`, `--url`, `--username`, `--name`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required |
 | `jira server delete` | `<serverConfigId>` | `--organization-id` (required); confirmation |
-| `jira server update` | `<serverConfigId>` | `--organization-id` (required) + at least one of `--url`/`--username`/`--key`/`--name` |
-| `jira server test` | — | `--organization-id`, `--url`, `--username`, `--key` — all required; validates credentials **without persisting** |
+| `jira server update` | `<serverConfigId>` | `--organization-id` (required) + at least one of `--url`/`--username`/`--key-from-stdin`/`--key`/`--name` |
+| `jira server test` | none | `--organization-id`, `--url`, `--username`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required; validates credentials **without persisting** |
 | `jira server users` | `<serverConfigId>` | `--organization-id` (required), `--query <text>` — search Jira users |
 | `jira server projects` | `<serverConfigId>` | `--organization-id` (required) — lists **Jira-side** projects on the server |
 | `jira server permissions` | `<serverConfigId>` | `--organization-id`, `--jira-project-id` — both required; checks required Jira permissions |
+
+> **Warning: `--key` exposes the API token.** Its value is part of the command line, so other
+> users on the same host can read it in the process list, and CI runners that echo commands write
+> it into their logs. Pipe the token with `--key-from-stdin` instead. It reads all of stdin, drops
+> one trailing newline, and waits up to 30 seconds for stdin to close. It's a usage error
+> (exit 2) when stdin is a terminal, the piped value is empty, or both `--key` and
+> `--key-from-stdin` are given, and no error message includes the token. `--key` still works for
+> compatibility.
 
 #### `jira project` — project configurations
 
@@ -440,14 +448,19 @@ usage error.
 configs in the org) or `--project-id` (configs available to that Unity project).
 
 ```bash
-# One-time setup: validate credentials, persist server, add a Jira project, link Unity project
-unity collaboration jira server test --organization-id $ORG \
-  --url https://jira.example.com --username bot@example.com --key $JIRA_TOKEN
-unity collaboration jira server add --organization-id $ORG \
-  --url https://jira.example.com --username bot@example.com --key $JIRA_TOKEN --name "Main Jira"
+# One-time setup: validate credentials, persist server, add a Jira project, link Unity project.
+# The API token is piped on stdin, so it never appears in the process list or CI logs.
+printf '%s' "$JIRA_TOKEN" | unity collaboration jira server test --organization-id "$ORG" \
+  --url https://jira.example.com --username bot@example.com --key-from-stdin
+printf '%s' "$JIRA_TOKEN" | unity collaboration jira server add --organization-id "$ORG" \
+  --url https://jira.example.com --username bot@example.com --name "Main Jira" --key-from-stdin
 unity collaboration jira project add $SERVER_CONFIG_ID --organization-id $ORG \
   --jira-project-id 10042 --default-reporter-id $JIRA_ACCOUNT_ID
 unity collaboration jira project link $PROJ $PROJECT_CONFIG_ID
+
+# Rotate the stored API token
+printf '%s' "$NEW_JIRA_TOKEN" | unity collaboration jira server update $SERVER_CONFIG_ID \
+  --organization-id "$ORG" --key-from-stdin
 
 # File an issue from an annotation (get valid type ids from `issues types` first)
 unity collaboration jira issues create $ANNOTATION_ID --project-id $PROJ \

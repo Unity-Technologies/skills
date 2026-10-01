@@ -23,8 +23,8 @@ unity config proxy --json
 unity config proxy http://proxy.example.com:8080
 
 # Embedded userinfo (user:password@host) is supported and redacted in echo
-# output, but prefer leaving credentials out of the URL — the CLI looks them
-# up in the OS keyring instead (see Resolution priority below).
+# output, but the URL is one of this command's arguments, so the credentials
+# show in the process list and CI logs (see Proxy credentials below).
 
 # Persist with bypass list (hosts that should NOT go through the proxy)
 unity config proxy http://proxy.example.com:8080 --bypass "localhost,127.0.0.1,*.internal"
@@ -47,7 +47,9 @@ unity config proxy --unset
 4. Persisted `proxy.json` (`unity config proxy <url>`)
 5. System proxy settings (where supported)
 
-Credentials missing from the URL are looked up in the OS keyring (shared with the GUI Hub); Kerberos/SPNEGO-authenticated proxies are supported. `--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
+Kerberos/SPNEGO-authenticated proxies are supported: with no credentials in the URL, the CLI authenticates with your OS identity. `--proxy-disable` short-circuits all of the above for the current invocation, which is the recommended way to diagnose a misconfigured proxy without clearing it.
+
+**Proxy credentials.** Credentials embedded in a proxy URL end up in the process arguments whenever the URL is passed on the command line (`--proxy <url>`, `unity config proxy <url>`), so other users on the same host can read them in the process list, and CI runners that echo commands write them into their logs. Leave them out of the URL when the proxy accepts your OS identity. When it needs a user name and password, set the URL through `UNITY_PROXY` rather than `--proxy`: the environment isn't part of the process arguments. The CLI doesn't read proxy credentials from the OS keyring yet. `unity diagnose proxy` reports whether a keyring entry exists for the proxy host, but requests don't use it.
 
 #### config update-check
 
@@ -91,7 +93,7 @@ The reported source is one of `flag`, `env`, `settings`, `none`. The env var and
 
 `unity config accelerator` with no argument reports the `env` → `settings` → `none` view of persistent configuration. Use `unity diagnose accelerator` (see [diagnostics-maintenance.md](diagnostics-maintenance.md)) for the same resolution plus project settings and reachability. Neither command accepts `--accelerator`, so to see what a one-shot override resolves to, pass it to the `run` / `test` / `build` invocation that uses it.
 
-**A configured endpoint is not always enough.** Every `-cacheServer*` argument overrides *Editor Preferences*, not Project Settings, and `ProjectSettings/EditorSettings.asset`'s `m_CacheServerMode` decides whether preferences are consulted at all. A project set to `Disabled` (mode `2`) ignores the injected flags; the CLI warns when it sees that. Full explanation: `apps/cli/docs/accelerator.md`.
+**A configured endpoint is not always enough.** Every `-cacheServer*` argument overrides *Editor Preferences*, not Project Settings, and `ProjectSettings/EditorSettings.asset`'s `m_CacheServerMode` decides whether preferences are consulted at all. A project set to `Disabled` (mode `2`) ignores the injected flags; the CLI warns when it sees that.
 
 ---
 
@@ -197,7 +199,7 @@ unity hub install --architecture x64
 unity hub install --skip-signature-check
 ```
 
-Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--hub-version <version>` (default latest), `--skip-signature-check`.
+Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--hub-version <version>` (default `latest`, and a leading `v` as in `v3.17.0` is accepted), `--skip-signature-check`.
 
 **Integrity & signature verification** — every download is checked against the SHA-512 from the HTTPS manifest, then the installer's **code signature** is verified before it runs with elevation: on macOS via `codesign` (signer `Developer ID Application: Unity Technologies`), on Windows via Authenticode (signer subject `Unity Technologies`), checked *before* the UAC prompt. Verification is **fail-closed** — if it fails or the verifier is unavailable, the command aborts with exit 6 and does not run the installer. Linux `.AppImage` has no standard verifier, so it is SHA-512-only. Pass `--skip-signature-check` to bypass (prints a warning; not recommended).
 

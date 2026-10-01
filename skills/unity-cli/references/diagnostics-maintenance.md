@@ -176,7 +176,7 @@ A working Accelerator and a broken one produce identical output apart from wall-
 - **Project cache server** — the project's `m_CacheServerMode` (as Unity's own inspector labels it) and `m_CacheServerEndpoint`, and whether they agree with the resolved endpoint. There is no "void case": a project's cache-server mode never makes an injected endpoint moot — command-line flags always win — so the report states a mismatch as a fact without claiming which side the Editor uses.
 - **Reachability** — a raw TCP connect with a 5-second timeout, reporting elapsed time and a familiar error code on failure (`ENOTFOUND`, `ECONNREFUSED`, `ETIMEDOUT`, …). A successful connect proves the port is reachable, **not** that an import will get a cache hit, and the report says so.
 
-**An unreachable endpoint is a reported row, not a command failure** — the command exits `0` having successfully diagnosed a broken endpoint. `--format json` emits the standard envelope; every other format writes the plaintext report raw to stdout so it survives a pipe or a CI log. `--quiet` is honoured. Full explanation of the mechanism: `apps/cli/docs/accelerator.md`.
+**An unreachable endpoint is a reported row, not a command failure** — the command exits `0` having successfully diagnosed a broken endpoint. `--format json` emits the standard envelope; every other format writes the plaintext report raw to stdout so it survives a pipe or a CI log. `--quiet` is honoured.
 
 ---
 
@@ -301,10 +301,12 @@ Separately again, every run — including one that never sees the consent prompt
 
 ### Changelog
 
-Show the embedded release notes for the currently installed CLI version:
+Show the release notes for the installed CLI version, or with `--target`, for another release. `--target latest` shows the newest release on your channel, the one `unity self-update` would install:
 
 ```bash
 unity changelog
+unity changelog --target 1.0.0-beta.10
+unity changelog --target latest
 unity changelog --format json
 ```
 
@@ -320,6 +322,9 @@ unity docs GameObject                    # scripting API reference
 unity docs --manual Coroutines           # the manual instead
 unity docs --search "physics raycast"    # the documentation search results
 unity docs --url Rigidbody.AddForce      # print the URL, do not open it
+unity docs --cli use-unity-cli           # the Unity CLI's own documentation
+unity docs --hub project-create          # the Unity Hub documentation
+unity docs --cloud developer-data/collection-settings   # Unity Cloud
 ```
 
 The version is read from the current project's
@@ -339,6 +344,31 @@ A topic that cannot name a documentation page — a phrase, or anything with a
 path separator — falls back to the documentation search for that section rather
 than composing an address that would 404. A trailing `.html` is dropped, so a
 page name pasted out of a browser address bar resolves.
+
+#### Documentation sets outside the Editor docs
+
+`--cli`, `--hub` and `--cloud` look the topic up on Unity's documentation
+platform instead of the Editor documentation. These are separate bodies of
+documentation rather than newer addresses for the same pages, so the two sites
+answer different questions:
+
+|Flag|Documentation|
+|---|---|
+|*(default)*|Editor scripting API reference, version-matched|
+|`--manual`|Editor manual, version-matched|
+|`--cli`|The Unity CLI|
+|`--hub`|The Unity Hub|
+|`--cloud`|Unity Cloud|
+
+Those pages are not versioned by editor, so they take no version: `--editor-version`
+alongside one of them is a usage failure rather than a value that gets quietly
+dropped. The four selectors are mutually exclusive, and passing two is a usage
+failure too rather than one of them silently winning.
+
+Page names on these sets are lowercase and hyphenated, and may carry more than
+one segment (`developer-data/collection-settings`). Anything else — a phrase, or
+a name in the wrong case — falls back to the platform's search page, the same
+fallback rule the Editor sections use.
 
 ---
 
@@ -389,20 +419,36 @@ unity bug \
   --description "Opening MyGame hard-crashes the editor." \
   --steps "Open the CLI" --steps "Run unity open MyGame" --steps "Editor window closes" \
   --reproducibility always \
+  --area editor \
   --email you@example.com \
   --attachments ./crash.log ./notes.txt \
   --share-project .
 ```
 
-Prompts for title, description, email, and reproducibility level. As of `0.1.0-beta.8` it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
+Prompts for title, description, email, reproducibility level, and which area the issue is in. As of `0.1.0-beta.8` it collects the same diagnostic system information as the Unity Hub bug reporter (including GPU details).
 
 The report can also be supplied entirely through flags — `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, and `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask; a non-interactive run submits without prompting. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add.
+
+Use `--area <cli|pipeline-package|editor|licensing|not-sure>` to say which part of Unity the issue is in: the CLI itself, the connection to the Editor or the Pipeline package (`com.unity.pipeline`), the Editor or your project, or licensing and signing in. Pass it whenever you know, because a failure that surfaces in CLI output is otherwise easy to misroute as a CLI bug when the Editor or the Pipeline package is at fault. It's optional and never blocks a report: pass `not-sure` when you don't know, or leave it out. On a terminal without `--area`, the reporter asks, with "Not sure" preselected; a non-interactive run without it submits with no area, the same report it sent before the flag existed. An unknown value is a usage error (exit 2). The answer is sent with the report as an `Issue area:` line in the report text, which is what triage sees.
 
 Use `--attachments <paths...>` (repeatable) to attach extra files — for example a crash log or a zipped copy of a subset of assets. Each path must be an existing, readable file; a folder is rejected (zip it yourself first), and a missing or unreadable path fails fast with a usage error (exit 2) naming the offending path.
 
 Use `--share-project <path>` (use `.` for the current directory) to attach a copy of the Unity project the bug is about — the same stripped-project packaging the Editor's bug reporter uses. It sends the source folders plus a slimmed `Library`, excluding the regenerable caches and build output (`Library` caches, `Temp`, `Build`, `Logs`, VCS/IDE metadata, `MemoryCaptures`, `CrashReports`), so you don't have to zip the project yourself. A path that isn't a Unity project fails fast with exit 2. The archive is streamed from disk during upload, so there's no size limit — even a multi-gigabyte project copy uploads without being buffered in memory.
 
-Interactively, when you don't pass `--attachments` or `--share-project`, the reporter asks whether to attach files and whether to include a project copy. Everything — attachments and the project copy — is bundled into the same archive as the auto-collected logs.
+Interactively, when you don't pass `--attachments` or `--share-project`, the reporter asks whether to attach files and whether to include a project copy. When the area answer is `editor` or `pipeline-package`, the project-copy question first explains why a copy helps with those issues; it still defaults to no, and nothing is shared unless you answer yes. Everything — attachments and the project copy — is bundled into the same archive as the auto-collected logs.
+
+#### `unity bug mcp`: check for known issues before filing
+
+Before filing a report, add Unity's Issue Tracker MCP server to an AI assistant so it can search for known issues on your behalf:
+
+```bash
+unity bug mcp claude
+unity bug mcp --list
+unity bug mcp cursor --local
+unity bug mcp claude --dry-run
+```
+
+`unity bug mcp [client]` is exactly `unity mcp configure [client] --server issue-tracker`. It delegates to the same `mcp configure` execution with the target server fixed, so it accepts the same `client` argument and the same `--list`, `--local`, `--yes`, and `--dry-run` flags (no `--server` flag here, since the server is already fixed). See the MCP configuration section in `integration-advanced.md` for the full client list, config paths, and what each flag does; `unity bug --help` also points here. This adds no new required prompt to the bug-report wizard, since it's a separate, optional subcommand, and the interactive wizard prints a one-line reminder about it before asking its own questions.
 
 ---
 
@@ -421,7 +467,7 @@ unity self-update
 # Update without prompts
 unity self-update --yes
 
-# Install a specific version
+# Install a specific version (v0.2.0 works too; latest is the same as no --target)
 unity self-update --target 0.2.0
 
 # Select update channel (stable or beta)

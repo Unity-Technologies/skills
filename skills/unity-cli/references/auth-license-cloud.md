@@ -18,6 +18,8 @@ unity auth login
 # Login with service account credentials (CI — skips browser)
 # Preferred: read secret from stdin to avoid shell-history and process-list exposure
 unity auth login --client-id <id> --secret-from-stdin
+# The secret must be piped in: a terminal on stdin is refused, and the
+# command stops waiting after 30 seconds if the pipe is never closed.
 
 # A --client-secret flag also exists, but passing a secret as a
 # command-line argument exposes it in shell history and the process list.

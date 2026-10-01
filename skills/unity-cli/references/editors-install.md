@@ -268,6 +268,26 @@ On an interactive terminal, `unity install` also reports progress to the termina
 
 Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
 
+**Waiting on another install.** The Hub and the CLI share one install lock, so while the Hub (or another CLI) is installing, `unity install`, `unity install-modules` and `unity projects require` print `Waiting for another install to finish before continuing…` on stderr and carry on once it finishes. That wait has no limit by default. In a script or CI job, bound it:
+
+```bash
+# Fail at once if another install is already running, before this item is downloaded
+unity install 6000.0.47f1 --yes --no-wait
+
+# Wait up to 10 minutes in total, then fail the same way
+unity install-modules -e 6000.0.47f1 -m android --wait-timeout 600
+```
+
+`--wait-timeout <seconds>` takes a whole number of seconds greater than 0 (digits only: `5m` and `1.5` are rejected) and is one budget for the whole command, not per module; `--no-wait` wins if both are given. Either way the command exits **9** with error code `INSTALL_LOCK_BUSY` (in the json envelope's `errors[].code`, and in the ndjson `result` frame), distinct from a failed install's exit 6, so a script can retry later. The error says another install is in progress and to run the command again once it finishes; the "Waiting for another install" line on stderr only appears while a wait is running, the default one or a bounded one, and never under `--no-wait`.
+
+The lock is taken per item, so exit 9 does not mean nothing changed. `--no-wait` refuses an item before its download only when the lock is already held; if the Hub takes it while the item downloads, the item fails after the download. And `unity install <version> -m android --no-wait` can install the editor, then stop at the module: check `data.completedUids` in the ndjson `result` frame, and finish with `unity install-modules -e <version> -m android` rather than re-running `unity install`, which now fails because the editor is already installed. A second `unity install` of the **same** version fails at once with exit 6 ("Another install of … is already in progress") before it reaches this lock, whatever the flags.
+
+#### Linux arm64: experimental x86_64 Editor under FEX-Emu
+
+Unity ships no Linux arm64 Editor. On a Linux arm64 host you can opt in to running the x86_64 Editor under [FEX-Emu](https://github.com/FEX-Emu/FEX) by setting `UNITY_EXPERIMENTAL_FEX_EMU=1`. The opt-in takes effect only when a FEX-Emu entry point (`FEX`, or the older `FEXLoader`) is on PATH and an x86_64 RootFS resolves (`FEX_ROOTFS`, or the `RootFS` in FEX-Emu's own `Config.json`); `unity doctor` reports both as its `fex-emu` row. While it is active, `unity install` defaults to `x86_64`, and every Editor launch (`open`, `projects open`, `run`, `test`, `build`, `projects create`) runs as `FEX <editor> <args>` with no `binfmt_misc` needed.
+
+This is **experimental and unsupported**: C# script compilation is known to crash under FEX-Emu ([FEX-Emu/FEX#5766](https://github.com/FEX-Emu/FEX/issues/5766)), so don't use it for real development. Every command it affects says so: a warning on stderr for human and tsv output, and a `FEX_EMU_EXPERIMENTAL` entry in the envelope's `notifications` for json and ndjson. Without the opt-in nothing changes.
+
 ### Uninstall
 
 ```bash

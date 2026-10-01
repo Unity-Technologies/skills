@@ -104,8 +104,13 @@ unity vcs providers --json
 Reports binary presence and version, per-host auth state, credential-helper entries, and each
 host's capability tier. It deliberately does **not** report how a repository would get created:
 that depends on whether a token resolves, and resolving one can prompt — a read-only report must
-not ask for a credential. It also does not probe `cm`; that belongs to `unity plugin list`, and
-two diagnostics disagreeing about a path is worse than one.
+not ask for a credential.
+
+The tools table also lists `cm`, the Unity Version Control client, taken from `unity plugin list`'s
+own registry lookup, so the two always agree on its path, version, and state (`resolved`,
+`not-installed`, or `unsupported-platform` on linux-arm64). It never downloads `cm`. Inside a UVCS
+workspace with no `cm` installed, it suggests `unity plugin install uvcs`. The offline VCS section of
+`unity doctor` omits `cm`, which doctor already lists under external components.
 
 ### vcs merge-setup
 

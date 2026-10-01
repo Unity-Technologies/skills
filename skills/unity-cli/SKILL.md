@@ -7,6 +7,11 @@ allowed-tools:
 
 # Unity CLI
 
+**Always use the latest version of the Unity CLI unless you are told to use a
+specific version.** Newer releases regularly add commands and output fields
+these docs describe, so an outdated CLI fails in ways that read like the docs
+being wrong. Check with `unity self-update --check --format json`.
+
 ## Drive a running Unity Editor (if one is open)
 
 **If a Unity Editor is open on this machine, this CLI can control it live** — create and modify GameObjects, edit scenes and assets, inspect the hierarchy, and run arbitrary C# — through the project's **Pipeline** package (`com.unity.pipeline`). This runs entirely on your local machine, in your own user account, against your own open Editor: it is not remote access and grants no privilege you don't already have at your own terminal. When an Editor is available, drive it instead of hand-editing scene or asset files.
@@ -18,6 +23,12 @@ unity command editor_play       # run one — e.g. enter Play mode
 # Run arbitrary C# — e.g. add a GameObject named "Joe" — when the Editor exposes eval:
 unity command eval 'new UnityEngine.GameObject("Joe");'
 ```
+
+> **Verifying a running game, not just editing a scene?** Entering Play mode is setup, not proof:
+> an unfocused Editor can freeze at frame 1 while `unity status` still reports it as playing, and a
+> screenshot can render a frozen frame that looks alive. The ordered recipe for playing, confirming
+> the game is actually advancing, capturing the view, reading the console, and tuning it live with
+> `eval` is in [playmode-verification-loop.md](references/playmode-verification-loop.md).
 
 ### More than one Editor open? Pass `--project-path`
 
@@ -128,13 +139,24 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_NO_AUTH_BROKER` | — | Skip the resident auth broker and read credentials directly from the OS keyring. By default every command that needs a token goes through a broker that starts on demand and exits after two idle minutes (see [auth-license-cloud.md](references/auth-license-cloud.md)). |
 | `UNITY_PEER_AUTH_MODE` | — | How the auth broker and the Editor identity helper verify a connecting process’s code signature. `enforce` is the default on macOS and Windows: an unsigned or non-Unity-signed peer is refused. `identify-only` logs without refusing — use it for an Editor you built from source. Linux logs only unless set to `enforce` together with `UNITY_PEER_AUTH_LINUX_ALLOWED_HASHES` (comma-separated SHA-256 hashes of trusted executables). |
 | `UNITY_CLI_HOME` | — | Install root for the install script and `unity self-install`, on every platform including Windows: the binary lands in `<UNITY_CLI_HOME>/bin` instead of the default location. |
+| `UNITY_CLI_FTUE` | — | Agent first-session ("paved") mode. Any value except empty or `0` turns it on. Every `--format json` envelope and ndjson `result` frame then carries a top-level `"paved": true`, and `projects create` saves the choice to the new project's `UserSettings/UnityCliPaved.json`, so later commands run in that project are paved with no variable set. Nothing else changes. See [projects-templates.md](references/projects-templates.md). |
 | `UNITY_NO_EDITOR_IDENTITY_SERVER` | — | Disable the background identity helper that `unity open` starts to answer the Editor’s sign-in lookups when no Hub is running (see [projects-templates.md](references/projects-templates.md)). Presence-based. |
+| `UNITY_EXPERIMENTAL_FEX_EMU` | none | Linux arm64 only, experimental and unsupported: run the x86_64 Editor under FEX-Emu. `1`, `true` or `yes` turns it on, and it takes effect only when FEX-Emu and an x86_64 RootFS are installed (`unity doctor` checks). C# script compilation is known to crash under FEX-Emu. See [editors-install.md](references/editors-install.md). |
 
 **CI service account auth:** Set both `UNITY_SERVICE_ACCOUNT_ID` and `UNITY_SERVICE_ACCOUNT_SECRET` to skip the browser OAuth flow — this keeps the secret out of the process argument list and shell history. These map to the `--client-id` / `--secret-from-stdin` inputs of `unity auth login`, but reading the credentials from the environment isn't a full login: it doesn't run the interactive flow or persist credentials to the keyring.
 
 ## Getting help
 
 Append `-h` or `--help` to any command or subcommand, at any level: `unity --help`, `unity projects create --help`.
+
+**Not sure which command does something? Search before you guess a name.** `unity commands --grep <pattern>` matches command names, descriptions, and options, plus the plugin catalog, installed or not:
+
+```bash
+unity commands --grep license                 # one match per line
+unity commands --grep 'build|test' --format json
+```
+
+Each result says whether it is a `command` or a `plugin`. A plugin that isn't installed also names its install command (`unity plugin install <id>`). Matching is case-insensitive, and the pattern is a regular expression evaluated with a timeout, so a plain keyword works as-is. See [integration-advanced.md](references/integration-advanced.md) for the output fields.
 
 ## Exit codes
 
@@ -148,6 +170,7 @@ Append `-h` or `--help` to any command or subcommand, at any level: `unity --hel
 | 6 | Command-specific failure |
 | 7 | Network or transient service failure for cloud automation inventory (see its reference for exact mappings). |
 | 8 | `unity test` only — the tests ran and one or more **failed**. Every other way a test run fails (compile error, unavailable license, editor crash, `--timeout`) keeps `6`, so CI can retry an infrastructure failure and never retry a failing test. |
+| 9 | `unity install`, `unity install-modules` and `unity projects require` only: `--no-wait` or `--wait-timeout` ran out while the Hub or another CLI held the shared install lock (`INSTALL_LOCK_BUSY`). Retry later. Earlier items of the same run may already be installed; see `data.completedUids`. |
 | 130 | Interrupted — Ctrl+C / SIGINT (128 + 2) |
 | 143 | Terminated by SIGTERM (128 + 15) — e.g. `kill` or a CI/runner timeout. Emitted by long-running commands that install a signal handler to clean up first (currently `unity build`, which scrubs the temporary Android keystore). |
 
@@ -165,13 +188,13 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | Commands | Reference file |
 |---|---|
 | `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
-| `pipeline cloud-build` (targets / builds, each list / get), `pipeline automation` (apps / pipelines / jobs, each list / get) | [cloud-automation.md](references/cloud-automation.md) |
+| `pipeline cloud-build` (targets incl. groups / builds / project / tooling), `pipeline automation` (apps / pipelines / jobs / automations / bots / profiles / templates, plus `apps versions`, `pipelines versions`, `jobs stats`) | [cloud-automation.md](references/cloud-automation.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules` | [editors-install.md](references/editors-install.md) |
 | `projects` (list / create / new / clone / open / link / require / upgrade / export / import / pin / size / clean / exec), `open`, `close`, `releases`, `templates` (list / info / create / pack / delete), `assets` (`inspect` / `export`) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check / accelerator / get / set / list / unset / resolve), `context` (save / use / list / current / delete), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` (+ `build run`), `recompile`, `watch` (`test`) | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `docs`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy`, `diagnose accelerator`, `diagnose update` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `mcp` (+ `configure`), `setup claude`, `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
@@ -179,9 +202,10 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 
 ### Inspect cloud builds or Pipeline Automation resources
 
-Read [cloud-automation.md](references/cloud-automation.md) for all ten read-only
-commands, context/authentication, target filters and sorting, output fields,
-pagination, errors, and redaction. `pipeline cloud-build` reads Build Automation;
+Read [cloud-automation.md](references/cloud-automation.md) for every read-only
+command in both groups, context/authentication, per-command filters and sorting,
+output fields, pagination (including the leaves that refuse `--page`/`--limit`
+rather than ignoring them), errors, and redaction. `pipeline cloud-build` reads Build Automation;
 `pipeline automation` reads Pipeline Automation. Neither needs a running Editor
 or the local Pipeline package. Use numeric organization IDs for service accounts.
 These commands don't trigger builds/jobs, fetch logs/artifacts, or change
@@ -219,6 +243,58 @@ Command names are defined by the Editor, so run `unity command` (or `unity list`
 - **A sandboxed agent shell.** If your own shell commands run inside a restrictive sandbox — the normal case for a coding agent like this one — the sandbox can hide a genuinely running Editor from `unity status` the same way. This applies to **every** scene/GameObject/prefab/asset task that reaches this preflight, not only ones that obviously need a live Editor: a task you could otherwise finish without any CLI involvement (e.g. generating an asset through ordinary Editor APIs) can still get funneled into "no Editor" here and derailed. Don't treat "no instances" as proof the Editor is down, and don't quietly improvise a third path — like driving a separate headless Editor process to approximate what a live connection would have done — as a substitute for a disclosed file edit. Say plainly that your sandbox may be blocking your view of a real Editor, and ask whether one is actually open before falling back. Full detail: [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
 
 Only fall back to editing files directly once you've ruled out both of the above — and say so explicitly ("no live Editor detected, editing the file directly").
+
+### Generate an asset, texture, sprite, image, or 3D model: check for the `ai` catalog plugin
+
+**Before approximating a "generate a texture/sprite/image/3D model for my project" request some
+other way, check whether the Unity AI Generators plugin (`ai`) is installed.** It is Unity's own
+catalog plugin for exactly this class of request, and using it is almost always the better answer.
+The same three-step pattern below (recognize the intent, check the catalog, ask before installing)
+applies to any catalog plugin the CLI ships, not only this one; `unity plugin list` always
+reflects the full catalog, installed or not, so it is how you discover what else is available too.
+
+1. **Check whether it's installed.**
+   ```bash
+   unity plugin list --format json
+   ```
+   Find the entry whose `id` is `"ai"` and read its `installed` field (`true` / `false`).
+
+2. **Not installed? Tell the user, then ask, never install silently.** Say plainly that Unity
+   ships an AI Generators plugin that covers this, and wait for a yes before running:
+   ```bash
+   unity plugin install ai
+   ```
+   A refusal is a normal answer: fall back to whatever you would otherwise have done, and don't
+   ask again in the same conversation.
+
+   `ai` is alpha, and during alpha it's gated to Unity staff on Unity's internal network. An
+   ordinary user's `unity plugin install ai` can fail with a **sign-in** message ("Unity AI
+   Generators is currently limited to Unity staff. Sign in with a Unity staff account…") or, once
+   past that, a plain **download failure** if the network it needs isn't reachable from where
+   you're running. Neither is a bug in the request: report the message and fall back, the same as
+   any other refusal.
+
+3. **Pick up its agent skill in the same session.** A catalog plugin can ship its own agent skill
+   inside its payload (`ai` does), and installing the plugin does not, by itself, make that skill
+   visible to you; it has to be mirrored the same way this skill itself is:
+   ```bash
+   unity skill install <client>     # e.g. claude-code, first time this session
+   unity skill refresh              # already mirrored earlier? re-render it fresh
+   ```
+   `unity plugin install`'s own last line already tells you which one applies: it points at
+   `unity skill install` right after installing a copy that ships a skill, and at
+   `unity skill refresh` once one is already mirrored but the plugin's copy just changed. Confirm
+   where it landed with `unity skill list --format json` (look for the row whose `skill` field
+   names the plugin's own skill, e.g. `unity-ai`, and read its `path`), then read that file before
+   driving the plugin's commands. Don't guess its command surface from this skill, which only
+   documents `unity` itself.
+
+**A command invoked before any of this** (`unity ai …` typed straight, or suggested from memory)
+**fails with a clear, actionable message** naming the exact install command (`unity plugin install
+ai`), in both human and machine (`--format json` / `--format ndjson`) output, under the stable
+error code `TOOL_NOT_INSTALLED`. Read that message rather than guessing why the command did
+nothing; the same shape (`TOOL_UNSUPPORTED_PLATFORM`, `TOOL_RUNTIME_NOT_INSTALLED`) covers the
+two other reasons a catalog tool can't run.
 
 ### Bootstrap a new project from scratch
 
@@ -264,9 +340,32 @@ unity templates list --editor <6000.x.y> --type core --format json
 
 # 4. Create the project. The first positional arg is the NAME; --path sets the parent directory.
 #    All options supplied, so it won't prompt; add --non-interactive in CI.
+#    (To publish it to a remote in the same step, use the source-control forms below instead.)
 unity projects create "MyGame" --path ~/UnityProjects \
   --editor-version lts --template com.unity.template.urp-blank
+
+# 5. Add the Pipeline package BEFORE the first open. `unity command`, `unity status` and
+#    `unity command eval` all need it, and templates don't include it. The Editor reads
+#    Packages/manifest.json when it loads the project, so installing first means the package
+#    is live from the first open.
+unity pipeline install --project-path ~/UnityProjects/MyGame
+
+# 6. Open the project and wait until its Editor is ready to take commands. Run from inside the
+#    project so the CLI targets its Editor (--project-path here is a substring filter, not a path).
+cd ~/UnityProjects/MyGame
+unity open .
+unity status --until-ready --project-path MyGame --format json
 ```
+
+**Then build the scene in the live Editor, not in batch mode.** Create GameObjects, wire
+components, and set asset references with `unity command eval` (or the Editor's own `unity command`
+tools) against the running Editor, and read the result back the same way. Each step can be
+checked before the next one. A script run through `unity run -- -executeMethod` is the
+**fallback** for when no Editor can stay open (CI, a headless build box). It can't see what it
+produced: a reference saved as null, such as a `UIDocument` with no `PanelSettings`, still
+reports success. If you do use batch mode, open the result in a live Editor and inspect it before
+calling the work done. How to get an Editor to drive:
+[integration-advanced.md → Getting an Editor to drive](references/integration-advanced.md#getting-an-editor-to-drive).
 
 **Source control — let the user choose.** The CLI publishes the new project to a fresh remote in
 one step for any provider. **Always pass tokens on stdin** (`--git-token-stdin`) so secrets never
@@ -362,8 +461,17 @@ It does **not** manage UPM (Unity Package Manager) packages — to add packages 
 template headlessly, use the **`unity-package-management`** skill (C# PackageManager Client
 API). For monetization/backend, hand off to the dedicated skills: `implement-in-app-purchases`
 (IAP), `levelplay-unity-integration` (ads), or `build-live-game` (accounts, cloud save,
-economy, remote config, leaderboards). Open the project to start working:
-`unity open ~/UnityProjects/MyGame`.
+economy, remote config, leaderboards). Once steps 5 and 6 above are done, work in the open
+Editor.
+
+**Installed the Pipeline package while the Editor was already open?** The Editor picks up the
+manifest change only when it next refreshes. Until then `unity status` reports
+`STATUS_PIPELINE_LOAD_PENDING` (or `STATUS_NO_INSTANCES` on CLI releases before that code
+existed). An Editor that is still opening or importing reports the same code until it finishes,
+so wait for that first (`unity status --until-ready`). The CLI can't trigger the refresh itself:
+if the Editor has finished opening, ask the user to switch to the Unity Editor window, then
+re-run `unity status --until-ready`. Installing before the first open (step 5) avoids this
+entirely.
 
 ### Find and install a missing editor
 
@@ -469,15 +577,52 @@ unity logs --follow --level info
 
 ---
 
+## Notifications
+
+A `--format json` or `--format ndjson` envelope may carry a `notifications`
+array: advisories about the user's environment rather than about the command
+you ran. **When one is present, tell the user** — they have no other way to see
+it, because the human-facing equivalent is a terminal banner that never reaches
+you.
+
+The key is absent when there is nothing to report, so read it as
+`envelope.notifications ?? []`.
+
+```jsonc
+{
+  "code": "CLI_UPDATE_AVAILABLE",
+  "message": "A new version of the Unity CLI is available: 1.0.0-beta.8 → 1.0.0-beta.9",
+  "data": { "current": "1.0.0-beta.8", "latest": "1.0.0-beta.9" },
+  "remediation": { "command": "unity self-update", "requiresUserApproval": true }
+}
+```
+
+Branch on `code`; `message` is localized and meant for display. `data` is
+shaped per `code`.
+
+`remediation` says how the notification gets resolved. It may be absent, which
+means the notification is informational and there is nothing to run.
+
+`FEX_EMU_EXPERIMENTAL` means the command ran, or will run, the x86_64 Editor
+through FEX-Emu on Linux arm64. Tell the user it is experimental and
+unsupported and that C# script compilation is known to crash there.
+
+**`requiresUserApproval: true` means do not run `remediation.command`
+yourself.** Surface the notification and the command, and let the user decide.
+
+---
+
 ## Notes
 
 - `--non-interactive` and `--yes` together suppress all prompts — use both in CI.
 - `--format json` always produces machine-readable output; prefer it over parsing human text. Error envelopes are pretty-printed with the same 2-space indent as success envelopes.
-- **Read failures from stdout, not stderr.** A failed command still writes a complete document to stdout: under `--format json` an envelope with `success: false` and a populated `errors` array (`errors[0].code` is the stable token to branch on); under `--format ndjson` the usual terminal `{"type":"result","success":false,…}` frame. **Branch on `success`, never on `data`** — `data` is usually `null` on a failure, but not always: a partial `unity editors add` failure carries a row per path, and an ambiguous `unity auth switch` carries `data.candidates` for you to disambiguate with. Check `success` and the exit code — never treat empty stdout as a failure signal, and do not parse stderr, which carries only human diagnostics in these formats. A handful of commands have not migrated yet and still print `{"error": "…"}` to stderr with empty stdout; if stdout is empty on a non-zero exit, that is a known bug in that command rather than a shape you should code against.
+- **Read failures from stdout, not stderr.** A failed command still writes a complete document to stdout: under `--format json` an envelope with `success: false` and a populated `errors` array (`errors[0].code` is the stable token to branch on); under `--format ndjson` the usual terminal `{"type":"result","success":false,…}` frame. **Every ndjson stream ends with exactly one terminal `{"type":"result"}` frame, on success too**, so a stream without one was truncated. Table-shaped listings (`unity editors`, `unity editors upgrade --check`, `unity templates list`, `unity releases`, `unity projects list`, `unity context list`, `unity auth list`, `unity modules list`, `unity list`, `unity doctor`) write one row per line first, with no `type` field on the rows, then a terminal frame whose `data` is `{"count": N}`; `--quiet` drops the rows but keeps the frame (except `unity projects list`, which never quiet-gates its rows), and a `--watch` listing, which only ends on Ctrl-C, writes no terminal frame. A few commands (`unity env`, `unity version`, `unity pipeline list`, `unity install-modules --list`, `unity changelog` among them) still end a successful ndjson stream without one, which is a known bug. **Branch on `success`, never on `data`** — `data` is usually `null` on a failure, but not always: a partial `unity editors add` failure carries a row per path, and an ambiguous `unity auth switch` carries `data.candidates` for you to disambiguate with. Check `success` and the exit code — never treat empty stdout as a failure signal, and do not parse stderr, which carries only human diagnostics in these formats. A handful of commands have not migrated yet and still print `{"error": "…"}` to stderr with empty stdout; if stdout is empty on a non-zero exit, that is a known bug in that command rather than a shape you should code against.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
 - The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping regardless of analytics/consent state — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
 - The CLI is currently in **beta** (latest: `1.0.0-beta.11`). It moved to 1.0 versioning at `1.0.0-beta.1`; it's still a beta. The install command needs no channel setting: until GA ships it installs the latest beta, and afterward the stable release.
+- **Always use the latest version of the Unity CLI unless you are told to use a specific version.** A newer CLI regularly adds commands and output fields these docs describe, so an outdated one fails in ways that read like the docs being wrong.
 - As of `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.
+- **Under `--format json` and `--format ndjson` that same notice reaches you as a `notifications` array on the envelope** — see [Notifications](#notifications) below. Over MCP it arrives once per session, as prose in the server's `initialize` `instructions`.
 - Outbound HTTP from every CLI command honors the resolved proxy (see `unity config proxy`). An invalid `--proxy` value (malformed URL or unsupported scheme) fails with a usage error (exit 2) instead of being silently ignored. Inspect what the CLI actually resolved with `unity env --format json` or `unity doctor --format json` — both surface the active proxy URL, its source, and auth source.

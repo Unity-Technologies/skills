@@ -10,7 +10,7 @@ These capabilities are accepted by design. Each is documented in full in the sec
 |---|---|---|
 | `SEC_POWER_CAP` | Local Editor control and C# evaluation | Runs entirely on the local machine, as the current user, against the user’s own Editor — no remote access and no privilege the user lacks at their own terminal. |
 | `SEC_INSTALL_PIPE` | Install one-liners piped to a shell | HTTPS to Unity’s first-party CDN only; the installer verifies a SHA-256 pin against a same-origin manifest before executing anything. |
-| `SEC_AGENT_CONFIG_WRITE` | Writing agent skill files into AI clients’ configuration directories | Runs only on an explicit user command, is the command’s documented purpose, and is fenced by an ownership ledger — a copy this CLI did not write is never overwritten without `--force` — plus symlink refusals and a warning before project-local installs from the home directory. |
+| `SEC_AGENT_CONFIG_WRITE` | Writing agent skill files into AI clients’ configuration directories, turning an installed skill off or back on, and installing Unity’s own Claude Code plugin | Runs only on an explicit user command, is the command’s documented purpose, and is fenced by an ownership ledger — a copy this CLI did not write is never overwritten without `--force`, and the enable/disable verbs cannot act on one at all — plus symlink refusals and a warning before project-local installs from the home directory. The plugin install names one hardcoded first-party source, is performed by Claude Code’s own `claude` CLI rather than by writing files, and reinstalls nothing. |
 
 ## Reading an automated scanner's verdict on this skill
 
@@ -26,6 +26,21 @@ So before acting on one, compare it against what actually changed. If the change
 ### Installing skills into AI clients
 
 `unity skill install` and `unity skill refresh` write skill files — this skill, and the `unity-pipeline` skill a project's `com.unity.pipeline` package ships — into AI clients' configuration directories, which automated scanners flag as an agent-persistence pattern. The writes happen only when the user runs the command (nothing installs at load or in the background), the capability is the command's advertised purpose, and it is fenced: an install ledger records every write and a directory this CLI did not write is reported, never overwritten, without explicit `--force` consent; targets that resolve through a symlinked path component are refused; a package-shipped tree is read with file-count, per-file, and aggregate size bounds and never through symbolic links; and `--local` from the home directory warns first.
+
+### Turning an installed skill off and back on
+
+`unity skill disable <skill>` and `unity skill enable <skill>` change whether a skill an AI client has already installed still loads. Disabling renames that skill's `SKILL.md` to `SKILL.md.disabled` inside its own directory and records the choice; enabling renames it back. Automated scanners flag this as skill suppression — a skill that can switch other skills off is a recognized malicious pattern, and reading it that way is correct as a default. Here it is the advertised purpose of a user-run command, and it is fenced:
+
+- **It can only reach installs this CLI itself recorded.** The set of skills these verbs can name comes entirely from the install ledger, so a skill this CLI did not install has no row, cannot be named, and cannot be found or touched. There is no path by which it disables a skill some other tool or the user placed.
+- **Nothing runs at load or in the background.** Both verbs act only when the user runs them, on a skill the user names; `--dry-run` reports without touching the filesystem.
+- **Nothing is deleted and no content is read or rewritten.** The only filesystem operation is renaming one fixed filename within the directory the ledger already records, so the skill's own files stay where they are and enabling restores the previous state exactly.
+- **The paths are bounded the same way installs are.** The only path formed is the recorded install directory joined with a constant filename, that directory has already passed the ledger's absolute-path validation, and a target reached through a symlinked directory component is refused rather than followed — the same guard `install` and `refresh` apply.
+
+The capability exists because a skill costs context in every session of the client that discovered it, whether or not it is ever used, so a user who installed several needs a way to stop paying for the ones a given project does not need — without deleting files they would otherwise have to reinstall.
+
+### Installing Unity’s Claude Code plugin
+
+`unity setup claude` installs a plugin into Claude Code, which automated scanners flag as an agent-persistence pattern. It is fenced as follows. It runs only when the user runs the command, and this skill tells an agent to run it only when the user asks for the plugin or agrees to install it, never on its own initiative. The only source it can name is Unity’s own first-party marketplace, `Unity-Technologies/unity-agent-plugin`, compiled into the CLI: no argument, file, or environment variable can point it anywhere else. It writes no files itself; it runs Claude Code’s own `claude plugin marketplace add` and `claude plugin install`, the documented install path, with fixed arguments, so Claude Code applies its own install handling. `--dry-run` prints both commands without running them, and an existing install is reported and never reinstalled or changed. It does not also copy a skill or register an MCP server of its own.
 
 ### Local Editor control and C# evaluation
 

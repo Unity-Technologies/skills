@@ -12,6 +12,33 @@ release's own dated section once the CLI actually ships it.
 
 ## [Unreleased]
 
+## CLI `1.0.0-beta.12` (2026-09-30)
+
+Aligned to the CLI's `1.0.0-beta.12` release. Everything below was documented ahead of the release and ships in it.
+
+### Added
+
+- **`--with-pipeline` on `unity projects create`**: `projects-templates.md` documents adding `com.unity.pipeline` during creation, its never-fails-the-create warnings, the `pipeline` result field and its error codes, and the agent-session hint; `integration-advanced.md` points at it from the Pipeline setup section.
+- **`--cloud-org` and `--no-sign` on `unity assets export`**: `projects-templates.md` documents that Unity 6.6+ exports are signed by default, how the signing organization resolves, the pre-spawn refusals (exit `3` / `4`), `ASSETS_EXPORT_SIGNING_FAILED`, and the new `signed` / `signingOrganizationId` result fields.
+- **`--no-wait` and `--wait-timeout <seconds>` on `install`, `install-modules` and `projects require`**: documented in `editors-install.md` under "Waiting on another install", with exit code 9 and the `INSTALL_LOCK_BUSY` error code they fail with, including that exit 9 can follow a partial install. Exit 9 is also in `SKILL.md`'s exit code table.
+- **Experimental FEX-Emu support on Linux arm64**: `editors-install.md` documents the `UNITY_EXPERIMENTAL_FEX_EMU=1` opt-in, the FEX-Emu and RootFS it requires, the `fex-emu` doctor row, and the `FEX_EMU_EXPERIMENTAL` notification.
+- **The `source` field on plugin runtime rows**: `integration-advanced.md`'s `unity plugin` section says what `machine`, `package-manager` and `managed` mean on `plugin install`/`upgrade`/`list` and `doctor` rows, and what a runtime row ending `dependency-unavailable` means.
+- `--coppa <status>` on `projects create`, `projects link cloud`, `projects link vcs`, and `vcs setup`, and the `coppa` field those commands report when they create a Unity Cloud project. Documented as a "COPPA declaration" note under `projects create` in `projects-templates.md`, with the flag added to the cloud-question, `link` and URL-form flag lists in the same file.
+- **`unity projects close`**: documented in `projects-templates.md` beside the existing `unity close` docs. Same shipping command under its `projects` mount, previously missing from this skill even though it has been part of the published CLI for a while.
+- **`--key-from-stdin` on `unity collaboration jira server add`, `update`, and `test`**: the Collaboration reference's `jira server` table lists it next to a warning that `--key` exposes the API token in the process list and CI logs, and every example there now pipes the token with `printf '%s' "$JIRA_TOKEN" | ... --key-from-stdin`.
+- **`unity templates list --brief`**: documented in `projects-templates.md`'s Templates section, and the template-picking step now runs the list with `--brief --format json` instead of the untrimmed form. The flag trims the JSON data to the same name/displayName/type/version/status columns the table already renders, which matters because the untrimmed payload can run into the hundreds of KB for the default catalog.
+
+- `unity build`'s json/ndjson result gains `data.outputPath`: the absolute, resolved `--output-path` a build was told to write to, `null` only for an `--execute-method` build invoked without `--output-path`. Documented in the Build section of `build-run-test.md`, under a new "Output path in the result" paragraph beside the existing provenance-manifest one.
+- **`unity bug --area <cli|pipeline-package|editor|licensing|not-sure>`**: which part of Unity the issue is in, documented under Bug in `diagnostics-maintenance.md`. Optional and never blocking: on a terminal the reporter asks with "Not sure" preselected, and a non-interactive run without it sends no area. The answer rides as an `Issue area:` line in the report text, which is what triage reads. An `editor` or `pipeline-package` answer makes the project-copy question explain why a copy helps; it still defaults to no, and a `licensing` answer does not get that hint (a licensing or sign-in issue is rarely about the project itself).
+
+### Changed
+
+- **The "Bootstrap a new project from scratch" recipe now installs the Pipeline package before the first open and builds the scene in the live Editor.** It used to end at `unity open` without mentioning `unity pipeline install`, which led agents to build scenes through `unity run -- -executeMethod` and to report success on output they couldn't inspect. New steps 5 and 6 run `pipeline install`, `open` and `status --until-ready`. The recipe now says to set up scenes and assets with `unity command eval` against the running Editor, with batch mode as the headless fallback. `integration-advanced.md` and the recipe also document `STATUS_PIPELINE_LOAD_PENDING`, the `unity status` state for a package installed into an Editor that is already open but hasn't loaded it yet.
+- The Auth reference now notes, beside the `unity auth login --secret-from-stdin` example, that the secret must be piped in: a terminal on stdin is refused, and the command stops waiting after 30 seconds if the pipe is never closed.
+- The Config reference's proxy section said credentials missing from a proxy URL are read from the OS keyring, which the CLI doesn't do. It now says so, warns that credentials in a URL passed on the command line show in the process list and CI logs, and points at your OS identity or `UNITY_PROXY` instead.
+- `projects new`'s `--help` description now says it never links to Unity Cloud, matching the fact already documented in this file's `projects new` section.
+- `version-control.md`'s `vcs providers` section documents the new `cm` row, taken from `unity plugin list`'s own registry lookup, and the `unity plugin install uvcs` suggestion inside a UVCS workspace with no `cm`. It previously said the command does not report `cm`.
+
 ## CLI `1.0.0-beta.11` (2026-09-22)
 
 Aligned to the CLI's `1.0.0-beta.11` release. Cut automatically by the release that published it, from the skill as it stood in that release — so this entry covers the documentation changes that had already landed by then. Anything worth calling out individually is added here in a follow-up pass.
@@ -49,7 +76,7 @@ Aligned to the CLI's `1.0.0-beta.10` release. Much of this release's surface was
 - `unity install` — noted the bounded retry on transient download failures and that `--resume` also recovers an interrupted module download.
 - Command index (SKILL.md) refreshed: `assets` added; `config` gains `resolve`; `build` gains `run`.
 - Refreshed the latest-version note to `1.0.0-beta.10`.
-- The `unity commands` note no longer links to the hub-only `apps/cli/docs/json-output.md`; it was the skill’s only relative link outside its own tree, so the standalone copy published to Unity-Technologies/skills is now self-contained.
+- The `unity commands` note no longer links to a Hub-only doc; it was the skill’s only relative link outside its own tree, so the standalone copy published to Unity-Technologies/skills is now self-contained.
 - **Template selection defaults to URP.** The bootstrap workflow in `SKILL.md` and the Templates section of `projects-templates.md` now name `com.unity.template.urp-blank` (Universal 3D) and `com.unity.template.universal-2d` (Universal 2D) as the defaults, mark `com.unity.template.3d` / `com.unity.template.2d` as the Built-in Render Pipeline templates (deprecated from 6.5, removed in 6.7), and note that `renderPipeline` is blank for `universal-2d` in `templates list` output. Every `projects create` / `projects new` / `templates info` example now uses `urp-blank`. Previously the skill's examples all used the Built-in `com.unity.template.3d` and said the URP id “varies by version”.
 
 ## CLI `1.0.0-beta.9` (2026-09-08)
