@@ -1,51 +1,6 @@
 # Contributing
 
-Thanks for wanting to add a skill. This repo is a shared, public collection of agent skills for Unity workflows, and new contributions are welcome.
+The skills in this repo are maintained by Unity and published here automatically. We don't accept pull requests, because the next publish overwrites any change made here directly.
 
-## Before you start
-
-This is a **public** repository built on the open [skills.sh](https://skills.sh) standard. Anything you contribute ships publicly, so a skill must not reference anything internal: no internal services, internal URLs, credentials, or confidential workflows. If a skill only makes sense inside Unity's network, it doesn't belong here.
-
-## Skill structure
-
-Each skill is a folder under `skills/`, with a `SKILL.md` at its root:
-
-```
-skills/
-  your-skill/
-    SKILL.md
-```
-
-`SKILL.md` starts with YAML frontmatter, then the instructions the agent follows. The `unity-cli` skill is a good template to copy:
-
-```yaml
----
-name: your-skill
-description: Use when … (one or two sentences on exactly when an agent should reach for this skill).
-allowed-tools:
-  - Bash
----
-```
-
-- `name`: matches the folder name, in kebab-case.
-- `description`: this is the trigger the agent matches against to decide whether to run the skill, so make it specific about when the skill applies. "Use when …" is a good, clear shape and a fine default, but it's not required — what matters is that the description reads as a precise trigger. If your description is already tuned against real usage, keep it; don't rewrite it just to match a template.
-- `allowed-tools`: optional. List the tools the skill needs, or leave it out if there's no restriction.
-
-A README, CHANGELOG, and reference `.md` files alongside `SKILL.md` are all fine; the installer pulls the whole folder. Keep `SKILL.md` focused on instructions and move long reference material into separate files it links to.
-
-Submit skills as plain folders committed to the repo. Don't check in a zipped `.skill` archive. Agents read `SKILL.md` directly, which is what the skills.sh tooling and review expect. You're welcome to package a `.skill` for distribution elsewhere.
-
-## Versioning
-
-There's no per-skill release mechanism. Versioning is just the repo's git history and PRs. A `CHANGELOG.md` inside your skill folder is welcome as documentation, but nothing automated reads it.
-
-## Submitting
-
-1. Add your skill folder under `skills/`.
-2. Test it with realistic prompts in your own agent first.
-3. Open a PR. One skill per PR keeps reviews easy and is a fine default, but it's not a hard rule — batching related skills into a single PR, or splitting a large contribution across a few PRs, is equally welcome. Do whatever's easiest to review; if you group several skills together, just say so in the PR description.
-4. A maintainer reviews and merges.
-
-## Help
-
-Questions or feedback? Post in the [Unity Discussions forum](https://discussions.unity.com/).
+- **Found a bug in a skill, or have an idea for a new one?** Post in the [Unity Discussions forum](https://discussions.unity.com/).
+- **Work at Unity?** Skills are authored internally. Ask in the internal agent skills channel where to make your change.
