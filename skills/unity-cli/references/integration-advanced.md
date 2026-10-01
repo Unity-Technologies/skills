@@ -47,6 +47,24 @@ Under `--format json` / `--format ndjson` the same candidates ride the failure e
 
 `unity status --format json` reports the same project paths for every registered Editor (`data.instances[].project`); either source gives you a value to pass straight back as `--project-path`.
 
+### Multiplayer Play Mode virtual players
+
+A project running MPPM opens one Editor per virtual player, each with its own Pipeline server on its own port, so `unity status` and `unity pipeline list` report a row per player. A clone's own project directory is MPPM scaffolding (`<project>/Library/VP/<vpId>`) and its project name is that directory's name, so identify it by the fields instead:
+
+| Field | Main Editor | Clone |
+| --- | --- | --- |
+| `role` | `main` | `clone` |
+| `instanceName` | `Main Editor` | `Player 2` |
+| `vpId` | absent | `mppmd4d80c98` |
+| `ownerProjectPath` (`pipeline list` only) | absent | the project being played |
+
+All four are present only when the installed `com.unity.pipeline` publishes them; a bundle that does not simply omits them. They are carried in `human`, `json`, and `ndjson` — the `tsv` columns are unchanged.
+
+**The resolver does not treat a clone as a separate candidate.** Step 3 above collapses a project's own clones into its main Editor, so a project running virtual players resolves the way it did before MPPM was visible rather than failing `AMBIGUOUS_EDITOR`. Two consequences worth knowing:
+
+- To drive a specific player, pass its clone directory to `--project-path` — take `projectPath` for the row whose `instanceName` is that player. That reads the clone's descriptor directly and bypasses the collapse.
+- A clone whose main Editor is **not** reachable is still offered as a candidate, since it is then the only way to reach that project.
+
 ### MCP — Model Context Protocol server (AI agent integration)
 
 New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands that a connected Editor adds show up as tools automatically.
@@ -87,7 +105,32 @@ unity mcp configure vscode --dry-run
 unity mcp configure claude --server <id>
 ```
 
-`--server <id>` picks which Unity MCP server the entry points at; it defaults to `editor`, which is the one you want unless you have been told otherwise. `--dry-run` prints only the entry that would be added or changed, not the whole config file. `continue` no longer writes a file — Continue reads `config.yaml`, not the deprecated `config.json` — and prints setup instructions instead. `codex` also relaxes Codex’s sandbox network policy so `unity mcp` and a direct `unity command` can reach the Editor over localhost, and refuses any edit to `config.toml` it cannot prove safe rather than corrupting the file. Every client config write is atomic, and a `--local` write refuses to follow a symlinked path component.
+`--server <id>` picks which Unity MCP server the entry points at; it defaults to `editor`, which is the one you want unless you have been told otherwise. `--dry-run` prints only the entry that would be added or changed, not the whole config file. `continue` no longer writes a file — Continue reads `config.yaml`, not the deprecated `config.json` — and prints setup instructions instead. `codex` also relaxes Codex’s sandbox network policy so `unity mcp` and a direct `unity command` can reach the Editor over localhost, and refuses any edit to `config.toml` it cannot prove safe rather than corrupting the file. Every client config write is atomic, and a `--local` write refuses to follow a symlinked path component. `claude-code` first checks your enabled Claude Code plugins: if one already provides an MCP server that runs `unity mcp` for the same project, it warns and skips its own registration unless you confirm, or pass `--yes` to register a separate copy anyway (`--dry-run` reports that it would skip).
+
+---
+
+### Setup — install the Unity plugin into Claude Code
+
+`unity setup claude` installs Unity's Claude Code plugin, which carries the Unity skills (this one included), in one step. It runs the two `claude` commands for you — `claude plugin marketplace add Unity-Technologies/unity-agent-plugin` and then `claude plugin install unity@unity-agent-plugin`, both at user scope — and reports what you now have. It changes the user's Claude Code configuration, so run it only when the user asks for the Unity plugin, or after they agree to install it; don't run it on your own initiative.
+
+```bash
+# Install the plugin (safe to re-run: an existing install is reported, not reinstalled)
+unity setup claude
+
+# Print the two claude commands without running them
+unity setup claude --dry-run
+
+# Machine-readable result
+unity setup claude --format json
+```
+
+The json `data` carries `pluginId`, `version`, `scope`, `alreadyInstalled`, `takesEffect`, `reloadCommand`, `installedAt`, `skillsPath` and `commands` (the `claude` commands it ran). A plugin installed from a terminal loads in the **next** Claude Code session, so a fresh install reports `takesEffect: "nextSession"`; in a session that is already open, run `/reload-plugins` to load it now. Until then, read its skills straight from `skillsPath`. An install that already existed reports `takesEffect: "currentSession"` and `commands: []`.
+
+- **`claude` not on your PATH** — fails with error code `CLAUDE_NOT_FOUND` (exit 6) and names the two commands to run yourself, or the `/plugin marketplace add` and `/plugin install` equivalents inside Claude Code. An existing install is still reported without `claude` on PATH.
+- **A `claude` step fails or times out** — fails with `CLAUDE_PLUGIN_INSTALL_FAILED` (exit 6), quoting the last line `claude` printed. Nothing is retried.
+- It reads `CLAUDE_CONFIG_DIR` when set, the same place `claude` writes.
+
+Because the plugin already carries the `unity-cli` skill, don't also run `unity skill install claude-code` — Claude Code would load two copies. This command never writes a skill copy or an MCP registration of its own.
 
 ---
 
@@ -151,11 +194,41 @@ unity skill show --format json
 
 An unrecognized `--path` fails with a usage error (exit 2) naming the available paths.
 
+#### skill list / disable / enable — turn one skill off without uninstalling it
+
+Every installed skill's frontmatter is loaded in every session of the client that found it, whether or not the skill is ever used — so the cost scales with how many skills are *installed*, not how many are useful on this project. `unity skill disable` turns one off and leaves its files in place.
+
+```bash
+# Every tracked install, with its enabled state
+unity skill list
+unity skill list --format json
+
+# Turn a skill off everywhere it is installed
+unity skill disable unity-pipeline
+
+# …or only for one client
+unity skill disable unity-cli --client codex
+
+# Preview, then turn it back on
+unity skill disable unity-cli --dry-run
+unity skill enable unity-cli
+```
+
+Disabling renames the skill's `SKILL.md` to `SKILL.md.disabled` and records the choice. Every supported client discovers a skill by finding `SKILL.md` in its directory, so that one rename is what stops it loading — on all of them, identically. The rest of the tree stays where it is, which makes enabling a rename back rather than a reinstall.
+
+`unity skill refresh` skips a disabled skill and keeps tracking it, so a refresh never silently switches one back on. `unity skill install <client>` does re-enable it, and says so — installing is an explicit request to have the skill active.
+
+`unity skill install --list` reports a disabled install as `disabled` rather than `installed`, and `unity skill list` is the only view that also covers package- and plugin-provided skills.
+
+An unknown skill name fails with a usage error (exit 2) listing the names that *are* installed. A skill still installed in the pre-2026 single-file layout is skipped with a pointer to `unity skill refresh`, which migrates it to a directory first.
+
 ---
 
 ### Plugin — manage optional CLI-adjacent tools
 
 The CLI resolves a small set of external tools and runtimes it needs for specific features — Plastic SCM's `cm` client (aliases `plastic`, `uvcs`, needed for `unity vcs uvcs …` / `unity cm …`), the Unity Licensing Client (`licensingClient`, needed for `unity license`), and the Unity Gaming Services CLI (`ugs`) — on demand, from a small versioned registry. `unity plugin` manages that resolution explicitly instead of waiting for a command to trigger it.
+
+`unity plugin list --format json` is how an agent learns which plugins exist and what they do: every row carries a `description` (one or two plain-language sentences on what the plugin is for), alongside its `id`, `kind`, `state`, and resolved path, for an installed and a not-installed plugin alike. Read that field rather than guessing from the id or `displayName` alone.
 
 ```bash
 # What's resolved, and from where (PATH, or a CLI-managed copy under the external-modules dir)
@@ -176,6 +249,8 @@ unity plugin upgrade plastic
 ```
 
 `plugin install`/`upgrade` accept `--offline` to resolve only against the cached/embedded registry document (no network attempt). `plugin remove` requires confirmation — pass `-y`/`--yes` non-interactively — and discloses the bytes it will free (including superseded leftovers) before asking; removing the licensing client warns that it can break `unity license` and `unity bug`.
+
+A row for a runtime (a component a tool needs, such as the licensing client) carries `source` in `--format json`/`ndjson` and as the last `tsv` column: `machine` (a copy already on the computer), `package-manager` (installed through Homebrew, winget, apt or dnf), or `managed` (the CLI's own download). It is `null` for a tool. `plugin list` and `doctor` report the same value. A runtime row that ends `dependency-unavailable` means no usable copy was found and the runtime is not one the CLI downloads; the message above it names the install command to run.
 
 #### plugin upgrade — real version comparison, not a checksum guess
 
@@ -249,9 +324,25 @@ resident). Unlike the batch case, its Pipeline server *does* register with `unit
 
 ```bash
 unity open /path/to/MyProject
-unity status --format json                                 # wait until an instance shows state "ready"
+unity status --until-ready --project-path MyProject --format json   # blocks until state "ready" (exit 6 on timeout)
 unity command eval "return Application.unityVersion;"
 ```
+
+Run `unity pipeline install` **before** `unity open` when the project doesn't have the package
+yet; for a project you are creating, `unity projects create <name> --with-pipeline` does the same
+step as part of creation. An Editor that is already open loads a newly added package only when it next refreshes,
+typically when its window regains focus. Until then no Pipeline server is running, and
+`unity status` reports `STATUS_PIPELINE_LOAD_PENDING`: an Editor holds the project open and its
+manifest lists `com.unity.pipeline`, but nothing is serving. An Editor that is still opening or
+importing reports the same code until it finishes, so wait with `unity status --until-ready`
+first. The CLI can't force the refresh without the connection the package provides, so if the
+Editor has finished opening, ask the user to switch to its window, then re-run
+`unity status --until-ready`. Run it from inside the project directory, or pass the
+project's path to `--project-path`. This state is only reported for the project the CLI can
+locate that way. If the Editor still doesn't come up after it has focus, run
+`unity pipeline list`: an Editor in Safe Mode holds the project open too, but can't load the
+package until its compile errors are fixed (see
+[Recovering from Safe Mode](#recovering-from-safe-mode-connection-fails-because-of-compile-errors)).
 
 **One-shot (CI).** `unity run <project> --command <name> -- <args>` boots a batch Editor, runs one
 registered command, prints its result, and exits — a fresh boot each time (no warm reuse). Parse with
@@ -296,12 +387,18 @@ When multiple Editors are running, `install` and `upgrade` consider only the edi
 
 #### command (aliases: cmd, request) — send commands to a running Unity Editor
 
-Forwards a command to a connected Editor. Run it with no arguments to list the commands the connected Editor exposes.
+Forwards a command to a connected Editor. Run it with no arguments to list the tags the Editor groups its commands under, then drill into one with `--tag`. The tags come from the Editor, so a package that adds commands is reflected without a CLI update.
 
 ```bash
-# List all commands available on the connected Unity Editor
+# List the available tags, with a count of the commands under each
 unity command
 unity command --format json
+
+# List the commands carrying one tag
+unity command --tag runtime
+
+# The whole catalog in one go, as earlier versions listed it
+unity command --detail full
 
 # Execute a specific command (names/params come from the Editor)
 unity command editor_play
@@ -324,6 +421,8 @@ unity command editor_play --timeout 60
 unity command recompile_status --result-only
 ```
 
+**A named command waits out a briefly unavailable Editor.** Right after `editor_play`, or while scripts reload, the Editor declines commands for a few seconds. `unity command <name>` retries within its `--timeout` and runs the command once the Editor accepts it, so you don’t need a retry loop of your own. It resends only a command the Editor provably didn’t run: a busy rejection, or a refused connection while the Editor process is still running. A timeout or a dropped connection is never retried, because the command may already be running. If the Editor stays unavailable, the command fails with `EDITOR_NOT_READY` (exit 6), and the message says whether the Editor was busy or refusing connections.
+
 In the human table, `recompile`, `recompile_status`, `test_status` and `run_tests` results render as short readable text in the Result column instead of a JSON blob; `--format json` / `ndjson` output is unchanged.
 
 **`--caller [label]` and `--skill [name]` are analytics labels, not behavior.** `--caller` records what invoked the CLI and `--skill` records the agent skill driving the invocation; neither changes what the command does. A caller the CLI recognizes is recorded as given, anything else as `other`. They exist so an integration can identify itself — an agent running this skill has no reason to set them by hand, and both are inert when analytics are off.
@@ -343,6 +442,10 @@ unity command --tag assets/import
 # Compact rows instead of full detail
 unity command --detail compact
 
+# Ask for the tag listing explicitly, and narrow it
+unity command --tags
+unity command --tags --tag assets
+
 # Group the results
 unity command --group_by package        # flat | package | tag
 
@@ -356,7 +459,8 @@ unity command --query import --group_by tag --limit 10 --format json
 
 | Flag | Values | Default |
 |---|---|---|
-| `--detail [level]` | `compact`, `full` | `full` |
+| `--tags` | boolean | on when no command name and no `--detail` |
+| `--detail [level]` | `compact`, `full` | — |
 | `--query [term]` | substring on name, description, or tag | — |
 | `--tag [tag]` | a tag or tag subtree (`assets`, `assets/import`) | — |
 | `--group_by [mode]` | `flat`, `package`, `tag` | `flat` |
@@ -366,6 +470,7 @@ unity command --query import --group_by tag --limit 10 --format json
 
 Two traps worth knowing:
 
+- **`--tags` and `--detail` pick the same thing**, so they cannot be combined; ask for one or the other.
 - **`--group_by` is spelled with an underscore**, unlike every other flag on the CLI. That is deliberate and load-bearing, so don't "correct" it to `--group-by`.
 - **These flags only mean "listing" when no command name is given.** With a command name they are forwarded to that Pipeline command as ordinary parameters — `unity command my_cmd --query foo` passes `query: foo` to `my_cmd`. That is why each takes an *optional* value: a bare `--query` forwards boolean `true` to the command, while the listing path rejects a bare flag with a clear error rather than guessing.
 
@@ -382,6 +487,18 @@ unity commands
 ```
 
 Each node in `data.commands` carries `name`, `aliases`, `description`, `arguments` (positional, with `required`/`variadic`), `options` (this command's own flags: `long`/`short`/`valuePlaceholder`/`default`/`description`), `globalOptions` (same shape — flags inherited from every ancestor, so `--format`/`--json`/etc. show up on every node without repeating a root-level dump, and a mid-tree umbrella's own options show up on its descendants too), and `subcommands` (the same shape, recursively). Hidden and dev-only surfaces are excluded — the same visibility rule `--help` uses — so what you see is exactly what the current build actually exposes.
+
+**Search it instead of dumping it: `unity commands --grep <pattern>`.** The same tree, plus the plugin catalog (the same universe `unity plugin list` reports, installed or not), filtered to what matches. A command matches on its full path (`plugin list`), name, aliases, description, arguments, or its own options; the inherited global options are not searched, since every command has them. A plugin matches on its id, display name, registry description, or the command word that runs it (`ugs`, `uvcs`, `cm`, `ai`):
+
+```bash
+# One match per line: kind, name, state, install command, description
+unity commands --grep generate
+
+# Structured: { pattern, count, matches: [{ kind, name, description, state, installed, installCommand }] }
+unity commands --grep '^plugin ' --format json
+```
+
+`kind` is `command` or `plugin`. On a plugin row `state` is the same token `unity plugin list` uses (`resolved`, `not-installed`, `unsupported-platform`), `installed` is a boolean, and `installCommand` is set only when the plugin is installable here but not installed. On a command row those three are `null` rather than omitted. Matching is case-insensitive and the pattern is always a regular expression, so an ordinary keyword is a valid pattern. A pattern that doesn't compile is refused up front (exit `2`), and one that takes too long to evaluate stops with exit `2` instead of hanging. No match is not an error: the command exits `0` and says so. The search only reads the cached or bundled plugin registry and never goes to the network.
 
 #### Available in production — the common live commands
 
@@ -454,9 +571,15 @@ unity status --format json
 # Filter to one instance
 unity status --port 8765
 unity status --project megacity
+
+# Block until a matching Editor is ready (default timeout 300 s)
+unity status --until-ready --project-path megacity --format json
+unity status --until-ready --timeout 60 --format json
 ```
 
-Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — so a script that polls `status` does not treat a booting Editor as ready. Read the error code, not the exit code: `starting` yields `STATUS_NOT_READY`, and all three failure codes below exit 6. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_NOT_READY` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability.
+Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). While an Editor is in Play mode, its row also carries `frameCount` and `playerLoopTicking` when the installed `com.unity.pipeline` reports them; `playerLoopTicking: false` outside a pause means the game is frozen (see [playmode-verification-loop.md](playmode-verification-loop.md)). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — so a script that polls `status` does not treat a booting Editor as ready. Read the error code, not the exit code: `starting` yields `STATUS_NOT_READY`, and all four failure codes below exit 6. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_PIPELINE_LOAD_PENDING` / `STATUS_NOT_READY` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability. `STATUS_PIPELINE_LOAD_PENDING` means an Editor has the project open with the package in its manifest but hasn't loaded it yet (see [Getting an Editor to drive](#getting-an-editor-to-drive)).
+
+**Waiting for ready: use `--until-ready`, not a polling loop.** After `unity open`, after `editor_play` (which drops the Pipeline listener for about 8 seconds), or after a domain reload, `unity status --until-ready` keeps checking until a matching Editor reports `ready`, then prints the same envelope a plain `status` would, with exit 0. It works when no Editor exists yet at the moment you call it, as long as one appears before the timeout. `--port` and `--project-path` scope every check, so a ready Editor for another project never ends the wait. `--timeout <seconds>` sets the budget (default 300; `0` takes one check). On timeout it exits 6 and the envelope reports the last state it saw, with that state’s usual code, so read `errors[0].code` exactly as you would for a plain `status`. `--timeout` without `--until-ready` is rejected (exit 2, `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`). The batch-mode caveat above still applies: an Editor that `status` never lists is never reported ready, so `--until-ready` would wait out the whole budget for it.
 
 #### Sandboxed agent tooling can hide a running Editor
 
@@ -656,6 +779,7 @@ unity shell
 - **Tab completion** — press Tab to complete command names, subcommands, option flags, and option values (for example `--format`) against the live command tree, plus the shell's own builtins.
 - Interactive prompts (confirmations, sign-in) work inside the shell, and a write in one command (`auth logout`, `config`, `editors default`, …) is visible to the next.
 - Piped/scripted sessions (`… | unity shell`) run every line and exit with the first command that failed (0 when every command succeeds), so a batch is usable in automation with `$?`. Interactive sessions still exit 0.
+- In a piped session and in `--protocol ndjson` mode, stdin carries the shell's own commands, so a command the shell dispatches sees an **empty stdin**. `--secret-from-stdin` and `--key-from-stdin` therefore read nothing there and report a missing secret (exit 2). `--git-token-stdin` reports nothing: it resolves no token and falls through to `--git-token`, the provider token environment variable, and the credential helper, so a clone or link can proceed with an ambient credential. Plugin lines (`unity-*` on PATH) are the exception: they still inherit the shell’s stdin and can read its command stream. Pass the secret another way (`--client-secret`, `--key`, `--git-token`, or its environment variable), or run that command outside the shell with the secret piped to it.
 
 #### Session context & defaults
 

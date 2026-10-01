@@ -7,8 +7,15 @@ targets/builds and Unity Pipeline Automation apps/pipelines/jobs with the CLI.
 
 | User wants to inspect | Command family |
 |---|---|
-| Build targets or build history | `unity pipeline cloud-build` |
-| Automation apps, pipelines, or jobs | `unity pipeline automation` |
+| Build targets or build history | `unity pipeline cloud-build targets` / `builds` |
+| The project itself, or its build statistics | `unity pipeline cloud-build project` |
+| Which Unity, Xcode, Visual Studio, OS, platform or machine type is available | `unity pipeline cloud-build tooling` |
+| Build target groups | `unity pipeline cloud-build targets groups` |
+| Automation apps, pipelines, or jobs | `unity pipeline automation apps` / `pipelines` / `jobs` |
+| Automations, or the bots that run them | `unity pipeline automation automations` / `bots` |
+| Configuration profiles or pipeline templates | `unity pipeline automation profiles` / `templates` |
+| An app's or pipeline's version history | `unity pipeline automation apps versions` / `pipelines versions` |
+| How many jobs are running or queued | `unity pipeline automation jobs stats` |
 
 These commands are read-only. They don't trigger or cancel runs, fetch
 logs/artifacts, or change configuration. They don't require a running Editor or
@@ -91,6 +98,170 @@ Use `jobs get` when the user asks about steps or execution details. Job list
 entries are summaries; absent steps or `steps: []` in a summary doesn't establish
 that the job has no steps.
 
+## Read the project, and what tooling is available
+
+`unity pipeline cloud-build project` is singular and takes no identifier: the
+project already in scope is the one it reads. Use `get` for its identity and
+`stats` for build counts and averages.
+
+```sh
+unity pipeline cloud-build project get --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build project stats --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+```
+
+`unity pipeline cloud-build tooling` answers "what can I build with". Each
+lookup has `list`; only `unity` and `os` have `get`, because only their
+endpoints address a single item. `tooling xcode get` is an unknown command
+rather than an error about the argument.
+
+```sh
+unity pipeline cloud-build tooling unity list --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling unity get "<version>" --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling xcode list --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling visual-studio list --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling os list --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling os get "<value>" --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+unity pipeline cloud-build tooling platforms list --cloud-org "<org-id>" --format json
+unity pipeline cloud-build tooling machine-types list --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+```
+
+**Each lookup accepts only its own filters.** A filter offered by a neighbouring
+lookup is an unknown option here, not a filter that gets ignored — so don't
+transfer one across:
+
+| Lookup | Filters |
+|---|---|
+| `tooling unity list` | `--platform` |
+| `tooling os list` | `--family`, `--version`, `--unity-version`, `--xcode-version` |
+| `tooling platforms list` | `--unity-version`, `--platform` |
+| `tooling machine-types list` | `--operating-system`, `--operating-system-version` |
+| `tooling xcode list`, `tooling visual-studio list` | none |
+
+`tooling platforms list` is the one lookup that needs no project; it still takes
+`--cloud-org`. **None of the `tooling` lookups accepts `--page` or `--limit`** —
+their endpoints document no pagination, so supplying either fails as an unknown
+option. Each returns its whole list in one read.
+
+**Unavailable entries are already filtered out, in every format.** A `list` does
+not return Unity, Xcode or OS versions the service marks `hidden`, nor machine
+types it marks `enabled: false`, and this applies to `--format json` and
+`ndjson` exactly as it does to the table. `tooling platforms list` filters the
+same way two levels down, inside `operatingSystems[].versions[]`, because those
+are the same OS-version objects `tooling os list` returns.
+
+Three consequences worth knowing before you act on a result:
+
+- **A `list` is not an inventory of everything that exists.** If you are
+  checking whether a specific version exists, use `tooling unity get <version>`
+  or `tooling os get <value>` — a `get` is NOT filtered and returns a hidden
+  version, with `hidden: true` on it. That is the supported way to inspect a
+  version a build target still references after it stopped being offered.
+- **There is no flag to see the excluded entries in a `list`.** `xcode` and
+  `machine-types` have no `get` at all, so a hidden Xcode version and a
+  disabled machine type are not reachable from the CLI in any format.
+- **A platform's `defaultVersion` can name a version that is not in its
+  filtered `versions` array.** It is left exactly as the service sent it, so
+  resolve it defensively rather than assuming a match.
+
+Only an explicit boolean excludes an entry — an absent field, a null, or a
+non-boolean leaves it visible, so a list never shrinks because the service
+stopped populating a flag. An all-excluded list is an ordinary empty result and
+exits 0.
+
+The tables reflect this. `unity` and `os` lead with `value`, the token their
+`get` takes, so the first column is always the one to copy. `hidden` is not a
+list column on `unity` or `xcode`, and `enabled` is not one on `machine-types`,
+because after filtering each could only print a single value; `hidden` IS a
+column on the two `get` detail reads, where it is not constant. Deprecated rows
+are painted yellow in human output when the terminal supports colour, and the
+`deprecated` column still prints `true` either way, so nothing is lost when
+colour is unavailable.
+
+`unity pipeline cloud-build targets groups` lists the project's build target
+groups. It is list-only, and it is a different thing from
+`targets list --group-name`, which filters targets within one page.
+
+```sh
+unity pipeline cloud-build targets groups --cloud-org "<org-id>" --cloud-project "<project-id>" --format json
+```
+
+Its JSON nests `data` inside `data` — `.data.data[]` — because the service's own
+envelope property is also called `data`. That is correct output, not a defect.
+
+## Read automations, bots, profiles and templates
+
+```sh
+unity pipeline automation automations list --cloud-org "<org-id>" --format json
+unity pipeline automation automations get "<automation-id>" --cloud-org "<org-id>" --format json
+unity pipeline automation bots list --cloud-org "<org-id>" --format json
+unity pipeline automation bots get "<bot-id>" --cloud-org "<org-id>" --format json
+unity pipeline automation profiles list --cloud-org "<org-id>" --format json
+unity pipeline automation profiles get "<profile-id>" --cloud-org "<org-id>" --format json
+unity pipeline automation templates list --cloud-org "<org-id>" --format json
+unity pipeline automation templates get "<template-id>" --cloud-org "<org-id>" --format json
+```
+
+| Resource | List entries | Values to pass to get |
+|---|---|---|
+| Automations | `data.results[]` | `automationId` |
+| Bots | `data.results[]` | `id` |
+| Profiles | `data.configurationProfiles[]` | `id` |
+| Templates | `data.results[]` | `id` |
+
+**An automation's secret VALUES are never readable.** `secrets` keeps its key
+names and every value renders as `***`, so you can report which secrets an
+automation consumes but never what they are. Don't claim a value is empty
+because it shows as `***`. An absent, null or empty `secrets` map means
+something different from a masked one, and the three stay distinguishable.
+
+**A bot's `serviceAccountId` and `serviceAccountKeyId` are identifiers, not
+credentials.** They name which service account the bot runs as and which of its
+keys; both are safe to report and neither can be used to authenticate.
+
+`profiles list` accepts `--app-id` and **no pagination flags** — its endpoint
+documents none. `templates list` accepts `--app-ids`, `--tags`, `--metadata`,
+`--system-metadata` and `--used-with`, each repeatable, plus the usual
+`--page`/`--limit`:
+
+```sh
+unity pipeline automation templates list --tags "<tag>" --tags "<other-tag>" --cloud-org "<org-id>" --format json
+```
+
+Note `--app-id` (profiles, singular) and `--app-ids` (templates, plural) differ
+by one character and are not interchangeable; each is an unknown option on the
+other command.
+
+`profiles get` returns the matched profile itself, not the container it arrives
+in. `templates get` returns the template directly.
+
+## Read version history and job statistics
+
+Both version groups take the parent's ID first, which is the one place a `list`
+in this family requires an argument.
+
+```sh
+unity pipeline automation apps versions list "<app-id>" --cloud-org "<org-id>" --format json
+unity pipeline automation apps versions get "<app-id>" "<version>" --cloud-org "<org-id>" --format json
+unity pipeline automation pipelines versions list "<pipeline-id>" --cloud-org "<org-id>" --format json
+unity pipeline automation pipelines versions get "<pipeline-id>" "<version>" --cloud-org "<org-id>" --format json
+```
+
+These read their own endpoints directly rather than scanning, so they don't hit
+the lookup limit `apps get` and `pipelines get` can reach.
+
+Their output fields match the parent family's: `versions list` reports what
+`apps list` / `pipelines list` report, and `versions get` reports what
+`apps get` / `pipelines get` report — which includes `description` and `tags`,
+the two fields the list tables omit.
+
+`unity pipeline automation jobs stats` reports `runningJobs`, `queuedJobs` and
+`concurrencyLimit` for the organization. Use it instead of counting job pages —
+a page count is both slower and wrong as soon as a boundary moves.
+
+```sh
+unity pipeline automation jobs stats --cloud-org "<org-id>" --format json
+```
+
 ## Filter and sort build targets
 
 These flags apply only to `unity pipeline cloud-build targets list`:
@@ -130,7 +301,7 @@ a deleted-target lookup can return not found.
 
 ## Request additional pages
 
-All five list commands accept `--page` and `--limit`. Defaults are page `1`
+Ten list commands accept `--page` and `--limit`: `targets list`, `builds list`, `apps list`, `pipelines list`, `jobs list`, `automations list`, `bots list`, `templates list`, and both `versions list` leaves. The six `tooling` lookups, `targets groups` and `profiles list` do NOT — their endpoints document no pagination, so the flags are unknown options there rather than ignored. Defaults are page `1`
 and limit `25`; page must be at least `1`, and limit must be `1` through `100`.
 The page's starting offset, `(page - 1) * limit`, can't exceed `2,147,483,647`.
 One invocation returns one page, not the full inventory. Request the next page
