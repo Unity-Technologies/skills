@@ -40,6 +40,8 @@ unity command editor_play --project-path /path/to/MyProject
 
 A `unity status` instance's `project` field is what `--project-path` takes. For `unity command`/`list`/`job`/`mcp`, matching no running project fails with `AMBIGUOUS_EDITOR` and lists the candidates. [Details](references/integration-advanced.md#targeting-one-of-several-running-editors).
 
+**Working in several worktrees or agent sessions? One Editor per worktree.** Make each worktree with `unity vcs git worktree add <branch> --into <path>`, so you choose where it lands. Its output masks the account name in a home-directory path, so don't copy a path from it. The Unity project is `<path>` when it sits at the repository root, and `<path>/<its folder>` when it doesn't. Open that project's own Editor with `unity open <project>`. Then set `UNITY_PROJECT_PATH=<full project path>` for the session, once. `unity open`, `status`, `command`, `list`, `job` and `mcp` read it when you pass no path, so a forgotten `--project-path` still lands on your Editor. `recompile`, `close` and `mcp configure` don't read it: pass the path to those. Without the variable, a bare `unity open` opens the project of the current directory, which is still your source checkout. Target that Editor by the same full path every time, including `unity status --until-ready --project-path <project>`. A path that exists matches only that project, while a bare name also matches a sibling whose path contains it. Never drive an Editor whose project is not your own checkout (or one of its Multiplayer Play Mode clones). An Editor open on a sibling worktree answers every command just like yours. A command sent there edits that checkout's scenes, and its Play mode, recompiles and imports run against that checkout's code. If your own Editor isn't open, open it. If it has gone away, tell the user rather than borrowing the one that is running.
+
 Requires the project's `com.unity.pipeline` package (Unity 6.0+) — add it once with `unity pipeline install`. Full details — launching a headless Editor to drive, `unity list` tool discovery, and authoring custom `[CliCommand]` tools — are in [integration-advanced.md](references/integration-advanced.md).
 
 The package also ships a deeper `unity-pipeline` agent skill, invisible to clients inside `Library/PackageCache` — in a project with the package, run `unity skill install <client> --local` once to mirror it beside this skill.
@@ -47,6 +49,16 @@ The package also ships a deeper `unity-pipeline` agent skill, invisible to clien
 > **Can't connect / commands time out? Check for Safe Mode first.** When a project has C# compile errors, the Editor boots into **Safe Mode**, where the Pipeline package doesn't load — so `unity command`, `unity status`, `unity list`, and `unity recompile` can't connect at all. Note what that means for `unity recompile` specifically: it reports errors you introduce into an Editor that is **already running**, but an Editor that *started* with broken code never loads the package, so there is nothing to ask and it exits `7` rather than reporting the errors. Don't fall back to blind file-editing: run `unity pipeline list` to confirm, then fix the compile errors and restart Unity. Full recovery loop in [integration-advanced.md → Recovering from Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors).
 
 > **Running as a sandboxed coding agent and `unity status` reports no instances?** A restrictive sandbox can hide an Editor that is genuinely running from this CLI's view of it — don't treat that alone as proof the Editor is down. Full detail in [integration-advanced.md → Sandboxed agent tooling can hide a running Editor](references/integration-advanced.md#sandboxed-agent-tooling-can-hide-a-running-editor).
+
+> **A call timed out, or the Editor's lifecycle failed? Tell the user, don't silently work around it.** First rule out [Safe Mode](references/integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors), a sandbox, and an Editor that is still importing or loading. Read `errors[0].code` under `--format json`, and give a slow import a longer `--timeout`. If it is still one of these, report it:
+>
+> - a command that times out
+> - an Editor that never reaches `ready` under `unity status --until-ready` (exit 6)
+> - a connection that drops mid-command
+> - an Editor that quits or restarts under you
+> - a `unity open` that never produces an Editor
+>
+> Don't quietly retry in a loop, switch to another Editor, or fall back to hand-editing scene and asset files. Say what you ran, what failed and what you already tried. Then offer to file it with `unity bug --area pipeline-package` (`--area editor` when the Editor itself quit or never started), and ask first: `unity bug` sends logs to Unity, so never run it on your own initiative.
 
 ## Install the CLI (if not already installed)
 
@@ -113,7 +125,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_FORMAT` | `--format` | Output format (`human`, `json`, `tsv`, `ndjson`, `github`). `HUB_FORMAT` is a deprecated alias. |
 | `UNITY_EDITOR_VERSION` | `--editor-version` | Editor version (e.g. `2023.3.0f1`, `latest`, `lts`). |
 | `UNITY_ARCHITECTURE` | `--architecture` | Chip architecture (`x86_64`, `arm64`). |
-| `UNITY_PROJECT_PATH` | path argument | Project path — used by `open`, and also honored by `status` and the cloud commands. |
+| `UNITY_PROJECT_PATH` | path argument | Project path when none is passed. Honored by `open` (and `projects open`), the Editor-connecting commands `status`, `command`, `list`, `job` and `mcp`, plus `pipeline install`/`upgrade` and the `collaboration` commands. Not read by `recompile`, `close` (and `projects close`), or `mcp configure`. |
 | `UNITY_QUIET` | `--quiet` | Suppress non-essential output. |
 | `UNITY_VERBOSE` | `--verbose` | Show full error details on failure. |
 | `UNITY_NON_INTERACTIVE` | `--non-interactive` | Disable interactive prompts. |
@@ -137,7 +149,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_NO_ELEVATE` | `--no-elevate` | Windows: skip the elevated (UAC) install helper for `install` / `install-modules`, so the install service runs unelevated. The Editor's NSIS installer still asks for elevation on demand if Windows requires it for your account — an administrator token always does; a standard user never does. |
 | `UNITY_INSTALL_RETRIES` | `--retries` (`install-modules` only) | Number of times `install` and `install-modules` retry an editor or module download whose transfer or validation fails. `0` disables retries; `unity install` has no `--retries` flag, so set the variable there. |
 | `UNITY_NO_AUTH_BROKER` | — | Skip the resident auth broker and read credentials directly from the OS keyring. By default every command that needs a token goes through a broker that starts on demand and exits after two idle minutes (see [auth-license-cloud.md](references/auth-license-cloud.md)). |
-| `UNITY_PEER_AUTH_MODE` | — | How the auth broker and the Editor identity helper verify a connecting process’s code signature. `enforce` is the default on macOS and Windows: an unsigned or non-Unity-signed peer is refused. `identify-only` logs without refusing — use it for an Editor you built from source. Linux logs only unless set to `enforce` together with `UNITY_PEER_AUTH_LINUX_ALLOWED_HASHES` (comma-separated SHA-256 hashes of trusted executables). |
+| `UNITY_PEER_AUTH_MODE` | — | How the auth broker and the Editor identity helper verify a connecting process’s code signature. `enforce` is the default on macOS and Windows: an unsigned or non-Unity-signed peer is refused. `identify-only` logs without refusing — use it for an Editor or app you built from source. A broker started with it runs as a separate dev broker: its own address and its own sign-in, which you make once from the dev app that uses it (`unity auth login` signs in your normal store, which the dev broker never reads). Unity-signed apps are refused on macOS and Windows. Linux logs only unless set to `enforce` together with `UNITY_PEER_AUTH_LINUX_ALLOWED_HASHES` (comma-separated SHA-256 hashes of trusted executables). |
 | `UNITY_CLI_HOME` | — | Install root for the install script and `unity self-install`, on every platform including Windows: the binary lands in `<UNITY_CLI_HOME>/bin` instead of the default location. |
 | `UNITY_CLI_FTUE` | — | Agent first-session ("paved") mode. Any value except empty or `0` turns it on. Every `--format json` envelope and ndjson `result` frame then carries a top-level `"paved": true`, and `projects create` saves the choice to the new project's `UserSettings/UnityCliPaved.json`, so later commands run in that project are paved with no variable set. Nothing else changes. See [projects-templates.md](references/projects-templates.md). |
 | `UNITY_NO_EDITOR_IDENTITY_SERVER` | — | Disable the background identity helper that `unity open` starts to answer the Editor’s sign-in lookups when no Hub is running (see [projects-templates.md](references/projects-templates.md)). Presence-based. |
@@ -194,7 +206,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | `config` (proxy / update-check / accelerator / get / set / list / unset / resolve), `context` (save / use / list / current / delete), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` (+ `build run`), `recompile`, `watch` (`test`) | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `docs`, `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy`, `diagnose accelerator`, `diagnose update` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md) |
-| `mcp` (+ `configure`), `setup claude`, `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `mcp` (+ `configure`), `setup claude` / `codex` / `grok`, `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
@@ -350,11 +362,12 @@ unity projects create "MyGame" --path ~/UnityProjects \
 #    is live from the first open.
 unity pipeline install --project-path ~/UnityProjects/MyGame
 
-# 6. Open the project and wait until its Editor is ready to take commands. Run from inside the
-#    project so the CLI targets its Editor (--project-path here is a substring filter, not a path).
+# 6. Open the project and wait until its Editor is ready to take commands. Pass the project's
+#    full path: a path that exists matches that project's Editor only, so an Editor open on a
+#    sibling checkout such as ~/UnityProjects/MyGame-lighting can't end the wait.
 cd ~/UnityProjects/MyGame
 unity open .
-unity status --until-ready --project-path MyGame --format json
+unity status --until-ready --project-path ~/UnityProjects/MyGame --format json
 ```
 
 **Then build the scene in the live Editor, not in batch mode.** Create GameObjects, wire
