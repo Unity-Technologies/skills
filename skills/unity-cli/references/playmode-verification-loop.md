@@ -61,22 +61,29 @@ instead of sticking for the rest of the session.
 
 This is the confirmed, currently available fix for the freeze, not a temporary stand-in: it is a
 real Pipeline command with its own doc entry (`Documentation~/commands/editor-lifecycle-and-observability.md`),
-not something a future package release removes the need for. As of this writing the CLI does not
-call it automatically before `editor_play`: it sends only the bare `editor_play` command. Call it
-yourself until that changes.
+not something a future package release removes the need for. The CLI does not call it
+automatically before `editor_play`: it sends only the bare `editor_play` command, so call it
+yourself.
 
-The player loop has a second switch, `Application.runInBackground`. With it off, an unfocused
-Editor can stay frozen in Play mode even while the Editor itself ticks. Check whether your
-package's `editor_play` handles it:
+The player loop has a second switch: the project's Run In Background Player Setting
+(`Application.runInBackground`). On macOS and Windows, with it off, Unity pauses the game while the
+Editor is unfocused, and `set_autotick` can't undo that pause. The setting ships in builds, so
+turn it on explicitly with the Pipeline command, which records the project's value and keeps it out
+of builds:
 
 ```bash
-unity command --query editor_play --format json   # look for a run_in_background parameter
+unity command editor_set_run_in_background                      # on for this Editor session
+unity command editor_set_run_in_background -- --enable false    # put the project's value back
 ```
 
-If `editor_play` takes `run_in_background`, it turns the setting on for the Play session by
-default and puts the project's value back when Play mode ends, so there is nothing to do. If it
-does not, set it yourself before `editor_play`. In the Editor this is the project's Player Settings
-value, so read it first and restore it after `editor_stop`:
+The override doesn't touch the project's saved settings, so it lasts until you revert it or the
+Editor restarts. After a restart, run the command again.
+
+Alternatively, a project can turn on **Ensure editor runs in background in PlayMode** under
+Project Settings > Pipeline > Editor, which applies it only while playing. Check that your package
+has the command with `unity command --query editor_set_run_in_background --format json`. On an older
+package, set it with `eval` before `editor_play`, and put the project's value back after
+`editor_stop`, because nothing keeps it out of builds there:
 
 ```bash
 unity command eval "return UnityEngine.Application.runInBackground;"   # note the project's value
@@ -112,7 +119,7 @@ when the wait was armed. A `met: true` result with `framesObserved` > 0 is your 
 true` with the frame count unmoved is the frozen-at-frame-1 symptom this whole step exists to
 catch, and step 2 (`set_autotick` and `runInBackground`) is the fix to check first.
 
-A package whose `editor_play` takes `run_in_background` also reports the player loop in
+A package that has `editor_set_run_in_background` also reports the player loop in
 `unity status --format json` while in Play mode: `frameCount` and `playerLoopTicking` on the
 instance row. `playerLoopTicking: false` outside a pause is the same frozen symptom, and it costs
 one read instead of a wait. Keep the `wait_for` above as the proof; the status fields are a quick
@@ -219,6 +226,7 @@ unity command editor_stop
 ```bash
 unity status --format json
 unity command set_autotick
+unity command editor_set_run_in_background
 unity command editor_play
 unity status --until-ready --project-path <path> --format json
 unity command wait_for -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' --timeout_s 10
@@ -226,4 +234,5 @@ unity command capture_game_view -- --source screen --save_path Screenshots/playt
 unity command console -- --tail 50 --level error
 unity command eval "<C# to inspect or tune the running game>"
 unity command editor_stop
+unity command editor_set_run_in_background -- --enable false
 ```

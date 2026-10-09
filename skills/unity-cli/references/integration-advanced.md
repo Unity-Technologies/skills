@@ -11,10 +11,10 @@ environment variables, exit codes, and common workflows. All global flags (`--fo
 `unity command` (and its subcommands), `unity list`, `unity job`, and `unity mcp` share one target resolver, which reads its selectors in this order:
 
 1. `--runtime <pattern>`, then `--runtime-path <path>` — these target a running **Unity Player build**, not an Editor, and are read **before** `--project-path`. Supply a runtime selector and `--project-path` together and the runtime wins, so pass only the one you mean.
-2. `--project-path <path>` — the Editor selector.
+2. `--project-path <path>` — the Editor selector. With the flag absent, `UNITY_PROJECT_PATH` stands in for it.
 3. Otherwise, the running Editor whose project directory **contains the current working directory**. With a project nested inside another, the deepest match wins.
 
-**Pass `--project-path` whenever more than one Editor may be running.** Relying on step 3 means the target depends on the shell's cwd, which is rarely what an agent intends and is invisible in the command it ran.
+**Pass `--project-path` whenever more than one Editor may be running.** Relying on step 3 means the target depends on the shell's cwd, which is rarely what an agent intends and is invisible in the command it ran. An agent working in its own worktree can instead set `UNITY_PROJECT_PATH` to that worktree's full project path once for the session. `unity status` honors it too, but `unity recompile` does not: pass `--project-path` to it.
 
 > `unity pipeline install` and `unity pipeline upgrade` take `--project-path` too, but they do **not** use this resolver — they pick among the editors that actually need the operation, showing an interactive selector on a terminal and a different, candidate-listing error without `data.candidates` otherwise. Everything below describes the shared resolver only.
 
@@ -75,6 +75,9 @@ unity mcp
 
 # Pin the server to a specific Unity project (the CLI discovers the running Editor itself)
 unity mcp --project-path /path/to/MyProject
+
+# Same, from the environment (the flag wins when both are set)
+UNITY_PROJECT_PATH=/path/to/MyProject unity mcp
 ```
 
 `unity mcp` no longer accepts `--instance <host:port>`: talking to an Editor requires that Editor's per-instance auth token, which a bare host and port can't carry, so the CLI always discovers running Editors itself — run from the project directory or pass `--project-path` to target one. Editors launched to create a new project (`-createproject`) are discovered too.
@@ -96,7 +99,7 @@ unity mcp configure claude-code
 # Project-local config for clients that support it (cursor, vscode, vscode-insiders, kiro, codex)
 unity mcp configure cursor --local
 
-# Pin to a project; skip the "already exists, update?" prompt; preview without writing
+# Pin to a project (configure ignores UNITY_PROJECT_PATH); skip the "already exists, update?" prompt; preview without writing
 unity mcp configure claude --project-path /path/to/MyProject
 unity mcp configure vscode --yes
 unity mcp configure vscode --dry-run
@@ -131,6 +134,20 @@ The json `data` carries `pluginId`, `version`, `scope`, `alreadyInstalled`, `tak
 - It reads `CLAUDE_CONFIG_DIR` when set, the same place `claude` writes.
 
 Because the plugin already carries the `unity-cli` skill, don't also run `unity skill install claude-code` — Claude Code would load two copies. This command never writes a skill copy or an MCP registration of its own.
+
+### Setup — install the Unity plugin into Codex or Grok Build
+
+`unity setup codex` and `unity setup grok` do the same for Codex and Grok Build, with the same rules: run one only when the user asks for the Unity plugin in that agent, or after they agree to install it.
+
+- `unity setup codex` runs `codex plugin marketplace add Unity-Technologies/unity-agent-plugin`, then `codex plugin add unity@unity-agent-plugin`. It reads `CODEX_HOME` when set (default `~/.codex`). A plugin disabled in Codex (`enabled = false`) counts as not installed, so this adds it again. If `codex` isn't on your PATH it fails with `CODEX_NOT_FOUND`; a failed or timed-out step fails with `CODEX_PLUGIN_INSTALL_FAILED`.
+- `unity setup grok` runs `grok plugin install Unity-Technologies/unity-agent-plugin --trust`. `--trust` is Grok Build's own consent flag for a non-interactive install; running this command is that consent. It reads `GROK_HOME` when set (default `~/.grok`). If `grok` isn't on your PATH it fails with `GROK_NOT_FOUND` and points at `/marketplace` inside Grok Build; a failed or timed-out step fails with `GROK_PLUGIN_INSTALL_FAILED`.
+
+```bash
+unity setup codex --dry-run
+unity setup grok --format json
+```
+
+Both take `--dry-run` and every output format, and report the same json `data` as `setup claude`, except `reloadCommand` is `null`: neither agent has a reload command, so a fresh install loads in the next session (`takesEffect: "nextSession"`). The plugin carries the `unity-cli` skill, so don't also run `unity skill install codex` (or the Grok equivalent).
 
 ---
 
@@ -324,7 +341,7 @@ resident). Unlike the batch case, its Pipeline server *does* register with `unit
 
 ```bash
 unity open /path/to/MyProject
-unity status --until-ready --project-path MyProject --format json   # blocks until state "ready" (exit 6 on timeout)
+unity status --until-ready --project-path /path/to/MyProject --format json   # blocks until state "ready" (exit 6 on timeout)
 unity command eval "return Application.unityVersion;"
 ```
 
@@ -573,13 +590,13 @@ unity status --port 8765
 unity status --project megacity
 
 # Block until a matching Editor is ready (default timeout 300 s)
-unity status --until-ready --project-path megacity --format json
+unity status --until-ready --project-path ~/UnityProjects/megacity --format json
 unity status --until-ready --timeout 60 --format json
 ```
 
 Reads the lockfile the Pipeline package writes per running Editor (faster and more CI-friendly than `pipeline list`). While an Editor is in Play mode, its row also carries `frameCount` and `playerLoopTicking` when the installed `com.unity.pipeline` reports them; `playerLoopTicking: false` outside a pause means the game is frozen (see [playmode-verification-loop.md](playmode-verification-loop.md)). Stale-heartbeat instances are reported as `unreachable` without an HTTP probe. An Editor that is still starting up is reported as `starting` rather than `ready` — the CLI probes the Editor’s main thread directly — so a script that polls `status` does not treat a booting Editor as ready. Read the error code, not the exit code: `starting` yields `STATUS_NOT_READY`, and all four failure codes below exit 6. With `--format json`/`ndjson`, emits a `success: false` envelope (`STATUS_NO_INSTANCES` / `STATUS_PIPELINE_LOAD_PENDING` / `STATUS_NOT_READY` / `STATUS_ALL_UNREACHABLE`) and a non-zero exit when no Editor is reachable, so CI scripts can gate on Editor availability. `STATUS_PIPELINE_LOAD_PENDING` means an Editor has the project open with the package in its manifest but hasn't loaded it yet (see [Getting an Editor to drive](#getting-an-editor-to-drive)).
 
-**Waiting for ready: use `--until-ready`, not a polling loop.** After `unity open`, after `editor_play` (which drops the Pipeline listener for about 8 seconds), or after a domain reload, `unity status --until-ready` keeps checking until a matching Editor reports `ready`, then prints the same envelope a plain `status` would, with exit 0. It works when no Editor exists yet at the moment you call it, as long as one appears before the timeout. `--port` and `--project-path` scope every check, so a ready Editor for another project never ends the wait. `--timeout <seconds>` sets the budget (default 300; `0` takes one check). On timeout it exits 6 and the envelope reports the last state it saw, with that state’s usual code, so read `errors[0].code` exactly as you would for a plain `status`. `--timeout` without `--until-ready` is rejected (exit 2, `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`). The batch-mode caveat above still applies: an Editor that `status` never lists is never reported ready, so `--until-ready` would wait out the whole budget for it.
+**Waiting for ready: use `--until-ready`, not a polling loop.** After `unity open`, after `editor_play` (which drops the Pipeline listener for about 8 seconds), or after a domain reload, `unity status --until-ready` keeps checking until a matching Editor reports `ready`, then prints the same envelope a plain `status` would, with exit 0. It works when no Editor exists yet at the moment you call it, as long as one appears before the timeout. `--port` and `--project-path` scope every check, so a ready Editor for another project never ends the wait. A `--project-path` that is an existing directory matches that project only, so pass the project's full path: an Editor open on a sibling checkout (`MyGame-lighting` next to `MyGame`) is another project and never matches it. A value that isn't a directory, such as the bare name `megacity`, matches any project path containing it, case-insensitively. `--timeout <seconds>` sets the budget (default 300; `0` takes one check). On timeout it exits 6 and the envelope reports the last state it saw, with that state’s usual code, so read `errors[0].code` exactly as you would for a plain `status`. `--timeout` without `--until-ready` is rejected (exit 2, `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`). The batch-mode caveat above still applies: an Editor that `status` never lists is never reported ready, so `--until-ready` would wait out the whole budget for it.
 
 #### Sandboxed agent tooling can hide a running Editor
 
@@ -795,7 +812,7 @@ Set shell-local defaults so you stop repeating flags. Every setting is per-sessi
 # unity> unset format                  # clear one setting (format | verbose | banner | project | org)
 ```
 
-`UNITY_PROJECT_PATH` and `UNITY_CLOUD_ORG` are also honored as environment variables by the project-path and cloud commands.
+`UNITY_PROJECT_PATH` and `UNITY_CLOUD_ORG` are also honored as environment variables; [SKILL.md](../SKILL.md#environment-variables) lists the commands that read `UNITY_PROJECT_PATH`.
 
 #### Machine/agent mode — `--protocol ndjson`
 
