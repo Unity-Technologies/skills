@@ -428,7 +428,7 @@ Throws `AuthenticationException` (extends `RequestFailedException`) on failure. 
 
 **Anonymous-only accounts:** Calling `ClearSessionToken()` or `SignOut(clearCredentials: true)` on an account that ONLY has anonymous sign-in will **permanently lose** that account. Always link at least one external provider before clearing credentials.
 
-**DeleteAccountAsync compliance:** iOS App Store (Guideline 5.1.1) requires apps that support account creation to offer account deletion. `DeleteAccountAsync()` only deletes **Authentication data**. It does NOT automatically clean up data in other UGS services (Cloud Save, Economy, Leaderboards, etc.). You must manually delete data from each service before calling `DeleteAccountAsync()`.
+**DeleteAccountAsync compliance:** iOS App Store (Guideline 5.1.1) requires apps that support account creation to offer account deletion. `DeleteAccountAsync()` only deletes **Authentication data**. It does NOT automatically clean up data in other UGS services (Cloud Save, Leaderboards, etc.). You must manually delete data from each service before calling `DeleteAccountAsync()`.
 
 ---
 

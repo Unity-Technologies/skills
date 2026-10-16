@@ -45,7 +45,6 @@ Access Control policies permit or deny access to UGS services on a **URN basis**
 
 Common use cases:
 - Deny direct player writes to Cloud Save (force writes through Cloud Code)
-- Deny player currency/inventory writes in Economy (only allow purchases)
 - Restrict Cloud Code module/script invocation to specific endpoints
 - Deny player account deletion or identity unlinking
 
@@ -113,17 +112,6 @@ urn:ugs:<service>:/<path>
 | `urn:ugs:cloud-save:/**/players/*/public/items**` | Read another player's public items |
 | `urn:ugs:cloud-save:/**/players/public/query**` | Query Public player data |
 | `urn:ugs:cloud-save:/**/custom/*/items**` | Read game-wide (Custom) data items |
-
-#### Economy (`economy`)
-
-| URN Pattern | Description |
-|---|---|
-| `urn:ugs:economy:/**/players/*/config**` | Read player economy configuration |
-| `urn:ugs:economy:/**/currencies**` | Player currencies (Read/Write) |
-| `urn:ugs:economy:/**/inventory**` | Player inventory (Read/Write) |
-| `urn:ugs:economy:/**/purchases/virtual**` | Virtual purchases |
-| `urn:ugs:economy:/**/purchases/googleplaystore**` | Google Play Store purchases |
-| `urn:ugs:economy:/**/purchases/appleappstore**` | Apple App Store purchases |
 
 #### Leaderboards (`leaderboards`)
 
@@ -195,48 +183,6 @@ Start with a blanket deny, then explicitly allow only what the player needs. Thi
       "Action": ["Read"],
       "Principal": "Player",
       "Resource": "urn:ugs:player-auth:/.well-known/**"
-    },
-    {
-      "Sid": "Allow-Read-Economy-Config",
-      "Effect": "Allow",
-      "Action": ["Read"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/players/*/config**"
-    },
-    {
-      "Sid": "Allow-Read-Currencies",
-      "Effect": "Allow",
-      "Action": ["Read"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/currencies**"
-    },
-    {
-      "Sid": "Allow-Read-Inventory",
-      "Effect": "Allow",
-      "Action": ["Read"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/inventory**"
-    },
-    {
-      "Sid": "Allow-Virtual-Purchases",
-      "Effect": "Allow",
-      "Action": ["Write"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/purchases/virtual**"
-    },
-    {
-      "Sid": "Allow-GooglePlay-Purchases",
-      "Effect": "Allow",
-      "Action": ["Write"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/purchases/googleplaystore**"
-    },
-    {
-      "Sid": "Allow-AppStore-Purchases",
-      "Effect": "Allow",
-      "Action": ["Write"],
-      "Principal": "Player",
-      "Resource": "urn:ugs:economy:/**/purchases/appleappstore**"
     },
     {
       "Sid": "Allow-Read-Leaderboards",
@@ -330,8 +276,6 @@ This policy:
 - **Denies** all UGS access by default
 - **Allows** authentication (anonymous, external, session token sign-in; link external ID; read player info)
 - **Denies** identity unlinking and player deletion (inherited from blanket deny)
-- **Allows** economy reads (config, currencies, inventory) and purchases (virtual, Google Play, Apple App Store)
-- **Denies** direct currency/inventory writes (inherited from blanket deny — use Cloud Code for server grants)
 - **Allows** leaderboard reads
 - **Allows** Cloud Save player data reads/writes for own data (Default items), public data reads, game-wide data reads
 - **Denies** Cloud Save blanket writes (Protected data only writable via Cloud Code)
