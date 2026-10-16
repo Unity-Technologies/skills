@@ -39,7 +39,7 @@ unity auth logout user@example.com
 unity auth logout --yes
 ```
 
-**How sign-in is served.** Every command’s OAuth token read goes through a resident auth broker — a background `unity` process started on demand by the first command that needs a token, exiting on its own after two idle minutes. It seals the token store to the machine’s hardware where available (a non-exportable TPM key on Windows, TPM2 via `systemd-creds` on Linux, then DPAPI, the Secret Service, the Keychain and a local key file, in that order), and `unity doctor` reports the active tier. On macOS and Windows it verifies a connecting process’s code signature and refuses an unsigned or non-Unity-signed peer; set `UNITY_PEER_AUTH_MODE=identify-only` to log without refusing (for an Editor you built from source), and `UNITY_NO_AUTH_BROKER=1` to bypass the broker and read the OS keyring directly. `unity auth consumers` (below) lists the applications that have used this machine’s sign-in through it.
+**How sign-in is served.** Every command’s OAuth token read goes through a resident auth broker — a background `unity` process started on demand by the first command that needs a token, exiting on its own after two idle minutes. It seals the token store to the machine’s hardware where available (a non-exportable TPM key on Windows, TPM2 via `systemd-creds` on Linux, then DPAPI, the Secret Service, the Keychain and a local key file, in that order), and `unity doctor` reports the active tier. On macOS and Windows it verifies a connecting process’s code signature and refuses an unsigned or non-Unity-signed peer; set `UNITY_PEER_AUTH_MODE=identify-only` to log without refusing (for an Editor or app you built from source). A broker started that way is a separate dev broker with its own address and its own sign-in: it never reads your normal sign-in, so sign in from the dev app that uses it (`unity auth login` writes your normal store, not the dev broker's). It refuses Unity-signed apps on macOS and Windows, and Unity apps refuse it in turn. Set `UNITY_NO_AUTH_BROKER=1` to bypass the broker and read the OS keyring directly. `unity auth consumers` (below) lists the applications that have used this machine’s sign-in through it.
 
 #### Multiple accounts
 
@@ -159,9 +159,9 @@ unity cloud org current                       # print the active default org id
 unity cloud org set-default <id-or-name>      # set active default org
 unity cloud org clear-default                 # revert to "All Organizations"
 
-# Create an organization
-unity cloud org create "<name>" --industry gaming
-unity cloud org create "<name>" --industry oil-and-gas --set-default
+# Create an organization (company profile: individual or company, plus country)
+unity cloud org create "<name>" --first-name Ada --last-name Lovelace --country GB
+unity cloud org create "<name>" --company-name "Nebula Games Inc." --country US --region CA --set-default
 
 # Projects in the active organization
 unity cloud project list --format json               # * marks the active default project
@@ -175,17 +175,23 @@ unity cloud project clear-default                     # drop this organization's
 unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
 ```
 
-**Creating an organization takes a name and an industry.** The name is trimmed and capped at 40
-characters; `--industry` accepts either the kebab key (`consumer-electronics`, `oil-and-gas`) or the
-display spelling (`"Oil & gas"`), and an unknown value is rejected up front with the accepted list.
-Both are validated before anything is sent, so a typo costs no network call. Omitting `--industry`
-opens a picker on a terminal and is a usage error under `--non-interactive` or when output is
-redirected. `--set-default` makes the new organization active, exactly as `org set-default` would; if the
-setting cannot be written the organization is still reported as created, with a warning that the
-default did not take effect. A name already in use is reported as such rather than as an HTTP
-status. Machine output is a create-specific shape carrying `id` and `name` only — deliberately not
-`org list`'s row, since the create response omits `role` and the default marker describes a list
-rather than a single new organization.
+**Creating an organization takes a name and a company profile**, the same fields the Unity
+Dashboard's create dialog asks for. `--type individual` needs `--first-name` and `--last-name`;
+`--type company` needs `--company-name`. `--type` can be left out when the name flags already say
+which it is, and passing both kinds is refused. `--country` is a two-letter ISO 3166-1 alpha-2 code (`GB`,
+not `GBR`, and not `UK`, which is not an ISO code). `--region` is the ISO 3166-2 subdivision (`CA`, or `US-CA`) and is
+required for the US, Canada, and Mexico and refused for every other country. The organization name
+is trimmed and capped at 40 characters; person and company names follow the Dashboard's own
+character rules. Everything passed is validated before the sign-in check and before any request,
+so a typo costs no network call. Omitted fields are prompted for on a terminal; under
+`--non-interactive`, or when output is redirected, the command fails naming every missing option.
+Whether a country or subdivision code actually exists is the server's call, and its field-level
+reason is reported as-is. `--set-default` makes the new organization active, exactly as
+`org set-default` would; if the setting cannot be written the organization is still reported as
+created, with a warning that the default did not take effect. A name already in use is reported as
+such rather than as an HTTP status. Machine output is a create-specific shape carrying `id` and
+`name` only, deliberately not `org list`'s row, since the create response has no `role` and the
+default marker describes a list rather than a single new organization.
 
 **The default project is per organization.** `set-default` stores the project's UUID against the
 active organization's Genesis id, so switching your active organization switches which default

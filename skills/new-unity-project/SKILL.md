@@ -142,8 +142,11 @@ project's `com.unity.pipeline` package. A project created in Step 4 does not hav
 does not add it: that step installs packages by launching the Editor binary with
 `-batchmode -executeMethod`, which never touches the package. Installing before the open is the
 supported order — the install updates `Packages/manifest.json`, which Unity reads at project
-load. Run it against an already-open project and the CLI reports
-`PIPELINE_MANIFEST_WRITE_FAILED`; ask the user to close the Editor and re-run. Without the
+load. Run it against an already-open project and either the write fails with
+`PIPELINE_MANIFEST_WRITE_FAILED` (ask the user to close the Editor and re-run), or it succeeds
+but the open Editor doesn't load the package until its window regains focus. In the second
+case `unity status` reports `STATUS_PIPELINE_LOAD_PENDING`; ask the user to switch to the
+Editor window. Without the
 package, everything below fails to connect, which looks like the Safe Mode failure `unity-cli`
 describes but has a different cause.
 

@@ -464,12 +464,12 @@ Debug.Log($"Reward: {reward}");
 ### Call a Module Endpoint (Typed Result)
 
 ```csharp
-// Module class name: "EconomyModule", method: "GrantDailyReward"
-var result = await CloudCodeService.Instance.CallModuleEndpointAsync<GrantResult>(
-    "EconomyModule", "GrantDailyReward",
-    new Dictionary<string, object> { { "playerId", playerId } });
+// Module class name: "ProgressionModule", method: "AwardXp"
+var result = await CloudCodeService.Instance.CallModuleEndpointAsync<ProgressResult>(
+    "ProgressionModule", "AwardXp",
+    new Dictionary<string, object> { { "amount", 50 } });
 
-Debug.Log($"Granted: {result.CurrencyAmount} currency");
+Debug.Log($"Total XP: {result.TotalXp}");
 ```
 
 ### Subscribe to Player Messages (Full Example)
