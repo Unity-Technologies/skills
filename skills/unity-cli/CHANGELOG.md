@@ -12,6 +12,28 @@ release's own dated section once the CLI actually ships it.
 
 ## [Unreleased]
 
+## CLI `1.0.0-beta.13` (2026-10-07)
+
+Aligned to the CLI's `1.0.0-beta.13` release. Everything below was documented ahead of the release and ships in it.
+
+### Added
+
+- **`unity setup codex` and `unity setup grok`**: `integration-advanced.md` documents installing Unity's agent plugin into Codex and Grok Build, the commands each runs, `CODEX_HOME` / `GROK_HOME`, the not-found and install-failed error codes, and the null `reloadCommand`. `SECURITY.md` extends the plugin-install fence to both.
+- **A Unity Cloud choice for `unity projects upgrade` into Unity 6.7 or later**: `projects-templates.md` documents that an unlinked project needs `--cloud`, `--cloud-project <id-or-name>` or `--no-cloud`, that the upgrade turns on build-profile diagnostics only when the project ends up linked, and the `data.diagnostics.buildProfiles` and `data.cloud.outcome` result fields.
+- **`proxyRequestLogging` in `unity config`**: `config-hub.md` lists the key, the persisted third tier of `--log-proxy`'s precedence.
+
+### Changed
+
+- **`UNITY_PROJECT_PATH` for per-worktree agents**: `SKILL.md`'s one-Editor-per-worktree paragraph now tells agents to set `UNITY_PROJECT_PATH=<full project path>` once for the session, and names the commands that don't read it (`recompile`, `close`, `mcp configure`). The environment-variable table lists every command that honors it, `unity mcp` included. `integration-advanced.md` adds the variable to the target resolver's order and shows `UNITY_PROJECT_PATH=... unity mcp`.
+- **`UNITY_PEER_AUTH_MODE=identify-only`**: `SKILL.md` and `auth-license-cloud.md` now say that a broker started this way is a separate dev broker with its own address and sign-in, that it refuses Unity-signed apps, and that Unity apps refuse it.
+- `build-run-test.md`'s Build section now says `unity build --format json` writes only the result document to stdout, with the progress frames and the streamed Editor log on stderr, and that the streamed log masks the credentials the CLI passes the Editor (the `-accessToken` value, the Android keystore passwords) in `build`, `run` and `test`.
+- **One Editor per worktree, and report a failed call.** `SKILL.md` now tells an agent working in several worktrees to make each one with `unity vcs git worktree add --into <path>`, open the project inside it with `unity open`, and target that Editor by its full project path. It never drives an Editor whose project isn't its own checkout. Once Safe Mode, a sandbox and a slow import are ruled out, it also reports a timeout or an Editor lifecycle failure to the user instead of silently working around it. It offers `unity bug --area pipeline-package` and asks first.
+- The bootstrap recipe's step 6 and the `unity status` reference now pass the project's full path to `unity status --until-ready --project-path`, and say how the flag matches. A path that exists matches that project only, so a sibling checkout such as `MyGame-lighting` never ends the wait for `MyGame`, and a bare name still matches any project path containing it.
+- `build-run-test.md`'s Accelerator example ran `unity build` with `--target StandaloneLinux64` and no `--output-path`. A desktop target with neither `--execute-method` nor `--profile` is a built-in player build, which requires an output path, so the example exited 2. It now passes `--output-path ./Build/MyGame.x86_64`.
+- **`open` never moves a project onto Unity 6.7 or later.** `projects-templates.md` documents that `unity open` and `unity projects open` exit `2` with `PROJECT_UPGRADE_REQUIRED` instead, and point at `unity projects upgrade`.
+- **`unity cloud org create`** in `auth-license-cloud.md` takes the Unity Dashboard's company profile (`--first-name` and `--last-name`, or `--company-name`, plus `--country`) instead of the removed `--industry`.
+- `playmode-verification-loop.md` now explains that the Run In Background Player Setting pauses the game while the Editor is unfocused, and tells agents to turn it on with the Pipeline package's `editor_set_run_in_background` command, which keeps the change out of builds. It also drops a Hub source path that public readers can't open.
+
 ## CLI `1.0.0-beta.12` (2026-09-30)
 
 Aligned to the CLI's `1.0.0-beta.12` release. Everything below was documented ahead of the release and ships in it.

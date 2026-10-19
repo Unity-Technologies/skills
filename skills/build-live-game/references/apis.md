@@ -41,7 +41,7 @@ Unified entry point for Unity Gaming Services client types. Provides auto-genera
 
 Use cases for `IAdminClient`:
 
-- **Deployment Window custom providers** — deploy commands that write to Cloud Save, Economy, Leaderboards, etc.
+- **Deployment Window custom providers** — deploy commands that write to Cloud Save, Leaderboards, etc.
 - **Editor tools** — custom inspectors or windows that read/write game-wide data
 - **Build pipelines** — pre-build steps that push config data to UGS
 
@@ -83,7 +83,6 @@ Service account credentials are created in the Unity Dashboard under **Project S
 | `CloudSaveFiles` | `ICloudSaveFilesAdminApi` | Cloud Save — file storage |
 | `CloudCodeModules` | `ICloudCodeModulesAdminApi` | Cloud Code — C# modules |
 | `CloudCodeScripts` | `ICloudCodeScriptsAdminApi` | Cloud Code — JS scripts |
-| `Economy` | `IEconomyAdminApi` | Economy — config and player data |
 | `RemoteConfig` | `IConfigsAdminApi` | Remote Config |
 | `RemoteConfigSchemas` | `ISchemasAdminApi` | Remote Config schemas |
 | `GameOverrides` | `IGameOverridesAdminApi` | Game Overrides |
@@ -143,10 +142,6 @@ Created via `UnityServicesApiClient.GameClient` after player authentication. Run
 | `CloudSaveData` | `ICloudSaveDataApi` | Cloud Save player data |
 | `CloudSaveFiles` | `ICloudSaveFilesApi` | Cloud Save files |
 | `CloudCode` | `ICloudCodeApi` | Cloud Code invocation |
-| `EconomyConfiguration` | `IEconomyConfigurationApi` | Economy config |
-| `EconomyCurrencies` | `IEconomyCurrenciesApi` | Currency balances |
-| `EconomyInventory` | `IEconomyInventoryApi` | Player inventory |
-| `EconomyPurchases` | `IEconomyPurchasesApi` | Purchases |
 | `Leaderboards` | `ILeaderboardsApi` | Leaderboard scores |
 | `Lobby` | `ILobbyApi` | Lobby management |
 | `RemoteConfig` | `IRemoteConfigSettingsApi` | Remote Config |
@@ -158,7 +153,7 @@ Created via `UnityServicesApiClient.GameClient` after player authentication. Run
 | `QosDiscovery` | `IQosDiscoveryApi` | QoS |
 | `Analytics` | `IAnalyticsApi` | Analytics |
 
-Most developers use the high-level SDKs (`CloudSaveService.Instance`, `EconomyService.Instance`) instead of `IGameClient` directly.
+Most developers use the high-level SDKs (`CloudSaveService.Instance`, `LeaderboardsService.Instance`) instead of `IGameClient` directly.
 
 ---
 
@@ -176,10 +171,6 @@ await serverClient.SignInFromServer();
 | `CloudSaveData` | `ICloudSaveDataApi` | Cloud Save player data |
 | `CloudSaveFiles` | `ICloudSaveFilesApi` | Cloud Save files |
 | `CloudCode` | `ICloudCodeApi` | Cloud Code |
-| `EconomyConfiguration` | `IEconomyConfigurationApi` | Economy config |
-| `EconomyCurrencies` | `IEconomyCurrenciesApi` | Currencies |
-| `EconomyInventory` | `IEconomyInventoryApi` | Inventory |
-| `EconomyPurchases` | `IEconomyPurchasesApi` | Purchases |
 | `Leaderboards` | `ILeaderboardsApi` | Leaderboards |
 | `Lobby` | `ILobbyApi` | Lobbies |
 | `PlayerNames` | `IPlayerNamesApi` | Display names |

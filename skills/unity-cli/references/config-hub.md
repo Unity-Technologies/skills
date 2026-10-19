@@ -125,6 +125,7 @@ Recognized keys, and what they back onto:
 | `proxy.bypass` | `unity config proxy <url> --bypass <hosts>` | Comma-separated hosts; writing/clearing it leaves the sibling `proxy` key untouched. |
 | `accelerator` | `unity config accelerator <endpoint>` | Normalized to `host:port` on write. |
 | `update-check` | `unity config update-check on\|off` | Value is `on`/`off`. |
+| `proxyRequestLogging` | `unity --log-proxy`'s persisted setting | Strict boolean `true`/`false`; the third tier of `--log-proxy`'s precedence (flag, then `UNITY_LOG_PROXY`, then this setting). |
 
 An unknown key, a read-only key (none exist yet — the mechanism exists for a future resolved-only value), or an invalid value for a writable key is rejected with exit **2** and a message pointing at `unity config list`. `--format json` returns `{key, value}` for `get`/`set`, `{key, cleared}` for `unset`, and `{entries: [{key, value, writable}, …]}` for `list`.
 
