@@ -9,7 +9,7 @@
 - [API Notes](#api-notes)
   - [Namespace Aliases](#namespace-aliases-required)
   - [ProtectedReadAccessClassOptions](#protectedreadaccessclassoptions)
-  - [Why tiersJson Is Passed from the Client](#why-tiersjson-is-passed-from-the-client)
+  - [Why Tier Thresholds Live in the Module](#why-tier-thresholds-live-in-the-module)
   - [Source Whitelist Enforcement](#source-whitelist-enforcement)
   - [Error Handling](#error-handling)
 - [Cloud Code Module Functions](#cloud-code-module-functions)
@@ -36,7 +36,7 @@
 | Per-player progress | Cloud Save (Protected) | `"battle_pass_progress"` |
 | Award XP | Cloud Code | `BattlePassModule.AwardXp` |
 | Claim reward | Cloud Code | `BattlePassModule.ClaimReward` |
-| Purchase premium | Cloud Code | `BattlePassModule.PurchasePremium` |
+| Purchase premium | Cloud Code | `BattlePassModule.PurchasePremium` (integration stub; always throws until you add purchase validation) |
 
 ```
 Remote Config                Cloud Save (Protected)           Cloud Code Module
@@ -123,7 +123,7 @@ public class BattlePassProgress
 
 One entry per pass, keyed by `PassId` in the progress dictionary stored at Cloud Save key `"battle_pass_progress"`.
 
-### BattlePassTierThreshold (server-side helper, passed from client via tiersJson)
+### BattlePassTierThreshold (server-side helper, mirrors the `Tiers` in `BattlePasses.rc`)
 
 ```csharp
 [Serializable]
@@ -161,31 +161,35 @@ player's data.
 > instead of `ProtectedReadAccessClassOptions`) will return no data, because the progress
 > is stored in the Protected bucket by the Cloud Code module.
 
-### Why tiersJson Is Passed from the Client
+### Why Tier Thresholds Live in the Module
 
-Remote Config is not accessible from inside Cloud Code modules. The client serializes the tier
-thresholds from the loaded `BattlePassDefinition` and sends them as the `tiersJson` parameter.
-The server uses these thresholds to recalculate the player's current tier after awarding XP.
-
-Tier thresholds are config data and are **not security-sensitive** — the anti-cheat protection
-is on the `source` whitelist and the `amount` validation. A tampered `tiersJson` could only
-cause the player's tier to be recalculated differently, which is bounded by their actual XP.
+Remote Config is not accessible from inside Cloud Code modules, and anything the client sends is
+untrusted: a client that supplies its own tier thresholds can set a tier-three threshold of zero
+and reach tier three with 1 XP. The module therefore holds the thresholds in a server-side
+constant (`PassTiers` in `BattlePassModule.cs`) and `AwardXp` takes no tier data from the client.
+Pass dates get the same treatment: `PassWindows` holds each pass's UTC start and end, and `AwardXp`
+and `ClaimReward` reject any pass outside `[Start, End)` using server time, so an expired pass cannot
+gain XP and a staged future pass cannot be claimed early. Rewards must be claimed while the pass is
+active. Keep `PassTiers` and `PassWindows` in sync with the `XpRequired`, `StartDate` and `EndDate`
+values in `BattlePasses.rc` whenever you change a pass. Passes missing from either are rejected.
 
 ### Source Whitelist Enforcement
 
 The Cloud Code module maintains a server-side whitelist of allowed XP source strings:
 
 ```csharp
-static readonly HashSet<string> ValidSources = new()
+static readonly Dictionary<string, int> MaxXpPerSource = new()
 {
-    "match_complete",
-    "daily_login",
-    "quest_complete"
+    ["match_complete"] = 200,
+    ["daily_login"] = 50,
+    ["quest_complete"] = 300
 };
 ```
 
-Any `AwardXp` call with an unrecognized source throws an exception. Add or remove entries as
-needed for your game. The whitelist prevents clients from inventing arbitrary XP sources.
+Any `AwardXp` call with an unrecognized source throws an exception, and each source has a
+per-call XP cap (`MaxXpPerSource`). Add or remove entries as needed for your game. The whitelist
+and caps prevent clients from inventing XP sources or awarding themselves arbitrary amounts.
+For full protection, derive XP from server-verified events instead of a client-supplied `amount`.
 
 ### Error Handling
 
@@ -216,9 +220,9 @@ catch (CloudSaveException ex)
 
 | Function | Parameters | Behavior |
 |---|---|---|
-| `AwardXp` | `passId`, `amount`, `source`, `tiersJson` | Validates `source` against a whitelist (`ValidSources`), rejects non-positive amounts, adds XP to the pass progress, recalculates the current tier from the client-supplied `tiersJson`, saves to Cloud Save Protected |
-| `ClaimReward` | `passId`, `tierNumber`, `rewardType` | Validates the player has reached the tier, validates premium ownership if `rewardType` is `"premium"`, checks reward is not already claimed, records the claim as `"tier_N_type"` (e.g. `"tier_2_premium"`), saves to Cloud Save Protected |
-| `PurchasePremium` | `passId` | Sets `HasPremium = true` on the pass progress. **Idempotent** -- returns immediately if already purchased without error |
+| `AwardXp` | `passId`, `amount`, `source` | Validates `source` against a whitelist (`MaxXpPerSource` keys), rejects non-positive amounts and amounts above the source's cap, rejects unknown passes, adds XP to the pass progress, recalculates the current tier from the server-side `PassTiers`, saves to Cloud Save Protected |
+| `ClaimReward` | `passId`, `tierNumber`, `rewardType` | Validates the tier exists in the server-side `PassTiers` and the player's XP meets its threshold, validates premium ownership if `rewardType` is `"premium"`, checks reward is not already claimed, records the claim as `"tier_N_type"` (e.g. `"tier_2_premium"`), saves to Cloud Save Protected |
+| `PurchasePremium` | `passId` | **Integration stub.** Returns the existing progress if `HasPremium` is already true; otherwise the sample always throws, because nothing in the blueprint sets `HasPremium`. Add server-side purchase validation that sets `HasPremium = true` before premium purchasing works; do not deploy this path as-is. It fails closed and never grants premium unverified. |
 
 All three functions return the updated `BattlePassProgress` for the given pass.
 
@@ -292,18 +296,17 @@ async Task<Dictionary<string, BattlePassProgress>> LoadProgressAsync()
 ```csharp
 public async Task<BattlePassProgress> AwardXpAsync(string passId, int amount, string source)
 {
-    var pass = ActivePasses.FirstOrDefault(p => p.PassId == passId)
-        ?? throw new InvalidOperationException(
+    if (!ActivePasses.Any(p => p.PassId == passId))
+        throw new InvalidOperationException(
             $"Pass '{passId}' is not in the active passes list. Call LoadAsync first.");
 
     var progress = await CloudCodeService.Instance.CallModuleEndpointAsync<BattlePassProgress>(
         "BattlePassModule", "AwardXp",
         new Dictionary<string, object>
         {
-            { "passId",    passId                               },
-            { "amount",    amount                               },
-            { "source",    source                               },
-            { "tiersJson", JsonConvert.SerializeObject(pass.Tiers) }
+            { "passId", passId },
+            { "amount", amount },
+            { "source", source }
         });
 
     Progress[passId] = progress;
@@ -311,7 +314,7 @@ public async Task<BattlePassProgress> AwardXpAsync(string passId, int amount, st
 }
 ```
 
-The `tiersJson` parameter is the serialized tier list from the locally loaded pass definition. The server uses it to recalculate the player's tier after adding XP, without needing its own Remote Config fetch.
+The client sends no tier data; the server recalculates the player's tier from its own `PassTiers`. The active-pass check above is UX only; the module enforces pass dates itself.
 
 ### ClaimRewardAsync
 
@@ -334,6 +337,8 @@ public async Task<BattlePassProgress> ClaimRewardAsync(
 ```
 
 ### PurchasePremiumAsync
+
+Calls the `PurchasePremium` integration stub. It throws for any player without `HasPremium` until you add a validated purchase flow to the module.
 
 ```csharp
 public async Task<BattlePassProgress> PurchasePremiumAsync(string passId)
@@ -439,18 +444,17 @@ public class BattlePassManager : MonoBehaviour
 
     public async Task<BattlePassProgress> AwardXpAsync(string passId, int amount, string source)
     {
-        var pass = ActivePasses.FirstOrDefault(p => p.PassId == passId)
-            ?? throw new InvalidOperationException(
+        if (!ActivePasses.Any(p => p.PassId == passId))
+            throw new InvalidOperationException(
                 $"Pass '{passId}' is not in the active passes list. Call LoadAsync first.");
 
         var progress = await CloudCodeService.Instance.CallModuleEndpointAsync<BattlePassProgress>(
             "BattlePassModule", "AwardXp",
             new Dictionary<string, object>
             {
-                { "passId",    passId                               },
-                { "amount",    amount                               },
-                { "source",    source                               },
-                { "tiersJson", JsonConvert.SerializeObject(pass.Tiers) }
+                { "passId", passId },
+                { "amount", amount },
+                { "source", source }
             });
 
         Progress[passId] = progress;
@@ -473,6 +477,7 @@ public class BattlePassManager : MonoBehaviour
         return progress;
     }
 
+    // Requires the PurchasePremium integration stub to be completed server-side.
     public async Task<BattlePassProgress> PurchasePremiumAsync(string passId)
     {
         var progress = await CloudCodeService.Instance.CallModuleEndpointAsync<BattlePassProgress>(
@@ -556,7 +561,7 @@ public class BattlePassTester : MonoBehaviour
 
 ## Cloud Code Module Implementation
 
-> **Module scaffolding — follow [cloud-code.md — Module Creation](cloud-code.md#module-creation).**
+> **Module scaffolding — follow the Module Creation section of `references/cloud-code.md`.**
 > Replace `MyModule` / `MyModuleCCM` with `BattlePassModule` / `BattlePassCCM` throughout.
 > You **must** create every file listed there — missing any one will cause deployment to fail:
 >
@@ -582,11 +587,36 @@ public class BattlePassModule
 {
     const string ProgressKey = "battle_pass_progress";
 
-    static readonly HashSet<string> ValidSources = new()
+    static readonly Dictionary<string, int> MaxXpPerSource = new()
     {
-        "match_complete",
-        "daily_login",
-        "quest_complete"
+        ["match_complete"] = 200,
+        ["daily_login"] = 50,
+        ["quest_complete"] = 300
+    };
+
+    // Keep in sync with the Tiers in BattlePasses.rc; clients are never trusted for thresholds.
+    static readonly Dictionary<string, List<BattlePassTierThreshold>> PassTiers = new()
+    {
+        ["season_03"] = new()
+        {
+            new BattlePassTierThreshold { TierNumber = 1, XpRequired = 0 },
+            new BattlePassTierThreshold { TierNumber = 2, XpRequired = 500 },
+            new BattlePassTierThreshold { TierNumber = 3, XpRequired = 1200 }
+        },
+        ["easter_2026"] = new()
+        {
+            new BattlePassTierThreshold { TierNumber = 1, XpRequired = 0 },
+            new BattlePassTierThreshold { TierNumber = 2, XpRequired = 300 }
+        }
+    };
+
+    // Keep in sync with StartDate/EndDate in BattlePasses.rc. UTC, End is exclusive.
+    static readonly Dictionary<string, (DateTime Start, DateTime End)> PassWindows = new()
+    {
+        ["season_03"] = (new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                         new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)),
+        ["easter_2026"] = (new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
+                           new DateTime(2026, 4, 22, 0, 0, 0, DateTimeKind.Utc))
     };
 
     // ── AwardXp ──────────────────────────────────────────────────────────────
@@ -594,14 +624,19 @@ public class BattlePassModule
     [CloudCodeFunction("AwardXp")]
     public async Task<BattlePassProgress> AwardXp(
         IExecutionContext context, IGameApiClient client,
-        string passId, int amount, string source, string tiersJson)
+        string passId, int amount, string source)
     {
-        if (!ValidSources.Contains(source))
+        if (!MaxXpPerSource.TryGetValue(source, out var maxXp))
             throw new Exception(
-                $"Invalid XP source: '{source}'. Allowed: {string.Join(", ", ValidSources)}");
+                $"Invalid XP source: '{source}'. Allowed: {string.Join(", ", MaxXpPerSource.Keys)}");
 
-        if (amount <= 0)
-            throw new Exception("XP amount must be positive.");
+        if (amount <= 0 || amount > maxXp)
+            throw new Exception($"XP amount must be between 1 and {maxXp} for source '{source}'.");
+
+        if (!PassTiers.TryGetValue(passId, out var tiers))
+            throw new Exception($"Unknown pass '{passId}'.");
+
+        RequireActive(passId);
 
         var allProgress = await LoadProgressAsync(context, client);
 
@@ -610,8 +645,6 @@ public class BattlePassModule
 
         progress.CurrentXp += amount;
 
-        var tiers = JsonConvert.DeserializeObject<List<BattlePassTierThreshold>>(tiersJson)
-            ?? throw new Exception("tiersJson could not be deserialized.");
         progress.CurrentTier = CalculateTier(progress.CurrentXp, tiers);
 
         allProgress[passId] = progress;
@@ -631,14 +664,22 @@ public class BattlePassModule
             throw new Exception(
                 $"Invalid rewardType: '{rewardType}'. Must be 'free' or 'premium'.");
 
+        RequireActive(passId);
+
         var allProgress = await LoadProgressAsync(context, client);
 
         if (!allProgress.TryGetValue(passId, out var progress))
             throw new Exception($"No progress found for pass '{passId}'. Award XP first.");
 
-        if (progress.CurrentTier < tierNumber)
+        if (!PassTiers.TryGetValue(passId, out var tiers))
+            throw new Exception($"Unknown pass '{passId}'.");
+
+        var tier = tiers.FirstOrDefault(t => t.TierNumber == tierNumber)
+            ?? throw new Exception($"Tier {tierNumber} does not exist in pass '{passId}'.");
+
+        if (progress.CurrentXp < tier.XpRequired)
             throw new Exception(
-                $"Tier {tierNumber} not yet reached (current tier: {progress.CurrentTier}).");
+                $"Tier {tierNumber} not yet reached ({progress.CurrentXp}/{tier.XpRequired} XP).");
 
         if (rewardType == "premium" && !progress.HasPremium)
             throw new Exception("Premium pass not owned. Purchase premium first.");
@@ -668,14 +709,21 @@ public class BattlePassModule
         if (progress.HasPremium)
             return progress;   // idempotent -- already owns premium
 
-        progress.HasPremium = true;
-        allProgress[passId] = progress;
-        await SaveProgressAsync(context, client, allProgress);
-
-        return progress;
+        // Integration point: validate the purchase server-side, set progress.HasPremium = true, save, and return.
+        throw new Exception("PurchasePremium requires server-side purchase validation.");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    static void RequireActive(string passId)
+    {
+        if (!PassWindows.TryGetValue(passId, out var window))
+            throw new Exception($"Unknown pass '{passId}'.");
+
+        var now = DateTime.UtcNow;
+        if (now < window.Start || now >= window.End)
+            throw new Exception($"Pass '{passId}' is not active.");
+    }
 
     static int CalculateTier(int currentXp, List<BattlePassTierThreshold> tiers)
     {
@@ -751,7 +799,7 @@ Place at `Assets/BattlePasses.rc`. Contains pass definitions as a JSON array und
         "StartDate": "2024-01-01T00:00:00Z",
         "EndDate": "2026-06-30T23:59:59Z",
         "Tiers": [
-          { "TierNumber": 1, "XpRequired": 0,    "FreeRewardId": "item_bronze_badge",      "PremiumRewardId": "currency_gold_500" },
+          { "TierNumber": 1, "XpRequired": 0,    "FreeRewardId": "item_bronze_badge",      "PremiumRewardId": "item_gold_frame" },
           { "TierNumber": 2, "XpRequired": 500,  "FreeRewardId": "item_xp_boost",          "PremiumRewardId": "item_rare_skin_fragment" },
           { "TierNumber": 3, "XpRequired": 1200, "FreeRewardId": "item_silver_badge",      "PremiumRewardId": "item_legendary_skin" }
         ]
@@ -781,7 +829,9 @@ Place at `Assets/BattlePasses.rc`. Contains pass definitions as a JSON array und
 - `XpRequired` is **cumulative** XP to reach the tier, not a delta from the previous tier.
   Tier 1 must always have `XpRequired: 0` so it is immediately reachable.
 - `FreeRewardId` / `PremiumRewardId` are arbitrary strings. The client reads these IDs and maps
-  them to display names/icons locally.
+  them to display names/icons locally. `ClaimReward` records the claim in `ClaimedRewards`; the game grants what
+  the ID stands for — unlock it client-side from the claimed set, or have the module write the grant to
+  Cloud Save Protected alongside the claim.
 - Date filtering happens **client-side** after fetch. Add passes to the file before their
   `StartDate` — they will be ignored by the client until the start time is reached.
 
@@ -791,7 +841,7 @@ Place at `Assets/BattlePasses.rc`. Contains pass definitions as a JSON array und
 > [Cloud Code Module Implementation](#cloud-code-module-implementation) above.
 > All scaffolding files (`.sln`, `.csproj`, `ModuleSetup.cs`, `FolderProfile.pubxml`) are
 > **required** — the Deployment Window will fail without them. See
-> [cloud-code.md — Module Creation](cloud-code.md#module-creation) for the generic templates;
+> the Module Creation section of `references/cloud-code.md` for the generic templates;
 > replace `MyModule` / `MyModuleCCM` with `BattlePassModule` / `BattlePassCCM`.
 
 ### Access Control
@@ -846,15 +896,15 @@ After implementing the battle pass feature, verify:
 3. **Protected bucket reads** use `ProtectedReadAccessClassOptions` -- using the wrong access class returns no data.
 4. **Cloud Code module name** matches the `.ccmr` filename: `"BattlePassModule"` in `CallModuleEndpointAsync` matches `BattlePassModule.ccmr`.
 5. **No direct client writes** to `"battle_pass_progress"` -- all mutations go through Cloud Code.
-6. **tiersJson is serialized** from the locally loaded pass definition before calling `AwardXp`.
+6. **No client-supplied tier data**: `AwardXp` and `ClaimReward` use the module's server-side `PassTiers`, which matches the `XpRequired` values in `BattlePasses.rc`, and reject passes outside the server-side `PassWindows` (matching `StartDate`/`EndDate`).
 7. **Date filtering** uses `DateTime.UtcNow` with `DateTimeStyles.RoundtripKind` for consistent UTC parsing.
 8. **Cloud resources** are present and deployable: `BattlePasses.rc` and `BattlePassModule.ccmr` appear in the Deployment Window.
-9. **PurchasePremium is idempotent** -- calling it when `HasPremium` is already true returns the existing progress without error.
-10. **ClaimReward validates** both tier reach and premium ownership before recording the claim.
+9. **PurchasePremium is an integration stub** -- it returns existing progress when `HasPremium` is already true and otherwise throws until you add purchase validation.
+10. **ClaimReward validates** the pass window (`PassWindows`), tier reach (against `PassTiers`) and premium ownership before recording the claim.
+11. **Premium purchasing is not deployable until a validated purchase flow sets `HasPremium`** -- keep the fail-closed throw until then.
 
 ---
 
 ## Asset Store & Sample Projects
 
 - **Use Case Samples — Battle Pass:** The official [Use Case Samples](https://github.com/Unity-Technologies/com.unity.services.samples.use-cases) repository includes a complete Battle Pass sample with seasonal reward tiers, free/premium tracks, time-limited rewards, and server-authoritative progression via Cloud Code. Clone the repo and open the "Battle Pass" scene for a working reference.
-- **Use Case Samples — Virtual Shop:** The same repository includes a Virtual Shop sample demonstrating Economy-based in-game stores, currency management, and inventory — patterns commonly paired with a Battle Pass.
