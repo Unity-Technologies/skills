@@ -58,6 +58,8 @@ The project argument is matched against the Hub registry first (exact name or pa
 
 **Signed-in Editor, no Hub required.** `unity open` starts a small background identity helper that answers the Editor's account lookup with the session `unity auth login` stored — your account, organization list (so Package Manager entitlements resolve), and the service addresses for your resolved `--cloudEnvironment` — so a Hub-less machine gets a signed-in Editor instead of an anonymous one. It steps aside whenever a real Hub is running or starting, exits on its own a few minutes after the Editor stops using it, and can be disabled with `UNITY_NO_EDITOR_IDENTITY_SERVER`. Signed out, the Editor just starts anonymous, as before.
 
+**`open` never moves a project onto Unity 6.7 or later.** When the Editor that `unity open` or `unity projects open` would use is 6.7 or later and the project was saved with an older version, the command exits `2` with `PROJECT_UPGRADE_REQUIRED` before it installs or launches anything. That covers `--editor-version` (a partial version such as `6.7` included), the `unity <version> <project>` shorthand, and an Editor picked at the missing-Editor prompt. Use `unity projects upgrade <project> --to <version>` instead, which asks for the Unity Cloud link choice and, when the project ends up linked, turns on build profile diagnostics (see the upgrade section below). Under `--format json` or `ndjson` the refusal carries one `notifications` entry, `OPEN_UPGRADE_WITH_PROJECTS_UPGRADE`, whose `remediation.command` is that `projects upgrade` command with `requiresUserApproval: true`, so ask the user before running it. Opening a project already on 6.7 or later, with the same version, or with an Editor below 6.7 is unchanged.
+
 **Extra listing columns are opt-in.** `projects list` shows a compact set by default; `--editor-version`, `-m` / `--modified` (last modified), `--cloud` (Unity Cloud project id), `--pipeline` (render pipeline), and `--vcs` (provider and repository) each add one. They affect the human and TSV tables only — `--format json` and `ndjson` always carry the full record.
 
 **Is Developer Data diagnostics on?** `projects info` answers from the project on disk, and `projects create` includes the same answer for the project it just created. New projects ship with diagnostics on, and turning it off disables all other Developer Data collection. In JSON, `data.diagnostics` has three parts:
@@ -475,6 +477,39 @@ Upgrade a project to a different Unity editor version. `--to` is required:
 ```bash
 unity projects upgrade --to 6000.0.47f1
 unity projects upgrade /path/to/MyProject --to 6000.0.47f1 --yes
+```
+
+**Into Unity 6.7 or later, an unlinked project needs a Unity Cloud choice.** Unity 6.7 turns
+diagnostics on by default for projects linked to Unity Cloud, so the upgrade takes one of:
+
+| Option | Effect |
+|---|---|
+| `--cloud` | Create a new Unity Cloud project and link it (`--coppa <status>` declares its COPPA status) |
+| `--cloud-project <id-or-name>` | Link an existing Unity Cloud project |
+| `--no-cloud` (or `UNITY_NO_CLOUD`) | Upgrade without linking |
+| `--cloud-org <id-or-name>` | The organization for `--cloud` or `--cloud-project`, as on `projects create` |
+
+Without a choice the command exits `2` with `CLOUD_CHOICE_REQUIRED` before installing or opening
+anything. Under `--format json` or `ndjson` it lists one `notifications` entry per choice, each
+with a `remediation.command` that repeats the invocation with that flag and
+`requiresUserApproval: true`, so ask the user which one to run. The existing-project entry's
+command contains the literal placeholder `<id-or-name>` (also in its `data.placeholder`): replace
+it with the project's ID or name, quoted for the shell (a name can hold spaces or shell
+metacharacters), before running it, because a shell reads an unquoted `<...>` as an input
+redirect. A project already linked needs no choice; `--cloud` or `--cloud-project` on a
+linked project, or on an upgrade below 6.7, is reported in `warnings` as not applied. When the
+project ends the upgrade linked (already linked, or linked by `--cloud` / `--cloud-project`), the
+upgrade also sets each build profile whose diagnostics setting was the project default to enabled;
+`data.diagnostics.buildProfiles.profiles` lists every profile with its resulting `state` and
+whether it was `updated`. On a project that isn't linked, `--no-cloud` leaves every build profile
+as it was and reports no `data.diagnostics`, because diagnostics only defaults on for linked
+projects. On a project that is already linked, `--no-cloud` keeps the link and the profiles are
+still enabled. `data.cloud.outcome`
+reports the link (`alreadyLinked`, `linkedNew`, `linkedExisting`, `notLinked`).
+
+```bash
+unity projects upgrade ./MyGame --to 6000.7.0f1 --yes --cloud
+unity projects upgrade ./MyGame --to 6000.7.0f1 --yes --no-cloud --json
 ```
 
 #### projects export / import

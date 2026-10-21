@@ -513,7 +513,7 @@ public class AchievementManager : MonoBehaviour
 
 The `AchievementModule` reads and writes to the **Protected** Cloud Save bucket using its service token, bypassing Access Control restrictions imposed on the player client.
 
-> **Module scaffolding — follow [cloud-code.md — Module Creation](cloud-code.md#module-creation).**
+> **Module scaffolding — follow the Module Creation section of `references/cloud-code.md`.**
 > Replace `MyModule` / `MyModuleCCM` with `AchievementModule` / `AchievementsCCM` throughout.
 > You **must** create every file listed there — missing any one will cause deployment to fail:
 >
@@ -707,7 +707,7 @@ Deploy via **Services > Deployment** — the Deployment Window auto-discovers `.
 > [Cloud Code Module](#cloud-code-module) above.
 > All scaffolding files (`.sln`, `.csproj`, `ModuleSetup.cs`, `FolderProfile.pubxml`) are
 > **required** — the Deployment Window will fail without them. See
-> [cloud-code.md — Module Creation](cloud-code.md#module-creation) for the generic templates;
+> the Module Creation section of `references/cloud-code.md` for the generic templates;
 > replace `MyModule` / `MyModuleCCM` with `AchievementModule` / `AchievementsCCM`.
 
 ### Access Control -- `Assets/Config/DenyPlayerCloudSaveWrites.ac`
