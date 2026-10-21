@@ -34,7 +34,6 @@ Each service package registers its own file types with the Deployment Window. In
 | Cloud Code Scripts | `com.unity.services.cloudcode` | `.js` | 2.1.0 |
 | Cloud Code C# Modules | `com.unity.services.cloudcode` | `.ccmr` | 2.5.0 |
 | Remote Config | `com.unity.remote-config` | `.rc` | 3.2.0 |
-| Economy | `com.unity.services.economy` | `.ecc`, `.eci`, `.ecv`, `.ecr` | 3.2.1 |
 | Leaderboards | `com.unity.services.leaderboards` | `.lb` | 2.0.0 |
 | Game Server Hosting | `com.unity.services.multiplayer` | `.gsh` | 1.1.0 |
 | Matchmaker | `com.unity.services.multiplayer` | `.mmq` | 1.0 |
@@ -190,7 +189,7 @@ static void RegisterProvider()
 > `com.unity.services.apis` package (`com.unity.services.apis`). Authenticate with a service
 > account via `adminClient.SetServiceAccount(keyId, keySecret)`, then call the appropriate
 > admin API (e.g. `adminClient.CloudSaveData.SetCustomItem` for Cloud Save game data).
-> See [apis.md](apis.md) for the full `IAdminClient` interface and code templates.
+> See `references/apis.md` for the full `IAdminClient` interface and code templates.
 
 ### Code Template -- Trigger Deployment Programmatically
 
