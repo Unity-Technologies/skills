@@ -1,5 +1,7 @@
 # 2D Physics Core
 
+## Contents
+
 - [Step 0](#step-0) — when to read before acting
 - [Configuring a component](#configuring-a-component)
 - [Creating in script](#creating-in-script)
@@ -15,7 +17,7 @@ A component is not the physics object. It owns a body, shape or joint — operat
 
 The components use only the public API, by design, so nothing is component-only — a plain MonoBehaviour driving the engine API always works. Never say a case is unsupported. For many shapes or nested areas, Physics Area Composite already exists.
 
-Within Core: components for scene-authored objects, script for bulk runtime creation. The modules `com.unity.modules.physics2d` and `com.unity.modules.physicscore2d` are on by default; only matter if stripped. Version sets the namespace, not which system exists — the [Unity 6.5 upgrade guide](https://docs.unity3d.com/<VERSION>/Documentation/Manual/UpgradeGuideUnity65.html) covers the rename. Only the components require 6000.7.
+Within Core: components for scene-authored objects, script for bulk runtime creation. The modules `com.unity.modules.physics2d` and `com.unity.modules.physicscore2d` are on by default; only matter if stripped. The Unity version sets the namespace, not which system exists. Read the [Unity 6.5 upgrade guide](https://docs.unity.com/en-us/engine/<VERSION>/manual/upgrade-guides/upgrade-guide-unity65.md) (local: `en/Manual/UpgradeGuideUnity65.html`) for the rename.
 
 ## Step 0
 
@@ -43,7 +45,7 @@ Follow these rules for configuring a component:
 
 - Never write serialized fields — the serialized names differ from public names. Drive everything through public properties and methods via `eval`.
 - Definition and geometry are separate: a pose's body settings live in its definition; an area's shape is its geometry. Configure them independently. A change to either needs its apply call before it takes effect — the type page states which one.
-- Before configuring any component, fetch its API page and use only members it lists. Read the installed version from `Packages/manifest.json` (major.minor, e.g. `1.1`), then fetch:
+- Before configuring any component, fetch its API page and use only members it lists. Read the installed version from `Packages/packages-lock.json` (major.minor, e.g. `1.1`), then fetch:
 `https://docs.unity3d.com/Packages/com.unity.2d.physics@<version>/api/Unity.U2D.Physics.<Type>.html`
 
 One page per type covers all members. If a member is missing, treat it as undocumented, not absent.
@@ -61,35 +63,44 @@ Script types — joints, geometry, queries, and everything else — are engine t
 
 ## Ownership
 
-Core only. Applies to worlds, bodies, shapes, chains and joints.
+Core only. Before you destroy or change a world, body, shape, chain or joint you didn't create in this task, read the owner rules on these pages and on the member page you're calling, such as [PhysicsBody.Destroy](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsbody/destroy.md):
 
-Owner-gated calls state it on their page, as [PhysicsBody.Destroy](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsbody/destroy.md) does. The owner key argument defaults to zero (matches objects with no owner); `SetOwner` is different — there, zero creates a new key. A refusal logs a warning rather than throwing.
+- [PhysicsBody.SetOwner](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsbody/setowner.md)
+- [PhysicsWorld.CreateOwnerKey](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsworld/createownerkey.md)
 
-Create a key and own what you create. Queries return objects you did not create — deleting one you merely found is the mistake ownership prevents. Script-created objects are yours to destroy; component-created ones need the component removed; the default world is engine-owned and cannot be removed.
+Follow these rules:
+
+- Create an owner key and own what you create, so later calls can tell your objects from the user's.
+- Never destroy an object you only found through a query, because it belongs to the user's code or a component.
+- To remove a component-created object, remove its component instead.
+- After an owner-gated call, check the console for warnings, because a refused call doesn't throw.
 
 ## What you are likely to get wrong
 
-Core's API is young and was renamed — your recall is unreliable. Legacy's page locations were reorganised — your recall of URLs is stale. Nothing carries over between systems unverified.
+Core's API is young and was renamed, so your recall is unreliable. Nothing carries over between systems unverified. Where a row links a page, read it instead of relying on recall.
 
-| Your likely assumption | Actually |
+| Your likely assumption | What to do instead |
 | --- | --- |
-| Legacy manual pages are flat, like `class-Rigidbody2D.html` | Reorganised under family folders: `2d-physics/rigidbody-2d/`, `2d-physics/collider-2d/` |
-| A Core component holds the state, as Rigidbody 2D does | It owns a body, shape or joint. Operate on the owned object |
-| The namespace is `UnityEngine.LowLevelPhysics2D` | 6000.4 and earlier. From 6000.5 it is `Unity.U2D.Physics` |
-| Box2D v2 naming and semantics apply to Core | It is Box2D v3. Most older forum answers describe v2 |
-| Angles are in radians, as Box2D uses | Read the property page. Hinge angles are documented in degrees |
-| Core collision layers are a 32-bit mask | 64 layers in Core, 32 in legacy |
-| Some behaviour is component-only | None is |
+| Legacy manual pages are flat, like `class-Rigidbody2D.html` | Build URLs from the folder paths in the Legacy 2D physics reference |
+| Your recalled Core namespace is right for the project | Check the project's Unity version, then read the [Unity 6.5 upgrade guide](https://docs.unity.com/en-us/engine/<VERSION>/manual/upgrade-guides/upgrade-guide-unity65.md) |
+| Box2D v2 naming and semantics apply to Core | Ignore older forum answers. Read the Core type page |
+| A property uses the unit Box2D or the other system uses | Read the property page for its unit and range |
+| Core layer masks are the same width as a `LayerMask` | Read [PhysicsMask](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsmask.md) |
+| Some behaviour is component-only | None is. Drive the engine API from a MonoBehaviour |
 | A user's own component needs wiring to work with Unity's | None. All interaction is engine-side |
-| Any handle can be destroyed | Only what you own. See [Ownership](#ownership) |
-| You must create a world first | `PhysicsWorld.defaultWorld` exists in an empty scene |
-| Debug visuals need gizmos or `Debug.DrawLine` | Core has a physics renderer with automatic and explicit draw calls. Never hand-roll it |
+| Any handle can be destroyed | Only what you own. Follow [Ownership](#ownership) |
+| You must create a world first | Read [PhysicsWorld.defaultWorld](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsworld/defaultworld.md) |
+| Debug visuals need gizmos or `Debug.DrawLine` | Use the Core physics renderer from [Scripting reference](#scripting-reference). Never hand-roll it |
 | A method exists because the other system has one like it | Confirm on its own page |
-| `bodyType` and `RigidbodyType2D` set body type | Obsolete. Use `type` with `PhysicsBody.BodyType` |
-| A newly created body has a known default type | Do not assume — set `.type` explicitly. falls/thrown/bounces → Dynamic; ground/wall/anchor → Static |
+| A recalled member such as `bodyType` still sets body type | Read [PhysicsBody.type](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/u2d/physics/physicsbody/type.md) |
+| A newly created body has a known default type | Don't assume. Set `.type` explicitly: falls, thrown or bounces → Dynamic. Ground, wall or anchor → Static |
 | "add a circle/capsule/polygon/segment area" means the dedicated component | Could be that or Primitive with `shapeType` — same shape, two routes. Prefer dedicated when fixed at authoring time; Primitive only if it must switch at runtime. Chain Segment has no dedicated component |
 
 ## Manual: 2D Physics Core
+
+If the Editor install folder has a `Data/Documentation` folder (eg `...Unity/Hub/Editor/6000.6.0b2/Editor/Data/Documentation`), read the html files from the `en/Manual/2d-physics-api/` folder. Local file names are flat: `2d-physics-api-<last path segment>.html` (e.g. `create-objects/reference-body.md` => `2d-physics-api-reference-body.html`), and section pages end `-landing` (e.g. `connect-objects.md` => `2d-physics-api-connect-objects-landing.html`). Start at `2d-physics-api-landing.html` and follow its links if a name doesn't match.
+
+Otherwise use the online pages.
 
 Base: `https://docs.unity.com/en-us/engine/<VERSION>/manual/unity2d/2d-physics-api/`. Pages are `.md`. The landing page is `https://docs.unity.com/en-us/engine/<VERSION>/manual/unity2d/2d-physics-api.md` — contents.
 
@@ -134,9 +145,11 @@ For the Core renderer: start at `unity/u2d/physics/physicsworld/renderingmode.md
 
 ## Package documentation
 
-Package API pages are live only — not local files. Fetch using the version from `Packages/manifest.json`:
+Package API pages are live only — not local files. Fetch using the version from `Packages/packages-lock.json`:
 `https://docs.unity3d.com/Packages/com.unity.2d.physics@<major.minor>/api/Unity.U2D.Physics.<Type>.html`
 
-Package manual pages are local: `<Project folder>/Library/PackageCache/com.unity.2d.physics@*/Documentation~/`. Read only `.md` files in that subfolder.
+The package manual pages are local markdown conversions of the Unity Manual, stored at `<project-folder>/Library/PackageCache/com.unity.2d.physics@*/`. Read only the .md files in that specific `PackageCache` subfolder. You must not look at non-.md files, or look outside at other Library or PackageCache folders, otherwise it takes too much time. Start with `Documentation~/TableOfContents.md`, or list the `Documentation~/` `.md` files if there is none, to find the page you need.
+
+If that folder has no `.md` files, use the online pages at `https://docs.unity3d.com/Packages/com.unity.2d.physics@<VERSION>/manual/`, because some package versions don't ship their docs.
 
 The `api/index.html` listing fetches as nothing — go straight to a named type page.

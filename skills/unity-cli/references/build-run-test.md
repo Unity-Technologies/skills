@@ -360,7 +360,7 @@ The first-class build workflow. Rule of thumb vs `unity run`: building a player 
 
 Pick one build strategy: a Unity 6+ Build Profile (`--profile`), a built-in desktop player build (`--target` with a desktop target, `--output-path` required), or a custom `--execute-method` (your method is responsible for the actual build, including honoring `--output-path`). Non-desktop targets need `--profile` or `--execute-method`.
 
-The build log is always written to the log file **and** streamed to stdout at the same time; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`).
+The build log is always written to the log file **and** streamed at the same time — to stdout, or to stderr under `--format json` so stdout holds only the result document; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`). The streamed copy masks the credentials the CLI passes the Editor (the `-accessToken` value, the Android keystore passwords) with `***`, as do `run` and `test` wherever they relay the Editor's log.
 
 **How the outcome is decided — do not gate CI on Unity's exit code alone.** For a built-in build (`--profile`, or `--target` without `--execute-method`) the CLI does not trust Unity's process exit code by itself: a real Editor exits `0` from a player build its own log reports as failed. When the log carries Unity's terminal verdict, that verdict decides the outcome, so a failed build exits **6** even where the Unity process exited `0`, and the provenance manifest records the failure. A log with no verdict falls back to the exit code, and an `--execute-method` build always does — your method owns the code it returns, including when it deliberately tolerates a build it reports on itself. A build that succeeds with errors still in its log reports them on stderr rather than dropping them; they also ride `editorErrors` under `--format json`.
 
@@ -389,7 +389,7 @@ unity build /path/to/MyProject --profile "Windows Release" --output-path ./Build
 | `--create-profile <target>` | Create a Build Profile for a target and exit without building (Unity 6+); build with it afterwards via `--profile`. |
 | `--build-target-group <group>` | Forwarded to Unity as `-buildTargetGroup`. |
 | `-o, --output-path <path>` | Output path. With `--execute-method`, passed as `-buildOutput` (your method must honor it); otherwise the built-in build's destination (required). |
-| `-l, --log-file <path>` | Log file path. Default: `<project>/Logs/build-<target>-<timestamp>.log`. Streamed to stdout by default (see `--no-tail`). |
+| `-l, --log-file <path>` | Log file path. Default: `<project>/Logs/build-<target>-<timestamp>.log`. Streamed to stdout by default, stderr under `--format json` (see `--no-tail`). |
 | `--editor-version <version>` | Override editor version (default: from `ProjectVersion.txt`). |
 | `-e, --editor-path <path>` | Use a specific editor binary. |
 | `-a, --architecture <arch>` | Editor architecture (`x86_64` or `arm64`). |
@@ -426,16 +426,17 @@ Keystore flags are validated together. Secrets passed as command-line flags surf
 
 **Interrupt exit codes** — interrupting `unity build` exits with the conventional signal code (`130` for Ctrl-C / SIGINT, `143` for SIGTERM) rather than a generic `1`, so callers and CI can tell an aborted build apart from a failed one. The temporary Android keystore is scrubbed before exit.
 
-**Stall heartbeat** — a long build prints a periodic heartbeat (`Still building — 4m30s elapsed, last log output 3m10s ago`) tracking both total elapsed time and time since the Editor log last grew, so silence in the log no longer looks the same as a hang. Detection itself reads the Editor log's size directly, so it keeps working regardless of output mode — but whether the heartbeat is *printed* depends on the mode: on the human path it goes to stderr (so the streamed log stays clean) and is unaffected by `--no-tail`, but **`--quiet` suppresses it entirely** in human mode. Under `--format json`/`--format ndjson` it appears as periodic progress frames and is emitted regardless of `--quiet` — quiet only silences the human path.
+**Stall heartbeat** — a long build prints a periodic heartbeat (`Still building — 4m30s elapsed, last log output 3m10s ago`) tracking both total elapsed time and time since the Editor log last grew, so silence in the log no longer looks the same as a hang. Detection itself reads the Editor log's size directly, so it keeps working regardless of output mode — but whether the heartbeat is *printed* depends on the mode: on the human path it goes to stderr (so the streamed log stays clean) and is unaffected by `--no-tail`, but **`--quiet` suppresses it entirely** in human mode. Under `--format json`/`--format ndjson` it appears as periodic progress frames (on stderr under json, on stdout under ndjson) and is emitted regardless of `--quiet` — quiet only silences the human path.
 
 ```bash
-# With --format json, stdout includes newline-delimited JSON progress frames before the final envelope:
-unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output-path ./build/output --format json
-# Output (each line is a JSON object):
+# With --format json, stdout is the result document alone; the progress frames and the streamed log go to stderr:
+unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output-path ./build/output --format json > result.json
+# stderr (each progress line is a JSON object, the Editor log lines between them):
 # {"type":"progress","command":"build","message":"Resolving project..."}
 # {"type":"progress","command":"build","message":"Resolving editor..."}
 # {"type":"progress","command":"build","message":"Starting Unity..."}
 # {"type":"progress","command":"build","message":"Unity exited (code 0)"}
+# result.json:
 # { "success": true, "command": "build", "data": { "target": "...", "logFile": "...", "outputPath": "/path/to/MyProject/build/output" } }
 ```
 
@@ -482,7 +483,7 @@ The [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) i
 unity test /path/to/MyProject
 
 # One-shot override / opt-out
-unity build /path/to/MyProject --target StandaloneLinux64 --accelerator cache.example.com:10080
+unity build /path/to/MyProject --target StandaloneLinux64 --output-path ./Build/MyGame.x86_64 --accelerator cache.example.com:10080
 unity test /path/to/MyProject --no-accelerator
 ```
 
