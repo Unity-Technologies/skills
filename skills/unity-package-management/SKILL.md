@@ -1,27 +1,54 @@
 ---
 name: unity-package-management
-description: Adds, removes, upgrades, and discovers Unity (UPM) packages from outside the Editor. Use for headless or CI package installs, verifying package IDs and versions, or choosing which packages a game needs. The Unity CLI doesn't manage packages.
+description: Adds, removes, upgrades, and discovers Unity (UPM) packages from outside the Editor, with the Pipeline package commands first and a C# script as the fallback. Use for package installs, verifying package IDs and versions, or choosing which packages a game needs.
 allowed-tools:
   - Bash
-  - Read
   - Write
   - Edit
 ---
 
-# Unity Package Management (headless, via the C# Client API)
+# Unity Package Management (Pipeline commands first, C# script as the fallback)
 
-Add, remove, upgrade, and discover UPM (Unity Package Manager) packages programmatically with
-`UnityEditor.PackageManager.Client`, driven headless from the terminal or CI. Do **not**
-hand-edit `Packages/manifest.json` — the Client API resolves dependencies and compatible
-versions correctly, whereas manual edits routinely break resolution.
+Add, remove, upgrade, and discover UPM (Unity Package Manager) packages with the `package`
+commands of the project's Pipeline package, run through `unity command`. Only when no Editor can
+answer those commands, fall back to `UnityEditor.PackageManager.Client` driven headless from a
+script (see [Fallback](#fallback-no-editor-to-ask-the-c-client-api)). Do **not** hand-edit
+`Packages/manifest.json`: the Package Manager resolves dependencies and compatible versions
+correctly, whereas manual edits routinely break resolution.
 
-This complements the **`unity-cli`** skill (editor install, project creation, build/test): the
-CLI has **no** package-management command, so all package work goes through the Editor's C# API.
+This complements the **`unity-cli`** skill (editor install, project creation, build/test), which
+documents `unity command`, `unity status` and `unity pipeline install`.
+
+## Use the package commands first
+
+The Pipeline package registers a `package` command group: `add`, `remove`, `list`, `resolve`,
+`search` and `status`. They need a running Editor whose project has `com.unity.pipeline` (add it
+with `unity pipeline install`, then `unity open`, then wait with `unity status --until-ready`).
+Each command's parameters come from the Editor, so read them before the first call. Don't guess
+a parameter name.
+
+```bash
+unity status --until-ready --project-path "<project-path>"
+unity command package --project-path "<project-path>"                  # the package commands this Editor has
+unity command --query package --format json --project-path "<project-path>"   # each command's parameter schema
+unity command package search --project-path "<project-path>"           # then pass the parameters the schema lists
+unity command package add --project-path "<project-path>"              # add one or more packages by id
+unity command package list --project-path "<project-path>"             # confirm what is installed
+```
+
+Pass a command's parameters after its name, as the schema names them (`unity command <group>
+<command> --<parameter> <value>`). Add every package you need in one `package add` call when the
+schema accepts several ids. Pin a version the way the schema describes when a minimum is required
+(the `@<version>` id form belongs to the C# fallback below). Use `package status` or `package list` to verify, and
+`package remove` to drop a package. Treat a non-zero exit as a failure and read its message.
+
+If `unity command package` reports no such group, the project's Pipeline package predates it:
+run `unity pipeline upgrade`, or use the fallback below.
 
 ## When to use
 
 - Add / remove / upgrade one or more packages in an existing or freshly-created project.
-- Set up a project's packages non-interactively in CI.
+- Set up a project's packages non-interactively in CI (fallback script when no Editor is running).
 - Verify a package id exists, or find its available versions, before depending on it.
 - Decide which packages a game actually needs — see
   [references/select-packages.md](references/select-packages.md).
@@ -33,6 +60,12 @@ already provides (URP templates already include the render pipeline, Input Syste
 genre / look / platform / monetization → package mapping, plus how to search the registry, is
 in [references/select-packages.md](references/select-packages.md). Produce a **deduplicated
 list of package ids** and read it back to the user before installing.
+
+## Fallback: no Editor to ask (the C# Client API)
+
+Use this section only when `package add` can't run: no Editor is open and you don't want one
+open, the project has no Pipeline package, or the command group is missing and an upgrade isn't
+wanted. It installs through `Client.AddAndRemove` from a script the Editor runs in batch mode.
 
 ## The `-quit` problem — why NOT `unity run` for installs
 

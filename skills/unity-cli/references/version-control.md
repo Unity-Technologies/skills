@@ -76,7 +76,7 @@ with `VCS_PROVIDER_UNSUPPORTED` — note the bare word `git` is not a valid valu
 
 **Credentials, in the order they are tried.** You will usually not need to supply one:
 
-1. `--git-token-stdin` (prefer this in CI — an argv token is visible in the process table) or
+1. `--git-token-from-stdin` (prefer this in CI — an argv token is visible in the process table) or
    `--git-token <pat>`
 2. The provider's environment variable
 3. Your git credential helper / Git Credential Manager, which may itself open a browser
@@ -380,11 +380,12 @@ Finds binaries already committed to history and prints the LFS migration command
 ```bash
 unity vcs git migrate-lfs
 unity vcs git migrate-lfs --min-size 500KB
-unity vcs git migrate-lfs --since "6 months ago"
+unity vcs git migrate-lfs --after "6 months ago"
 ```
 
-⚠ **`--since` here takes a git DATE, not a revision** — unlike `vcs summarize --since` and
-`vcs affected --since`, which take revisions. Same flag name, three leaves, two meanings.
+`--after` takes a git date, the way git's own `--after` does. `--since` still works here as a
+deprecated spelling and prints a warning, but `--since` means a revision on `vcs summarize`,
+`vcs affected` and `test`, so write `--after`.
 
 Two things it deliberately does:
 
@@ -393,7 +394,7 @@ Two things it deliberately does:
   source into LFS stops it diffing and merging. So the include list is restricted to the asset
   types the shipped `.gitattributes` template already routes through LFS, plus what the
   repository already tracks. Everything else is reported and named as *not* offered.
-- **A bounded scan still prints an unbounded migration.** `--since` narrows the diagnosis, but
+- **A bounded scan still prints an unbounded migration.** `--after` narrows the diagnosis, but
   the printed `git lfs migrate import` carries `--everything`, because a rewrite that skips a
   branch leaves every blob on it reachable and the repository does not shrink.
 
@@ -422,6 +423,10 @@ either way.
 `--no-register` leaves the new worktree out of the Hub project registry, so it does not show up in
 `unity projects list` or in the Hub. Use it for a short-lived checkout you do not want to keep
 track of.
+
+`--format json` and `--format ndjson` carry the real `worktree`, `project`, `repository` and
+`sourceProject` paths, so a script or agent can open what it just made. The human output masks the
+account name in a home-directory path (`<user>`), so copy paths from the JSON, not from the text.
 
 `remove` requires the path, so a bare run can never delete the checkout you are standing in.
 
@@ -492,8 +497,8 @@ Fields worth branching on rather than ignoring:
 
 ## Common traps
 
-- **`--since` is not one flag.** A revision on `vcs summarize` and `vcs affected`; a git **date**
-  on `vcs git migrate-lfs`.
+- **`--since` takes a revision.** On `vcs summarize`, `vcs affected` and `test`. A date bound is
+  `vcs git migrate-lfs --after`, and a year floor is `releases --from-year`.
 - **`--vcs git` is not a value.** `--vcs` takes `github`, `gitlab`, `uvcs`, or a self-hosted host
   name.
 - **`vcs` is not `collab`, and `unity vcs uvcs` is not `unity uvcs`.** Three adjacent

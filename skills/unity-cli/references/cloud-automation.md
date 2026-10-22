@@ -51,9 +51,9 @@ Blank values fall through to the next source. Inspect saved defaults with
 context when the user names an organization/project; inventory commands don't
 change saved defaults.
 
-Service accounts need a numeric organization ID, not its name. A signed-in
-OAuth user can use an ID or organization name. Pipeline Automation doesn't take
-`--cloud-project`. Missing required context fails with exit `4`.
+Service accounts need a numeric organization ID and a project ID, not names. A
+signed-in OAuth user can use an ID or a name for the organization and for the
+Cloud Build project. Pipeline Automation doesn't take `--cloud-project`. Missing required context fails with exit `4`.
 
 ## Run list and get commands
 

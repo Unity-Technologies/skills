@@ -32,6 +32,42 @@ The CLI writes its own `cli-log.json` (separate from the Hub's `info-log.json`) 
 > Safe Mode and block the Pipeline connection — read `Editor.log` directly (see
 > [integration-advanced.md → Recovering from Safe Mode](integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors) for its per-platform path and the full recovery loop).
 
+### Logs --console: the running Editor's console
+
+```bash
+# The last 20 console entries of the Editor this folder's project is open in
+unity logs --console
+
+# Errors only, from a named project's Editor
+unity logs --console --level error --project-path /path/to/project
+
+# Stream new console entries as the Editor logs them, one JSON object per line, until Ctrl-C
+unity logs --console --follow --format ndjson
+```
+
+`--console` reads the Editor console through the Pipeline package (`console get`), so the Editor
+must be running with the package loaded. `--project-path <path>` (or `UNITY_PROJECT_PATH`) picks the
+Editor, and typing `--project-path` without `--console` is a usage error. `--level` maps onto the
+console's three levels: `trace`, `debug` and `info` show everything, `warn` shows warnings and
+errors, `error` and `fatal` show errors. `--tail 0` asks for every entry the console buffer holds.
+
+Each entry carries `seq`, `time` (UTC), `level` (`log`, `warn`, `error`), `logType` (Unity's own
+`Log`, `Warning`, `Error`, `Assert` or `Exception`), `message`, `stackTrace`, `seeded` (read from the
+Editor console's store rather than captured live) and `diagnostic`. `diagnostic` is `null` unless the
+message's first line is a compiler diagnostic; then it holds `source` (`burst` for Burst's
+`BCnnnn` errors, `compiler` for the C# compiler), `severity`, `code`, `file`, `line`, `column` and
+`message`. In `tsv` the columns are `seq`, `time`, `level`, `logType`, `message` and the
+`diagnostic.*` fields, after a header row.
+
+`--follow` resumes from the console's cursor, so no entry is written twice. It keeps running through
+a script reload or an Editor restart, and stays on the first Editor it read. It says on stderr, once
+per outage, that it lost the connection or what the Editor answered instead of entries. It also says
+when the Editor restarted, or when entries were evicted from the buffer before it could read them.
+Under `--format json` each of these is one `{"warning": "..."}` line on stderr.
+Only a failed first read fails the command (exit `12` when no Editor is running for the project).
+Ctrl-C ends it with exit `130`. A Pipeline package older than 0.7.0-exp.1 can't be followed (it
+reports no console session), and the command says to update it with `unity pipeline upgrade`.
+
 ---
 
 ### Doctor — system diagnostics
@@ -310,52 +346,91 @@ unity changelog --target latest
 unity changelog --format json
 ```
 
+When no notes are published for that version, the command exits 6, and `--format json` reports `CHANGELOG_NOT_FOUND` in `errors[0].code`. A download that fails reports `ERR_NETWORK` (no connection) or `COMMAND_FAILED` (an HTTP error) instead.
+
 ---
 
 ### Docs — version-matched Unity documentation
 
-Open the documentation page for a class or topic in the default browser, matched
-to the editor version of the project you are in:
+Open the docs.unity.com page for a class or topic in the default browser,
+matched to the editor version of the project you are in:
 
 ```bash
+unity docs                               # the Engine documentation home
 unity docs GameObject                    # scripting API reference
-unity docs --manual Coroutines           # the manual instead
+unity docs GameObject.activeSelf         # a member page
+unity docs --manual Coroutines           # search the manual
 unity docs --search "physics raycast"    # the documentation search results
+unity docs --package com.unity.2d.sprite # a package manual, at the version your project uses
 unity docs --url Rigidbody.AddForce      # print the URL, do not open it
 unity docs --cli use-unity-cli           # the Unity CLI's own documentation
 unity docs --hub project-create          # the Unity Hub documentation
 unity docs --cloud developer-data/collection-settings   # Unity Cloud
+unity docs --content GameObject          # print the page's Markdown, do not open it
 ```
 
-The version is read from the current project's
-`ProjectSettings/ProjectVersion.txt` — no editor has to be installed. Outside a
-project, the current documentation is used. `--editor-version` overrides it and
-accepts either a full version (`6000.0.26f1`) or a version branch (`6000.0`); an
-unparseable value is a usage failure rather than a silent fallback to the wrong
-version's docs.
+The version is `--editor-version`, then the current project's
+`ProjectSettings/ProjectVersion.txt` (no editor has to be installed), then the
+newest version docs.unity.com hosts. `--editor-version` accepts a full version
+(`6000.0.26f1`) or a version branch (`6000.0`); an unparseable value is a usage
+failure rather than a silent fallback. A version the site doesn't host uses the
+nearest hosted version below it, or the oldest hosted one, with a one-line
+notice on stderr.
+
+A scripting API topic is looked up in the site's page index (the same one
+`docs toc` lists): a qualified name (`UnityEngine.GameObject`) matches exactly,
+a bare class name or `Class.member` matches the page whose path ends with it,
+preferring `UnityEngine`, then `UnityEditor`, then the shortest path. A name two
+pages tie on goes to search rather than a guess. The lookup takes at most 5
+seconds and never fails the command: offline, a qualified name is built
+directly for the version you asked for, and anything else goes to search. A
+trailing `.html`, a `(...)` signature and the old `Class-member` page form are
+all accepted. `--manual` always searches, since the new Manual pages have no
+mapping from the old page names.
+
+When the Editor's Documentation module is installed for the version `docs`
+resolves (that exact Editor first, then the others on its line, newest first),
+opening a scripting API topic in the browser opens the local page instead, a
+`file://` URL with no network. `--online` skips the local copy. A printed
+address (`--url`) is always the docs.unity.com page, so a citation never
+carries a machine-local path. A topic the local copy doesn't have, a tie, or
+no version at all goes online as before, and so does every run under WSL,
+whose Windows browser can't read a Linux path.
 
 **For an agent, `--url` is the useful mode:** it prints the resolved address to
 stdout and opens nothing, so it composes into a citation or a review comment.
-`--format json` carries the same address plus the `version` the page was matched
-to (`null` when no project version was found), which is how a caller tells a
-version-matched answer from a fallback one.
+`--format json` carries the same address plus `version` (the docs version in the
+URL, `null` for search or a home page), `requestedVersion` (the one asked for),
+`source` (`online`, or `local` for a page opened from the Documentation module,
+which also carries `path` and `editorVersion`) and `resolvedBy`: `index`,
+`direct`, `search` or `local`.
 
-A topic that cannot name a documentation page — a phrase, or anything with a
-path separator — falls back to the documentation search for that section rather
-than composing an address that would 404. A trailing `.html` is dropped, so a
-page name pasted out of a browser address bar resolves.
+#### Package manuals: `docs --package`
 
-#### Documentation sets outside the Editor docs
+`unity docs --package <name>` opens a package's manual on docs.unity3d.com,
+where package manuals live, for the package version your project uses. The
+version is the one in the project's `Packages/packages-lock.json`; a package
+built into the Editor (`com.unity.2d.sprite`, `com.unity.2d.tilemap`) uses its
+one manual version; anything else uses the newest release on the Unity
+registry (also for a package the project takes from a Git URL or a local
+folder). A name the registry doesn't list fails with `DOCS_PACKAGE_UNKNOWN`
+instead of opening a missing page, and a registry that
+can't be reached fails with `NETWORK_UNREACHABLE`. `--package` takes no topic and
+can't be combined with another documentation set, `--search` or
+`--editor-version`. `--url` prints the address; `--format json` adds `package`,
+`packageVersion` (the full version, `null` for a built-in package outside a
+project) and `resolvedBy`: `project`, `editor` or `registry`.
 
-`--cli`, `--hub` and `--cloud` look the topic up on Unity's documentation
-platform instead of the Editor documentation. These are separate bodies of
-documentation rather than newer addresses for the same pages, so the two sites
-answer different questions:
+#### Documentation sets outside the Engine docs
+
+`--cli`, `--hub` and `--cloud` look the topic up in another documentation set
+on docs.unity.com instead of the Engine documentation. With no topic, each opens
+its set's home page:
 
 |Flag|Documentation|
 |---|---|
-|*(default)*|Editor scripting API reference, version-matched|
-|`--manual`|Editor manual, version-matched|
+|*(default)*|Engine scripting API reference, version-matched|
+|`--manual`|Engine manual, through search|
 |`--cli`|The Unity CLI|
 |`--hub`|The Unity Hub|
 |`--cloud`|Unity Cloud|
@@ -369,6 +444,44 @@ Page names on these sets are lowercase and hyphenated, and may carry more than
 one segment (`developer-data/collection-settings`). Anything else — a phrase, or
 a name in the wrong case — falls back to the platform's search page, the same
 fallback rule the Editor sections use.
+
+#### Reading a page as Markdown: `docs --content`
+
+`unity docs <topic> --content` prints the page's Markdown to stdout instead of
+opening a browser, which an agent reads far better than HTML. With
+`--format json` the Markdown is wrapped with `url`, `markdownUrl`, `version`
+and `source` (`online`, or `local` for a package). It cannot be combined with
+`--url`. A topic that only resolves to a search, and `--manual`, have no page
+to print and fail. A package topic (`com.unity.*`) has no Markdown online yet:
+it prints the package's local `Documentation~` Markdown from the project's
+`Packages` or `Library/PackageCache`, or says plainly that none exists.
+
+#### Listing the pages: `docs toc`
+
+`unity docs toc` lists every page of a documentation section on docs.unity.com,
+so an agent can pick a real page instead of guessing its name:
+
+```bash
+unity docs toc --format json                             # scripting API reference
+unity docs toc --manual --format json                    # the manual
+unity docs toc --editor-version 6000.0 --format ndjson   # one page per line
+```
+
+The version is `--editor-version`, then the project's `ProjectVersion.txt`, then
+the newest version docs.unity.com hosts. A version the site doesn't host is
+listed as the nearest hosted version below it, or the oldest hosted one if there
+is none, with a one-line notice on stderr.
+
+Each entry has a `path` under the section (`unityengine/gameobject/activeself`)
+and its absolute `url`. The pages come from the site's sitemaps, which carry no
+titles. The json envelope's `data` is `{version, requestedVersion, section,
+entries}`: `version` is the one listed, `requestedVersion` the one asked for
+(null when none was). TSV and the human table show the path and URL.
+
+The index is downloaded once a day, then read from a local cache. No
+connection is `NETWORK_UNREACHABLE` (exit 7); a server error is
+`DOCS_TOC_FETCH_FAILED`, and an index that can't be read is `DOCS_TOC_INVALID`.
+`--cli`, `--hub` and `--cloud` publish no index, so `toc` doesn't take them.
 
 ---
 
@@ -488,7 +601,7 @@ unity self-update --rollback
 
 Downloads go through the CLI’s regular download engine: an interrupted download (a dropped connection, a closed lid, a Ctrl-C) resumes from where it left off on the next `unity self-update`, and a Brotli-compressed artifact is preferred when the release publishes one — verified against its own checksum and again after decompression. A release with no compressed artifact for your platform falls back to the raw download.
 
-`--check`, `--changelog`, and `--dry-run` work everywhere. The background "update available" notice is package-manager-aware: when the release manifest says your install's package manager already carries the new version, the notice suggests that manager's exact upgrade command instead of `unity self-update`; installs whose manager doesn't carry the release yet stay quiet.
+`--check`, `--changelog`, and `--dry-run` work everywhere. When no notes are published for the version, `--changelog` exits 6, and `--format json` reports `CHANGELOG_NOT_FOUND` in `errors[0].code`. The background "update available" notice is package-manager-aware: when the release manifest says your install's package manager already carries the new version, the notice suggests that manager's exact upgrade command instead of `unity self-update`; installs whose manager doesn't carry the release yet stay quiet.
 
 The same background check also warns when a self-installed `unity` and a Homebrew-managed one are **both** on `PATH` — a state where `which unity` keeps resolving to the self-installed copy while `brew upgrade` updates the other, so the two silently drift apart. The notice points at `unity self-uninstall -y` to remove the self-installed copy so Homebrew is the only one managing updates going forward.
 

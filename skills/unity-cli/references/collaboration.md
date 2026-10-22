@@ -25,21 +25,26 @@ Editor open. Annotations created either way are visible to both.
 
 ### Shared behavior
 
-**Project scoping — `--project-id` OR an inferred project.** The project-scoped commands
+**Project scoping — `--cloud-project` OR an inferred project.** The project-scoped commands
 (`annotations`, `attachments`, `reactions`, `thumbnail`, `read`, `subscribe`, `unsubscribe`, and
-`jira issues create/get/link/unlink/search/types`) take both `--project-id <id>` (Unity Cloud project
-id — find one with `unity cloud project list`, see [auth-license-cloud.md](auth-license-cloud.md))
-and `--project-path <path>`. Neither is required: resolution order is
+`jira issues create/get/link/unlink/search/types`) take both `--cloud-project <id>` (Unity Cloud
+project id — find one with `unity cloud project list`, see [auth-license-cloud.md](auth-license-cloud.md))
+and `--project-path <path>`. It takes an id only, not a project name. `--project-id` is the
+deprecated spelling of `--cloud-project`: it still works, and warns. Neither is required: resolution
+order is
 
-1. explicit `--project-id`, else
+1. explicit `--cloud-project`, else
 2. the `UNITY_CLOUD_PROJECT` env var, else
 3. `--project-path` → `UNITY_PROJECT_PATH` env var → the current directory, reading
-   `ProjectSettings/PlayerSettings.asset` for the project's `cloudProjectId`, else
+   `ProjectSettings/ProjectSettings.asset` for the project's `cloudProjectId`, else
 4. the stored default cloud project for your active organization
    (`unity cloud project set-default`, see [auth-license-cloud.md](auth-license-cloud.md)).
 
+An empty or whitespace-only `--cloud-project` or `UNITY_CLOUD_PROJECT` counts as not set, so the next
+step applies.
+
 If none yields an id it fails with: `Could not determine the Unity Cloud project for '<path>'.
-Pass --project-id explicitly, or --project-path to point at a project linked to Unity Cloud.` So
+Pass --cloud-project explicitly, or --project-path to point at a project linked to Unity Cloud.` So
 inside a cloud-linked Unity project you can drop the flag entirely, and with a default set you can
 drop it outside one too. Note the link outranks the default: it is the more specific fact about the
 directory you pointed the command at. Most of `jira` is scoped
@@ -71,14 +76,14 @@ differently:
 Both split on the first `=` only (values may contain `=`); repeating a key means last value wins;
 a pair without `=` or with an empty key fails with `Invalid key=value pair: <pair>`.
 
-**Raw-JSON flags.** `--camera`, `--local-space` / `--local`, `--time`, `--position`,
+**Raw-JSON flags.** `--camera`, `--local`, `--time`, `--position`,
 `--attachments`, and `annotations list --query` take a JSON value and fail with
 `Invalid JSON for --<flag>` when it doesn't parse. Shapes:
 
 | Flag | JSON shape |
 |---|---|
 | `--camera` | `{"position":{"x":0,"y":0,"z":0},"rotation":{"x":0,"y":0,"z":0},"fieldOfView":60,"target":{...},"projection":"...","verticalSize":1}` — position + rotation required, rest optional |
-| `--local-space` (annotations) / `--local` (attachments spatial) | `{"parentId":"...","position":{"x":0,"y":0,"z":0},"cameraPosition":{"x":0,"y":0,"z":0}}` — same shape, different flag name per group |
+| `--local` (annotations, attachments spatial) | `{"parentId":"...","position":{"x":0,"y":0,"z":0},"cameraPosition":{"x":0,"y":0,"z":0}}` |
 | `--time` | `{"timeScale":1,"timeStamp":0}` |
 | `--position` (attachments spatial) | `{"x":0,"y":0,"z":0}` |
 | `--attachments` (annotations create) | JSON array of `{"type":"...", ...}` attachment objects |
@@ -214,7 +219,7 @@ Annotation objects returned by `get`/`list`/`replies` (`--format json`) carry: `
 | Command | Args | Key options |
 |---|---|---|
 | `annotations count` | `[target]` (glob `**` at end OK) — **defaults to `unity/projects/<id>/**` only**, see below | `--grouped` (per-target breakdown), `--offset <n>`, `--limit <n>` |
-| `annotations create` | `<target>` | `--text`, `--reply-to <id>`, `--status Active\|Draft`, `--metadata k=v`…, `--target-context k=v`…, `--camera`, `--local-space`, `--time`, `--attachments`, `--unresolve-root-annotation` |
+| `annotations create` | `<target>` | `--text`, `--reply-to <id>`, `--status Active\|Draft`, `--metadata k=v`…, `--target-context k=v`…, `--camera`, `--local`, `--time`, `--attachments`, `--unresolve-root-annotation` |
 | `annotations delete` | `<annotationId>` | (confirmation — see Shared behavior) |
 | `annotations delete-fields` | `<annotationId> <field...>` | removes metadata fields; variadic; confirmation |
 | `annotations export` | — | `--target <path>` — **defaults to `assets/projects/<id>/**` only**, see below; `--out <file>` (else stdout), `--resolve-users`; the service returns `assetId` + `assetName` here that `list` does not — the CLI copies the response page verbatim, so treat those as service behavior |
@@ -223,32 +228,32 @@ Annotation objects returned by `get`/`list`/`replies` (`--format json`) carry: `
 | `annotations replies` | `<annotationId>` | `--next`, `--limit 1-100`, `--all`, `--sort`, `--status-filter All\|Active\|Sending\|Draft` (repeat flag), `--fields a,b` or `--fields all` (table output only), `--full`, `--resolve-users` |
 | `annotations resolve` / `annotations unresolve` | `<annotationId>` | — (echoes only `annotationId`, see below) |
 | `annotations status` | `<annotationId> <Active\|Sending\|Draft>` | — |
-| `annotations update` | `<annotationId>` | `--text`, `--metadata k=v`…, `--camera`, `--local-space`, `--time` — at least one required |
+| `annotations update` | `<annotationId>` | `--text`, `--metadata k=v`…, `--camera`, `--local`, `--time` — at least one required |
 
 ```bash
 # Create a thread on an asset, with typed metadata (count is a number, build stays a string)
 unity collaboration annotations create "unity/projects/$PROJ/assets/$ASSET" \
-  --project-id $PROJ --text "Texture seam visible here" \
+  --cloud-project $PROJ --text "Texture seam visible here" \
   --metadata severity=2 --metadata 'build="2024.1"' \
   --camera '{"position":{"x":0,"y":1,"z":-5},"rotation":{"x":0,"y":0,"z":0}}'
 
 # Reply to it
 unity collaboration annotations create "unity/projects/$PROJ/assets/$ASSET" \
-  --project-id $PROJ --reply-to $ANNOTATION_ID --text "Fixed in latest import"
+  --cloud-project $PROJ --reply-to $ANNOTATION_ID --text "Fixed in latest import"
 
-# List root threads (default query) from inside a cloud-linked project — no --project-id needed
+# List root threads (default query) from inside a cloud-linked project — no --cloud-project needed
 unity collaboration annotations list --include-fields replyCount,latestReply --format json
 
 # Custom query — must be a JSON ARRAY of clauses; the default is
 #   [{"type":"hasNot","field":"annotationParentId"}]   (root threads only)
-unity collaboration annotations list --project-id $PROJ \
+unity collaboration annotations list --cloud-project $PROJ \
   --query '[{"type":"hasNot","field":"annotationParentId"}]' --all --format ndjson
 
 # Export for offline analysis — ONE prefix tree per run; the bare command covers
 # only assets/**, so an Editor-annotated project needs both invocations.
-unity collaboration annotations export --project-id $PROJ \
+unity collaboration annotations export --cloud-project $PROJ \
   --target "assets/projects/$PROJ/**" --out annotations-assets.json
-unity collaboration annotations export --project-id $PROJ \
+unity collaboration annotations export --cloud-project $PROJ \
   --target "unity/projects/$PROJ/**"  --out annotations-editor.json
 ```
 
@@ -297,7 +302,7 @@ resolved`), which is one way to confirm the first call landed.
 
 Attachments hang off an annotation. Three kinds: **file** (uploaded blob), **sketch** (2D drawing
 over a camera view), **spatial** (labeled 3D anchor) — payload shapes in
-[Data model](#attachment-payload-shapes). All commands take `--project-id`.
+[Data model](#attachment-payload-shapes). All commands take `--cloud-project`.
 
 | Command | Args | Key options |
 |---|---|---|
@@ -314,15 +319,15 @@ over a camera view), **spatial** (labeled 3D anchor) — payload shapes in
 
 ```bash
 # Attach a screenshot (upload and `add file` are interchangeable)
-unity collaboration attachments upload $ANNOTATION_ID ./screenshot.png --project-id $PROJ
+unity collaboration attachments upload $ANNOTATION_ID ./screenshot.png --cloud-project $PROJ
 
 # Add a labeled 3D anchor
-unity collaboration attachments add spatial $ANNOTATION_ID --project-id $PROJ \
+unity collaboration attachments add spatial $ANNOTATION_ID --cloud-project $PROJ \
   --label "Broken collider" --position '{"x":1.2,"y":0,"z":3.4}' \
   --camera '{"position":{"x":0,"y":2,"z":-4},"rotation":{"x":15,"y":0,"z":0}}'
 
 # Download; refuses to overwrite an existing file unless --force
-unity collaboration attachments download $ANNOTATION_ID $ATTACHMENT_ID --project-id $PROJ \
+unity collaboration attachments download $ANNOTATION_ID $ATTACHMENT_ID --cloud-project $PROJ \
   --out ./shot.png --force
 ```
 
@@ -333,14 +338,14 @@ Notes:
 - Options required on `add sketch`/`add spatial` become *individually* optional on the matching
   `update` variant — but every variant, `file` included, rejects a flagless invocation with a
   `NO_FIELDS` error. Pass at least one change flag.
-- The spatial local-space flag is `--local` here, but `--local-space` on annotations (same JSON
-  shape).
+- The local-space anchor is `--local` here and on annotations (same JSON shape). Annotations
+  still accept the old `--local-space`, with a deprecation warning.
 
 ---
 
 ### Reactions, thumbnails, read state
 
-All use the same optional project resolution as `annotations` — `--project-id` or `--project-path`,
+All use the same optional project resolution as `annotations` — `--cloud-project` or `--project-path`,
 else inferred from the current project (see [Shared behavior](#shared-behavior)).
 
 | Command | Args | Key options |
@@ -352,15 +357,15 @@ else inferred from the current project (see [Shared behavior](#shared-behavior))
 | `subscribe` / `unsubscribe` | `<annotationId>` | per-thread notification subscription for the current user |
 
 ```bash
-unity collaboration reactions add $ANNOTATION_ID 👍 --project-id $PROJ
-unity collaboration read $ANNOTATION_ID --project-id $PROJ   # mark thread read as of now
+unity collaboration reactions add $ANNOTATION_ID 👍 --cloud-project $PROJ
+unity collaboration read $ANNOTATION_ID --cloud-project $PROJ   # mark thread read as of now
 
 # Per-thread notification subscription for the current user
-unity collaboration subscribe $ANNOTATION_ID --project-id $PROJ
-unity collaboration unsubscribe $ANNOTATION_ID --project-id $PROJ
+unity collaboration subscribe $ANNOTATION_ID --cloud-project $PROJ
+unity collaboration unsubscribe $ANNOTATION_ID --cloud-project $PROJ
 
 # Thread thumbnails
-unity collaboration thumbnail upload $ANNOTATION_ID ./shot.png --project-id $PROJ
+unity collaboration thumbnail upload $ANNOTATION_ID ./shot.png --cloud-project $PROJ
 unity collaboration thumbnail download $ANNOTATION_ID --out ./thumb.png
 ```
 
@@ -371,10 +376,10 @@ unity collaboration thumbnail download $ANNOTATION_ID --out ./thumb.png
 Connects Collaboration annotations to Jira. Three layers, three id types — don't mix them up:
 
 1. **Server config** (`serverConfigId`): a Jira server + credentials, scoped to a Unity
-   **organization** (`--organization-id`).
+   **organization** (`--cloud-org`).
 2. **Project config** (`projectConfigId`, flag `--jira-project-config-id`): a Jira project
    (`--jira-project-id` — the Jira-side id) under a server config, linkable to Unity projects.
-3. **Issues**: created from / linked to annotations, scoped by Unity `--project-id`. The resulting
+3. **Issues**: created from / linked to annotations, scoped by Unity `--cloud-project`. The resulting
    link lands in `annotation.integrations.jiraIssues[]` — see
    [Jira integration payload](#jira-integration-payload) below.
 
@@ -382,12 +387,21 @@ Connects Collaboration annotations to Jira. Three layers, three id types — don
 
 | Group | Scoping |
 |---|---|
-| `jira server *` | `--organization-id`, required (rejected at parse time) |
-| `jira project add` / `delete` / `update` | `--organization-id`, required (validated by the handler) |
-| `jira project link` / `unlink` | Unity project id is a **positional** (`<unityProjectId> <projectConfigId>`); no `--organization-id` at all |
-| `jira issues list` | `--organization-id`, required (rejected at parse time) |
-| `jira configs` | exactly **one** of `--organization-id` or `--project-id`, **no `--project-path`** and no inference |
-| `jira issues create/get/link/unlink/search/types` | `--project-id` / `--project-path`, or inferred — see [Shared behavior](#shared-behavior) |
+| `jira server *` | an organization, required (rejected at parse time) |
+| `jira project add` / `delete` / `update` | an organization, required (validated by the handler) |
+| `jira project link` / `unlink` | Unity project id is a **positional** (`<unityProjectId> <projectConfigId>`); no `--cloud-org` at all |
+| `jira issues list` | an organization, required (rejected at parse time) |
+| `jira configs` | exactly **one** of `--cloud-org` or `--cloud-project` typed, **no `--project-path`** and no inference |
+| `jira issues create/get/link/unlink/search/types` | `--cloud-project` / `--project-path`, or inferred — see [Shared behavior](#shared-behavior) |
+
+**The organization** of `jira server *`, `jira project add`/`delete`/`update` and `jira issues list`
+is `--cloud-org <id>`, else the `UNITY_CLOUD_ORG` env var, else the stored default organization
+(`unity cloud org set-default`, see [auth-license-cloud.md](auth-license-cloud.md)). It takes an
+organization id only, not a name. An empty or whitespace-only flag or variable counts as not set.
+Only when none of the three gives one is it missing.
+`--organization-id` is the deprecated spelling of `--cloud-org`: it still works, and warns.
+`jira configs` is the exception: it reads its scope only from what you type, apart from
+`UNITY_CLOUD_PROJECT` when you type neither option.
 
 **`--help` never tells you which options are required.** No collaboration option is annotated as
 required in help output, on any command — so the tables in this file are the only place that
@@ -396,8 +410,8 @@ which exit code you get:
 
 | Enforcement | Commands | Behavior when omitted |
 |---|---|---|
-| Parse time | `jira server add/delete/update/test/users/projects/permissions`, `jira issues create/get/search/types`, `jira issues list --organization-id`, `attachments add sketch` / `add spatial` required flags | usage error, **exit 2** |
-| Handler | `jira project add/delete/update --organization-id`, `jira configs` | command failure (error envelope), not a usage error |
+| Parse time | `jira server add/delete/update/test/users/projects/permissions`, `jira issues create/get/search/types`, `jira issues list --cloud-org`, `attachments add sketch` / `add spatial` required flags | usage error, **exit 2** |
+| Handler | `jira project add/delete/update --cloud-org`, `jira configs` | command failure (error envelope), not a usage error |
 
 `jira project link` / `unlink` take positionals instead, so a missing id is always a parse-time
 usage error.
@@ -406,13 +420,13 @@ usage error.
 
 | Command | Args | Key options |
 |---|---|---|
-| `jira server add` | none | `--organization-id`, `--url`, `--username`, `--name`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required |
-| `jira server delete` | `<serverConfigId>` | `--organization-id` (required); confirmation |
-| `jira server update` | `<serverConfigId>` | `--organization-id` (required) + at least one of `--url`/`--username`/`--key-from-stdin`/`--key`/`--name` |
-| `jira server test` | none | `--organization-id`, `--url`, `--username`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required; validates credentials **without persisting** |
-| `jira server users` | `<serverConfigId>` | `--organization-id` (required), `--query <text>` — search Jira users |
-| `jira server projects` | `<serverConfigId>` | `--organization-id` (required) — lists **Jira-side** projects on the server |
-| `jira server permissions` | `<serverConfigId>` | `--organization-id`, `--jira-project-id` — both required; checks required Jira permissions |
+| `jira server add` | none | `--cloud-org`, `--url`, `--username`, `--name`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required |
+| `jira server delete` | `<serverConfigId>` | `--cloud-org` (required); confirmation |
+| `jira server update` | `<serverConfigId>` | `--cloud-org` (required) + at least one of `--url`/`--username`/`--key-from-stdin`/`--key`/`--name` |
+| `jira server test` | none | `--cloud-org`, `--url`, `--username`, and the API token through `--key-from-stdin` (preferred) or `--key`; all required; validates credentials **without persisting** |
+| `jira server users` | `<serverConfigId>` | `--cloud-org` (required), `--query <text>` — search Jira users |
+| `jira server projects` | `<serverConfigId>` | `--cloud-org` (required) — lists **Jira-side** projects on the server |
+| `jira server permissions` | `<serverConfigId>` | `--cloud-org`, `--jira-project-id` — both required; checks required Jira permissions |
 
 > **Warning: `--key` exposes the API token.** Its value is part of the command line, so other
 > users on the same host can read it in the process list, and CI runners that echo commands write
@@ -426,44 +440,44 @@ usage error.
 
 | Command | Args | Key options |
 |---|---|---|
-| `jira project add` | `<serverConfigId>` | `--organization-id`, `--jira-project-id`, `--default-reporter-id` — all required, though `--help` doesn't say so (fallback reporter when an annotation author has no Jira match) |
-| `jira project delete` | `<projectConfigId>` | `--organization-id` (required, not marked in `--help`); confirmation |
+| `jira project add` | `<serverConfigId>` | `--cloud-org`, `--jira-project-id`, `--default-reporter-id` — all required, though `--help` doesn't say so (fallback reporter when an annotation author has no Jira match) |
+| `jira project delete` | `<projectConfigId>` | `--cloud-org` (required, not marked in `--help`); confirmation |
 | `jira project link` / `jira project unlink` | `<unityProjectId> <projectConfigId>` | — (Unity project id is positional here, not a flag) |
-| `jira project update` | `<projectConfigId>` | `--organization-id` (required, not marked in `--help`), `--default-reporter-id`, `--linked-unity-project-id <id>` (repeatable — **replaces** the whole linked list), `--clear-linked-unity-projects` (mutually exclusive with the previous flag); at least one change flag required |
+| `jira project update` | `<projectConfigId>` | `--cloud-org` (required, not marked in `--help`), `--default-reporter-id`, `--linked-unity-project-id <id>` (repeatable — **replaces** the whole linked list), `--clear-linked-unity-projects` (mutually exclusive with the previous flag); at least one change flag required |
 
 #### `jira issues`
 
 | Command | Args | Key options |
 |---|---|---|
-| `jira issues create` | `<annotationId>` | `--jira-project-config-id`, `--summary`, `--type <issueTypeId>` — required; `--project-id`/`--project-path` optional (inferred); `--description`, `--assignee-user-id`, `--reporter-user-id`, `--parent-issue-id` (sub-task) |
-| `jira issues get` | `<jiraIssueId>` | `--jira-project-config-id` required; `--project-id`/`--project-path` optional (inferred) |
-| `jira issues link` / `jira issues unlink` | `<annotationId> <jiraIssueId>` | `--project-id`/`--project-path` optional (inferred); `link` also takes optional `--jira-project-config-id`. `unlink` does **not** delete the issue in Jira |
-| `jira issues list` | — | `--organization-id` **(required, org-scoped — no `--project-id`/`--project-path` here)**, `--profile all\|active\|resolved\|unresolved\|draft\|sending` (repeat flag), `--next <token>`, `--limit 1-100` (default 10), `--all`, `--sort Ascending\|Descending` |
-| `jira issues search` | — | `--jira-project-config-id` required; `--project-id`/`--project-path` optional (inferred); `--query <text>` (plain text, **not JQL**), `--include-subtasks` |
-| `jira issues types` | — | `--jira-project-config-id` required; `--project-id`/`--project-path` optional (inferred); lists issue type ids for `create --type` |
+| `jira issues create` | `<annotationId>` | `--jira-project-config-id`, `--summary`, `--type <issueTypeId>` — required; `--cloud-project`/`--project-path` optional (inferred); `--description`, `--assignee-user-id`, `--reporter-user-id`, `--parent-issue-id` (sub-task) |
+| `jira issues get` | `<jiraIssueId>` | `--jira-project-config-id` required; `--cloud-project`/`--project-path` optional (inferred) |
+| `jira issues link` / `jira issues unlink` | `<annotationId> <jiraIssueId>` | `--cloud-project`/`--project-path` optional (inferred); `link` also takes optional `--jira-project-config-id`. `unlink` does **not** delete the issue in Jira |
+| `jira issues list` | — | `--cloud-org` **(required, org-scoped — no `--cloud-project`/`--project-path` here)**, `--profile all\|active\|resolved\|unresolved\|draft\|sending` (repeat flag), `--next <token>`, `--limit 1-100` (default 10), `--all`, `--sort Ascending\|Descending` |
+| `jira issues search` | — | `--jira-project-config-id` required; `--cloud-project`/`--project-path` optional (inferred); `--query <text>` (plain text, **not JQL**), `--include-subtasks` |
+| `jira issues types` | — | `--jira-project-config-id` required; `--cloud-project`/`--project-path` optional (inferred); lists issue type ids for `create --type` |
 
 #### `jira configs`
 
-`unity collaboration jira configs` — single command. Pass **exactly one** of `--organization-id` (all
-configs in the org) or `--project-id` (configs available to that Unity project).
+`unity collaboration jira configs` — single command. Pass **exactly one** of `--cloud-org` (all
+configs in the org) or `--cloud-project` (configs available to that Unity project).
 
 ```bash
 # One-time setup: validate credentials, persist server, add a Jira project, link Unity project.
 # The API token is piped on stdin, so it never appears in the process list or CI logs.
-printf '%s' "$JIRA_TOKEN" | unity collaboration jira server test --organization-id "$ORG" \
+printf '%s' "$JIRA_TOKEN" | unity collaboration jira server test --cloud-org "$ORG" \
   --url https://jira.example.com --username bot@example.com --key-from-stdin
-printf '%s' "$JIRA_TOKEN" | unity collaboration jira server add --organization-id "$ORG" \
+printf '%s' "$JIRA_TOKEN" | unity collaboration jira server add --cloud-org "$ORG" \
   --url https://jira.example.com --username bot@example.com --name "Main Jira" --key-from-stdin
-unity collaboration jira project add $SERVER_CONFIG_ID --organization-id $ORG \
+unity collaboration jira project add $SERVER_CONFIG_ID --cloud-org $ORG \
   --jira-project-id 10042 --default-reporter-id $JIRA_ACCOUNT_ID
 unity collaboration jira project link $PROJ $PROJECT_CONFIG_ID
 
 # Rotate the stored API token
 printf '%s' "$NEW_JIRA_TOKEN" | unity collaboration jira server update $SERVER_CONFIG_ID \
-  --organization-id "$ORG" --key-from-stdin
+  --cloud-org "$ORG" --key-from-stdin
 
 # File an issue from an annotation (get valid type ids from `issues types` first)
-unity collaboration jira issues create $ANNOTATION_ID --project-id $PROJ \
+unity collaboration jira issues create $ANNOTATION_ID --cloud-project $PROJ \
   --jira-project-config-id $PROJECT_CONFIG_ID --summary "Texture seam" --type 10001
 ```
 
