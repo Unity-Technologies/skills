@@ -158,6 +158,8 @@ Triggers let Cloud Code endpoints run automatically in response to events from o
 
 ## Module Scope
 
+Scopes require `com.unity.services.cloudcode` 3.x. They are not available in 2.x.
+
 `CallModuleEndpointAsync` accepts an optional `CloudCodeModuleScope` to scope execution. Namespace: `Unity.Services.CloudCode.Models`.
 
 ```csharp
@@ -464,12 +466,12 @@ Debug.Log($"Reward: {reward}");
 ### Call a Module Endpoint (Typed Result)
 
 ```csharp
-// Module class name: "EconomyModule", method: "GrantDailyReward"
-var result = await CloudCodeService.Instance.CallModuleEndpointAsync<GrantResult>(
-    "EconomyModule", "GrantDailyReward",
-    new Dictionary<string, object> { { "playerId", playerId } });
+// Module class name: "ProgressionModule", method: "AwardXp"
+var result = await CloudCodeService.Instance.CallModuleEndpointAsync<ProgressResult>(
+    "ProgressionModule", "AwardXp",
+    new Dictionary<string, object> { { "amount", 50 } });
 
-Debug.Log($"Granted: {result.CurrencyAmount} currency");
+Debug.Log($"Total XP: {result.TotalXp}");
 ```
 
 ### Subscribe to Player Messages (Full Example)

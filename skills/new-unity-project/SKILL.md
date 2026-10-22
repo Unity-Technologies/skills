@@ -3,10 +3,8 @@ name: new-unity-project
 description: Guides creating a new Unity project, gathering concept, platforms, and monetization before setting up the project, source control, and packages. Use when the user asks to start a new game or prototype.
 allowed-tools:
   - Bash
-  - Read
   - Write
   - Edit
-  - AskUserQuestion
 ---
 
 # New Unity Project
@@ -19,7 +17,7 @@ to other skills.
 **Delegates to (read these for the actual commands — don't reinvent them):**
 - **`unity-cli`** — CLI install, auth/license, Editor install, project creation, source control,
   opening the project. Its "Bootstrap a new project from scratch" workflow is the backbone here.
-- **`unity-package-management`** — installing packages via the C# PackageManager Client API, and
+- **`unity-package-management`** — installing packages with the Pipeline `package` commands (C# script as the fallback), and
   choosing packages by genre / platform / monetization.
 - **`urp-postprocessing`**, **`ui`**, **`2d-pixel-perfect`** — the visual baseline (Step 6):
   post-processing volume setup, HUD framework choice, pixel-perfect 2D.
@@ -30,6 +28,19 @@ to other skills.
 moving on — platform and monetization answers change what you install, so don't gather everything
 up front or scaffold before they're settled.
 
+## Before Step 1: check the delegated skills are loaded
+
+Look for `unity-cli`, `unity-package-management`, `urp-postprocessing` and `ui` in the skills your client lists. The first two carry the commands this flow delegates. Step 6 marks the last two as required. A client that got only this skill won't have the others.
+
+If any is missing, tell the user which one and what it does for them. Offer to install the Unity skills before you start, and don't install without a yes, because it changes their agent setup:
+
+- **Claude Code, with none of the four installed:** `unity setup claude --format json` installs the Unity plugin, which carries all of them. It would duplicate any you already have. An older CLI doesn't know `unity setup`, so use the next route then. A fresh install loads in the next session, or after `/reload-plugins`. Until then, read the skills from the `skillsPath` it reports.
+- **Any other case, including a partial set:** ask the user to run `npx skills add Unity-Technologies/skills -g` in their own terminal, which needs Node.js. They pick only the missing skills and their client at its prompts. Don't run it yourself, since its prompts choose where the skills land. If the client reads a skills folder that command doesn't write to, tell the user to copy each missing skill's folder from github.com/Unity-Technologies/skills (under `skills`) into it.
+
+A newly installed skill may not load until the client restarts. If it still isn't listed, ask where the installer put it and read its `SKILL.md` from there.
+
+Don't stall on the two required skills. If the user would rather go on without them, carry on with Step 6's own guidance for that item. Name the missing skill in your final report, so they know the deeper guidance was skipped. The other two carry commands you shouldn't improvise. `unity skill show` prints `unity-cli` without installing it. Without `unity-package-management`, Step 5 can't run, so say so now, before Step 2 starts an Editor install, and let the user decide.
+
 ## The flow — and where the parallelism is
 
 1. **Concept** — what they're building.
@@ -37,7 +48,7 @@ up front or scaffold before they're settled.
    install in the background** (it takes minutes) and keep talking.
 3. **(joins)** Editor + platform modules finish installing.
 4. **Project + source control** — create from a **URP** template matching 2D/3D; init git.
-5. **Packages** — install via the C# Client API.
+5. **Packages** — install with the `package add` command once the Editor is open, else the C# script.
 6. **Visual baseline** — post-processing, camera, quality tier, UI stack, pipeline-correct
    shaders, so the first frame doesn't look like an untouched template.
 7. **Save & first commit.**
@@ -48,7 +59,9 @@ minutes the user spends answering concept questions, so setup feels instant.
 
 ## Step 1 — Concept
 
-Use `AskUserQuestion` so the user can pick fast, but let them answer freely too. Cover:
+Ask with your client's multiple-choice question tool if it has one (`AskUserQuestion` in Claude
+Code, `ask_user` in Copilot CLI, `askQuestions` in VS Code), so the user can pick fast, but let
+them answer freely too. Without one, ask in plain text. Cover:
 
 - **Genre / core loop** — platformer, top-down shooter, puzzle, idle, RPG, racing, card, tower
   defense, sim, hyper-casual, first-person, etc.
@@ -116,7 +129,7 @@ Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verba
 - Set up source control — **ask the user which they want**, don't assume: Git (GitHub / GitLab;
   add `--git-lfs` for asset-heavy games) or **Unity Version Control** (`--vcs uvcs`, which handles
   large binary assets natively — no LFS), or a purely local `git init` + Unity `.gitignore`.
-  Publish in one step with `unity projects create --vcs … --git-token-stdin --no-initial-commit`
+  Publish in one step with `unity projects create --vcs … --git-token-from-stdin --no-initial-commit`
   (tokens on stdin). Pass **`--no-initial-commit`** so the CLI doesn't commit the bare project
   before packages and `.meta` files exist — you make the real first commit/check-in in Step 7.
   See the `unity-cli` workflow for exact flags.
@@ -124,8 +137,10 @@ Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verba
 ## Step 5 — Packages
 
 Map the brief to a concrete package list and install it via the **`unity-package-management`**
-skill (C# PackageManager Client API — **never** hand-edit `manifest.json`). Read that skill for
-the genre/platform/monetization → package mapping, the installer script, and the `-quit` gotcha.
+skill (**never** hand-edit `manifest.json`). Once the Editor is open and ready with `com.unity.pipeline`
+(Step 6 installs it), use that skill's `package add` command. Step 6 opens the Editor, so when
+the packages must land before the first open, use the skill's C# installer script instead (its
+`-quit` gotcha applies). Read that skill for the genre/platform/monetization → package mapping.
 The template already provides the render pipeline — never add `com.unity.render-pipelines.universal`
 to a Built-in template project (nothing assigns a URP asset; materials go pink) or vice versa.
 Read the final list back to the user before installing; verify `manifest.json` afterward.
@@ -137,19 +152,26 @@ tier, flat colors. Left there, agents reach for `OnGUI` and guess shader names, 
 washed-out or magenta materials come from. Apply this floor **before** any gameplay work.
 
 **First, `unity pipeline install --project-path "<project-path>"`, before opening the
-Editor.** Running C# in the Editor, and `unity command screenshot` below, both need the
-project's `com.unity.pipeline` package. A project created in Step 4 does not have it, and Step 5
+Editor.** Running C# in the Editor, and `unity command capture screenshot` below, both need the
+project's `com.unity.pipeline` package. A CLI that predates create adding it by default leaves the project without it (a newer one already added it, and this install then changes nothing), and Step 5
 does not add it: that step installs packages by launching the Editor binary with
 `-batchmode -executeMethod`, which never touches the package. Installing before the open is the
 supported order — the install updates `Packages/manifest.json`, which Unity reads at project
-load. Run it against an already-open project and the CLI reports
-`PIPELINE_MANIFEST_WRITE_FAILED`; ask the user to close the Editor and re-run. Without the
+load. Run it against an already-open project and either the write fails with
+`PIPELINE_MANIFEST_WRITE_FAILED` (ask the user to close the Editor and re-run), or it succeeds
+but the open Editor doesn't load the package until its window regains focus. In the second
+case `unity status` reports `STATUS_PIPELINE_LOAD_PENDING`; ask the user to switch to the
+Editor window. Without the
 package, everything below fails to connect, which looks like the Safe Mode failure `unity-cli`
 describes but has a different cause.
 
 **Then** `unity open "<project-path>"` (also what Step 7 needs), wait until `unity status`
 reports the Editor ready, and apply each item below by running C# in it. **`unity-cli` owns
 those commands and their syntax** — don't re-derive them here.
+
+Once the Editor is ready, look for `unity-pipeline` in your skills. It is the Pipeline package's own guide, and no client loads it from the package folder. If it is missing, read its `SKILL.md` now. It sits under `.claude/skills/unity-pipeline/` in the package: `Packages/com.unity.pipeline/` if the project embeds the package, otherwise the `Library/PackageCache/com.unity.pipeline@*` folder. List `Library/PackageCache` for the exact name, since the suffix is often a hash, not the version.
+
+To have your client load it in later sessions, `unity skill install <client> --local` can mirror it, but only for a client with a project scope (`unity skill install --list` shows which, and Claude Desktop has none). It also writes a project copy of `unity-cli` beside it. The `unity-cli` skill suggests running it once, but here, wait until the user asks, and run it from the project folder after the open. In Claude Code with the Unity plugin installed it stops short, because the plugin already carries `unity-cli`. There, with the user's yes, copy the `unity-pipeline` folder into the project's `.claude/skills/` instead. Where no mirror is possible, read the package copy again in each session.
 
 **Items 1, 2, 5 and 6 assume a URP template**, which is the Step 4 default. If the user
 explicitly chose Built-in, don't run them as written: `UniversalAdditionalCameraData`, `Light2D`,
@@ -162,7 +184,8 @@ Built-in.
 1. **Post-processing.** Global Volume with Tonemapping (ACES), low Bloom (intensity 0.5–1,
    threshold 0.9) and a subtle Vignette (≈ 0.25); set `renderPostProcessing = true` on the main
    camera's `UniversalAdditionalCameraData`. **REQUIRED SUB-SKILL:** `urp-postprocessing` — its
-   code templates create the volume and check HDR and the Volume layer mask.
+   code templates create the volume and check HDR and the Volume layer mask. If it isn't loaded,
+   build the volume from these values and check HDR and the layer mask yourself.
 2. **Camera and light.** 2D → orthographic, solid background color from the brief's palette, and
    a `Light2D` of type Global in the scene if the template scene has none (the Sprite-Lit shaders
    render black without one). 3D → perspective; keep the template's directional light and skybox,
@@ -172,7 +195,8 @@ Built-in.
    desktop, the lowest for mobile/WebGL. Leave color space Linear and the Input System as the
    template set them.
 4. **UI stack.** HUD and menus use a uGUI Canvas + TextMeshPro or UI Toolkit — **never `OnGUI`**.
-   **REQUIRED SUB-SKILL:** `ui` picks between them for the project.
+   **REQUIRED SUB-SKILL:** `ui` picks between them for the project. If it isn't loaded, choose
+   between them from the brief and say which you chose, and why, in your final report.
 5. **Materials and shaders.** Under URP use `Universal Render Pipeline/Lit`, `…/Unlit`,
    `…/2D/Sprite-Lit-Default` or `…/2D/Sprite-Unlit-Default`. `Standard` and `Unlit/Color` render
    pink or washed out under URP. Prefer `GraphicsSettings.currentRenderPipeline.defaultMaterial`
@@ -180,7 +204,8 @@ Built-in.
    `currentRenderPipeline`, not `defaultRenderPipeline`: a quality tier can carry its own pipeline
    asset, and item 3 above just set the tier.
 6. **Pixel art only.** Point filter mode on sprites and a Pixel Perfect Camera — see
-   `2d-pixel-perfect`.
+   `2d-pixel-perfect`. If it isn't loaded, do those two yourself and put the install route from
+   "Before Step 1" in your final report.
 
 Save the scene, then confirm both of these. **Not with `unity logs`** — that reads the CLI's own
 log, never the Editor's, so it reports clean whatever the scene looks like:
@@ -188,7 +213,7 @@ log, never the Editor's, so it reports clean whatever the scene looks like:
 - No render-pipeline or shader errors Editor-side. Read the Editor console through `unity-cli`,
   or read `Editor.log` directly — that skill's "Recovering from Safe Mode" section has the
   per-platform paths.
-- `unity command screenshot --output baseline.png` looks lit and tonemapped rather than flat
+- `unity command capture screenshot --output baseline.png` looks lit and tonemapped rather than flat
   gray.
 
 ## Step 7 — Save & first commit
@@ -212,6 +237,9 @@ unity open "<project-path>"     # only if not already open; for headless/CI use 
 - **Unity Version Control (UVCS):** check in through your UVCS client/workspace (created during
   Step 4) — there's no `git` step. Generated folders are still excluded by the ignore rules.
 
+Before either commit, if Step 6 mirrored skills into the project (`.claude/skills/` for Claude
+Code), ask the user whether to include them or leave them out.
+
 If you published via `--vcs` in Step 4 **without** `--no-initial-commit`, the CLI already made an
 initial commit of the bare project — add a follow-up commit here rather than double-committing.
 
@@ -222,8 +250,11 @@ Based on Step 2 monetization, invoke the matching skill for the actual integrati
 - Ads → **levelplay-unity-integration**
 - Accounts / cloud save / economy / remote config / leaderboards → **build-live-game**
 
+If the matching skill isn't loaded, put the install route from "Before Step 1" in the next
+steps rather than integrating from memory.
+
 Report the project path, Editor version, render pipeline and template, installed packages, the
-visual baseline applied, and next steps.
+visual baseline applied, any skill that was missing, and next steps.
 
 ## Scope — what this skill does NOT do
 
@@ -236,12 +267,16 @@ visual baseline applied, and next steps.
 
 ## Checklist
 
+- [ ] Delegated skills checked before Step 1 (`unity-cli`, `unity-package-management`,
+      `urp-postprocessing`, `ui`): a missing one offered for install, or named in the final report
 - [ ] Concept brief captured and confirmed (genre, look, gameplay, scope, name)
 - [ ] Platforms + monetization recorded; Editor version chosen
 - [ ] Editor + platform modules installed (started in the background during Step 2)
 - [ ] Project created from a **URP** template (`urp-blank` / `universal-2d`) unless Built-in was
       explicitly requested; git initialized with a Unity `.gitignore`
-- [ ] Packages installed via the C# Client API; `manifest.json` verified; no render-pipeline package added on top of the template
+- [ ] Packages installed with `package add` (or the skill's C# script before the first open); `manifest.json` verified; no render-pipeline package added on top of the template
+- [ ] `unity-pipeline` read from the package folder once the Editor was ready, or mirrored into
+      the project with the user's yes
 - [ ] Visual baseline applied: global Volume (tonemapping, bloom, vignette) + camera post-processing on,
       quality tier set for the target, UI stack chosen (no `OnGUI`), URP shader names, screenshot checked
 - [ ] Project opened/saved so `.meta` files exist; first commit made; `Library/` excluded
@@ -252,7 +287,9 @@ visual baseline applied, and next steps.
 - **Blocking on the Editor install** instead of backgrounding it while you ask questions.
 - **Installing the wrong Editor** because the version wasn't confirmed before the background install.
 - **Gathering all questions up front** — platform/monetization answers change the modules and packages.
-- **Hand-editing `manifest.json`** instead of using the Client API (see `unity-package-management`).
+- **Hand-editing `manifest.json`** instead of using the package commands or the skill's script (see `unity-package-management`).
+- **Doing a required sub-skill's job from memory** when it isn't loaded, without telling the user
+  or offering the install.
 - **Committing `Library/`/`Temp/`/`obj/`/`Build/`**, or scripts without their `.meta` files.
 - **Missing Editor modules** — a mobile target needs `android`/`ios`; WebGL needs `webgl`.
 - **Picking `com.unity.template.2d` / `.3d` because the name matches** — those are the Built-in

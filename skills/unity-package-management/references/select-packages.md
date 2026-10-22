@@ -1,13 +1,13 @@
 # Selecting packages
 
 Turn a game concept — genre, look, target platforms, monetization — into a concrete package
-list, then install it via the C# PackageManager Client API (see the main `SKILL.md`).
+list, then install it with the `package add` command (see the main `SKILL.md`; its C# script is the fallback).
 
 **Principle:** install what the concept actually needs, not everything. A hyper-casual 2D
 prototype needs far less than a 3D multiplayer RPG. Prefer packages already provided by the
 chosen template (the URP templates `com.unity.template.urp-blank` / `universal-2d` already
 include the render pipeline, Input System, uGUI/TextMeshPro, etc.) — only add what's missing.
-Don't pin exact versions unless a minimum is required; `Client.Add` without a version resolves
+Don't pin exact versions unless a minimum is required; an id without a version resolves
 the latest compatible release.
 
 The tables below are a starting point, not the whole registry. **Search the registry** to
@@ -18,7 +18,7 @@ installing — see [Discovering and verifying packages](#discovering-and-verifyi
 
 Two ways to search, depending on whether the Editor is involved:
 
-**In-Editor — the PackageManager Client API (preferred).** `Client.SearchAll()` returns every
+**In-Editor: `package search` (preferred).** Run `unity command package search` (parameters from `unity command --query package --format json`) against a running Editor. Without one, the fallback is the PackageManager Client API: `Client.SearchAll()` returns every
 package available in the project's configured registries (the Unity registry plus any scoped
 registries), each with all its versions and metadata — this is what the Package Manager
 window's search filters over. `Client.Search("<id>")` inspects a single package. Use the

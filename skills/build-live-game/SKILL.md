@@ -1,6 +1,6 @@
 ---
 name: build-live-game
-description: Builds and operates live games with Unity Services. Use when the user asks about backend or live-ops features such as player accounts, cloud save, leaderboards, achievements, progression and battle passes, economies, cloud code, or remote config.
+description: Builds and operates live games with Unity Services. Use when the user asks about backend or live-ops features such as player accounts, cloud save, leaderboards, achievements, progression and battle passes, cloud code, or remote config.
 ---
 
 # Build a Live Game With Unity Gaming Services
@@ -60,7 +60,6 @@ After `InitializeAsync()` completes, service singletons (e.g. `CloudSaveService.
 |---|---|---|
 | **Cloud Save** | Per-player key-value data (Default, Public, Protected) and game-wide Custom data | `CloudSaveService.Instance.Data.Player` / `.Data.Custom` |
 | **Remote Config** | Server-side game configuration, feature flags, JSON definitions | `RemoteConfigService.Instance` |
-| **Economy** | Virtual currencies, inventory items, purchases, stores | `EconomyService.Instance` |
 
 ### Server Logic and Security
 
@@ -94,23 +93,23 @@ After `InitializeAsync()` completes, service singletons (e.g. `CloudSaveService.
                               │
               ┌───────────────┼───────────────┐
               ▼               ▼               ▼
-        Remote Config     Cloud Save      Economy
-      (game config,    (player state,  (currencies,
-       definitions,     progress,       inventory,
-       feature flags)   preferences)    purchases)
-              │               │               │
-              └───────┬───────┘               │
-                      ▼                       │
-                 Cloud Code                   │
-              (server-authoritative           │
-               writes, validation,  ◄─────────┘
+        Remote Config     Cloud Save      Multiplayer
+      (game config,    (player state,   (sessions,
+       definitions,     progress,        matchmaking,
+       feature flags)   preferences)     lobbies)
+              │               │
+              └───────┬───────┘
+                      ▼
+                 Cloud Code
+              (server-authoritative
+               writes, validation,
                anti-cheat logic)
                       │
-              ┌───────┼───────┐
-              ▼       ▼       ▼
-         Cloud Save  Economy  Leaderboards
-         (Protected  (server  (score
-          writes)    grants)  submission)
+              ┌───────┴───────┐
+              ▼               ▼
+         Cloud Save       Leaderboards
+         (Protected       (score
+          writes)          submission)
 ```
 
 **Key principle:** For any data that affects game integrity (XP, rewards, currency), route writes through Cloud Code modules. Direct client writes are only appropriate for non-sensitive data (preferences, display settings).
@@ -192,14 +191,13 @@ Editor-only package providing the **Deployment Window** (Services > Deployment).
 | Access Control | `.ac` | Resource access policies |
 | Cloud Code Module | `.ccmr` | C# server-side module (points to `.sln`) |
 | Leaderboard | `.lb` | Leaderboard configuration |
-| Economy | `.ec*` | Currency/inventory definitions |
 | Game Overrides | `.ugo` | Audience-targeted config overrides |
 
 - **Full reference:** [references/deployment.md](references/deployment.md)
 
 ### UGS CLI
 
-The [Unity Gaming Services CLI](https://github.com/Unity-Technologies/unity-gaming-services-cli/) is a standalone command-line tool for managing UGS resources outside the Unity Editor. It can deploy and fetch cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`, `.ec`, `.ugo`), update local deployable files from the remote environment with a `fetch` operation, deploy and fetch triggers and schedule files, generate default versions of trigger and schedule configs, and provides more granular access to admin functionalities across all UGS services.
+The [Unity Gaming Services CLI](https://github.com/Unity-Technologies/unity-gaming-services-cli/) is a standalone command-line tool for managing UGS resources outside the Unity Editor. It can deploy and fetch cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`, `.ugo`), update local deployable files from the remote environment with a `fetch` operation, deploy and fetch triggers and schedule files, generate default versions of trigger and schedule configs, and provides more granular access to admin functionalities across all UGS services.
 
 ### Services APIs
 
@@ -231,7 +229,7 @@ Unity provides free, production-ready **Building Block** packages on the Asset S
 | Project | Description | Source |
 |---|---|---|
 | **Use Case Samples** | Battle Pass, Virtual Shop, Daily Rewards, Starter Pack, Cloud AI Mini Game, A/B testing | [GitHub — com.unity.services.samples.use-cases](https://github.com/Unity-Technologies/com.unity.services.samples.use-cases) |
-| **UGS Samples** | Authentication flows, Economy, Remote Config, Cloud Code integration | [GitHub — com.unity.services.samples](https://github.com/Unity-Technologies/com.unity.services.samples) |
+| **UGS Samples** | Authentication flows, Remote Config, Cloud Code integration | [GitHub — com.unity.services.samples](https://github.com/Unity-Technologies/com.unity.services.samples) |
 | **Gem Hunter Match** | Full 2D match-3 game with player hub, progression, social features, in-game store | [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/gem-hunter-match-2d-sample-project-278941) |
 | **Boss Room** | 8-player co-op RPG using Netcode for GameObjects, Authentication, Multiplayer Services | [GitHub — com.unity.multiplayer.samples.coop](https://github.com/Unity-Technologies/com.unity.multiplayer.samples.coop) |
 
@@ -241,7 +239,7 @@ Implementation-ready blueprints for common live game features. Each includes dat
 
 | Feature | Key Services | Blueprint |
 |---|---|---|
-| **Battle Pass** | `remote-config`, `cloudsave`, `cloudcode`, `economy`, `tooling`, `deployment` — Remote Config (pass definitions) + Cloud Save Protected (progress) + Cloud Code (XP awards, reward claims, premium purchase) | [references/battlepass.md](references/battlepass.md) |
+| **Battle Pass** | `remote-config`, `cloudsave`, `cloudcode`, `tooling`, `deployment` — Remote Config (pass definitions) + Cloud Save Protected (progress) + Cloud Code (XP awards, reward claims, premium purchase) | [references/battlepass.md](references/battlepass.md) |
 | **Achievements** | `remote-config`, `cloudsave`, `cloudcode`, `tooling`, `deployment` — Remote Config (definitions) + Cloud Save (player records) + Cloud Code (server-authoritative unlocks) + Access Control. **Asset Store:** [Achievements Building Block](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-achievements-341918) | [references/achievements.md](references/achievements.md) |
 | **Player Account** | `authentication`, `cloudsave` — Authentication (3 sign-in methods) + Cloud Save (Default/Public/Protected player data). **Asset Store:** Player Account Building Block (via `com.unity.starter-kits`) | [references/player-account.md](references/player-account.md) |
 
@@ -277,7 +275,7 @@ After writing code for a live game feature:
 2. Check that initialization order is correct: `UnityServices.InitializeAsync()` → Authentication sign-in → service calls.
 3. Confirm sensitive data writes (XP, rewards, currency) are routed through Cloud Code, not written directly from the client.
 4. Verify Access Control `.ac` files deny direct player writes to Protected Cloud Save keys.
-5. Verify all cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`, `.ec`) are present and deployable via the Deployment Window.
+5. Verify all cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`) are present and deployable via the Deployment Window.
 
 ## Deployment Checklist
 
@@ -287,7 +285,6 @@ For any live game feature, deploy these cloud resources via the Deployment Windo
 - [ ] `.ac` file — Access Control policies (deny direct writes to protected keys)
 - [ ] `.ccmr` file — Cloud Code module reference (pointing to the module `.sln`)
 - [ ] `.lb` file — Leaderboard configuration (if using leaderboards)
-- [ ] `.ec` file — Economy definitions (if using virtual currencies/items)
 - [ ] `manifest.json` — Ensure all required packages are listed with correct versions
 - [ ] Environment configured in **Services > Deployment** settings
 
@@ -304,7 +301,7 @@ For any live game feature, deploy these cloud resources via the Deployment Windo
 
 ### Feature Blueprints
 - **Achievements** — full implementation with data models, client code, Cloud Code module, cloud resources: [references/achievements.md](references/achievements.md)
-- **Battle Pass** — full implementation with tiered XP, free/premium tracks, Cloud Code module, cloud resources: [references/battlepass.md](references/battlepass.md)
+- **Battle Pass** — implementation with tiered XP, free/premium tracks, Cloud Code module, cloud resources (premium purchase is an integration stub you must complete): [references/battlepass.md](references/battlepass.md)
 - **Player Account** — sign-in flows, identity management, Cloud Save data, code templates: [references/player-account.md](references/player-account.md)
 
 ## Reminders

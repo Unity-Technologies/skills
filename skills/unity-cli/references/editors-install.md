@@ -23,8 +23,8 @@ unity editors --releases --format json
 # Filter by architecture
 unity editors --installed --architecture arm64 --format json
 
-# Show detailed module info
-unity editors --verbose
+# Show detailed module info (the old spelling, --verbose, still works and warns)
+unity editors --long
 
 # Watch mode — live-updates as editors are installed or removed
 unity editors --watch
@@ -32,6 +32,8 @@ unity editors --installed --watch
 ```
 
 `unity editors` honors `--format tsv` and `--format ndjson` for its default listing. Identifier columns keep their natural width even if the table exceeds the terminal — they are no longer silently truncated.
+
+In the `--json` and `--format ndjson` rows of an installed Editor, read `moduleNames`, an array of the installed platforms (with `--long`, the full module names). The `modules` string joins the same names with `, ` and is deprecated: a module name can itself contain a comma.
 
 #### editors running
 
@@ -42,7 +44,7 @@ unity editors running
 unity editors running --format json
 ```
 
-Detection is cross-platform (process table plus each project's Pipeline lockfile), and the version falls back to a project's `ProjectSettings/ProjectVersion.txt` for editors without the Pipeline package. An empty list is a normal result (exit 0). Honors the global `--format human|json|tsv|ndjson` (and `--json`).
+Detection is cross-platform (process table plus each project's Pipeline lockfile), and the version falls back to a project's `ProjectSettings/ProjectVersion.txt` for editors without the Pipeline package. An empty list is a normal result (exit 0). Honors the global `--format human|json|tsv|ndjson` (and `--json`). In JSON each row of `data.instances` carries `pid`, `projectPath`, `projectName`, `editorVersion` (`null` when unknown), `port`, `hasPipeline` and `reachable`. Read `editorVersion`: `unityVersion` holds the same value and is deprecated.
 
 #### editors add
 
@@ -102,11 +104,15 @@ Also available as the top-level `unity install-path` (with an additional `--get`
 ```bash
 # Show release details for a specific version
 unity editors info 6000.0.47f1 --format json
+# Details for a specific architecture's build (default: this machine's)
+unity editors info 6000.0.47f1 --architecture x86_64 --format json
 ```
+
+`downloadUrl` and `modules` describe the build for this machine's architecture. When the release has no build for it, the default falls back to the platform's first download instead: on Linux arm64 that is the x86_64 installer, which runs only under FEX-Emu (see [Linux arm64](#linux-arm64-experimental-x86_64-editor-under-fex-emu)). `--architecture arm64|x86_64` selects a build explicitly, with no fallback; when the release has no build for it, `downloadUrl` is null.
 
 #### editors upgrade
 
-New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in the same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over. The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
+New in `0.1.0-beta.8`. Upgrade an installed editor to the newest official (f-channel) patch in the same `major.minor` line (e.g. `2022.3.10f1` → `2022.3.62f1`), carrying the installed modules over (except the IDE modules, Visual Studio Code and Visual Studio, which update themselves; add `-m visualstudiocode` to install it anyway). The `[editor]` argument accepts an exact version, a `major.minor` line, or the `latest` / `lts` / `default` aliases. Editors install side by side — the old version is kept unless `--replace` (alias `--remove-old`) is passed.
 
 ```bash
 # Upgrade a specific editor (or the default / lts / latest) to the newest patch in its line
@@ -213,6 +219,32 @@ unity editor add /path/to/Unity/Editor --no-fetch-modules
 
 ---
 
+### Software Terms — `unity terms`
+
+Each Unity Editor stops at its "Unity Editor Software Terms" dialog (Accept and Continue / Decline) the first time it opens windowed, until the terms are accepted for that Editor. Current Editors ignore `-acceptSoftwareTermsForThisRunOnly`, so no launch flag prevents the dialog. `unity terms accept <version>` records the user's acceptance the way the dialog's Accept button does, so a container image or a provisioning script can prepare an Editor before it first opens.
+
+<!-- unity-example: skip (Rust-only) -->
+```bash
+# Show the terms link and the copy installed with the Editor, then ask (default No)
+unity terms accept 6000.3.10f1
+
+# Accept without asking (unattended setup, after the user has read and agreed to the terms)
+unity terms accept 6000.3.10f1 --yes
+unity terms accept latest --architecture arm64 --yes
+
+# Whether the terms are accepted, for every installed Editor or one
+unity terms status
+unity terms status 6000.3.10f1 --json
+```
+
+- **Accepting is the user's decision.** On a terminal `accept` prints the terms link (https://unity.com/legal/editor-terms-of-service/software) and the path of the terms file the Editor ships, then asks. Without a terminal (`--non-interactive`, `UNITY_NON_INTERACTIVE`, `--json` or another machine format, redirected input or output) it refuses with exit `2` and `TERMS_ACCEPT_NEEDS_CONFIRMATION` unless `--yes` is passed. Never pass `--yes` for the user unasked: show them the link and let them decide, or let them run the command.
+- `<version>` resolves like `unity editors path`: an installed version, `latest` or `lts`, and `-a` / `--architecture` when a version is installed for both. An Editor that is not installed fails with `TERMS_EDITOR_NOT_INSTALLED`, an ambiguous version with `TERMS_EDITOR_AMBIGUOUS`, and an Editor that ships no terms file with `TERMS_FILE_MISSING`.
+- The acceptance belongs to the exact terms file: its key is `Terms-` and the file's MD5, so Editors that ship the same terms share one answer, and an Editor with new terms asks again. An answer that is already recorded is reported (`alreadyAccepted: true`) and nothing is written.
+- It writes only the Editor's own preference, for the current user: `HKCU\Software\Unity Technologies\Unity Editor 5.x` on Windows, the `com.unity3d.UnityEditor5.x` defaults domain on macOS, `~/.local/share/unity3d/prefs` (or `$XDG_DATA_HOME/unity3d/prefs`) on Linux. Close every open Unity Editor first: on macOS and Linux a running Editor can overwrite the answer when it saves its own preferences.
+- `terms status` lists each installed Editor as `accepted`, `not-accepted` or `no-terms-file`, in every `--format`; `--json` carries `key`, `termsFile` and the `store` location for each.
+
+---
+
 ### Install
 
 ```bash
@@ -245,7 +277,7 @@ unity install 6000.0.47f1 --dry-run --format json
 
 # List the editor's available modules and exit without installing
 # (a drop-in alias for `unity modules list <version>`; the old --list-components spelling
-# still works as a hidden alias, matching the -m/--module terminology used everywhere else)
+# still works but is deprecated and prints a warning, so write --list-modules)
 unity install 6000.0.47f1 --list-modules --format json
 
 # Space-separated module values after a single -m are equivalent to repeating -m
@@ -266,7 +298,7 @@ A transient editor or module download failure (a dropped connection, a truncated
 
 On an interactive terminal, `unity install` also reports progress to the terminal application itself via the `OSC 9;4` escape sequence — on Windows Terminal the taskbar icon fills with download/install progress and spinners show as indeterminate, so you don't need to keep the window focused. It's emitted only on a TTY (never in piped or machine-consumed output), always cleared on exit, and ignored by terminals that don't support it.
 
-Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
+Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. In the `--json` and `--format ndjson` rows of `unity modules list`, `unity editors module list` and `unity install-modules --list`, read `downloadBytes`, `installedBytes` (integers) and `isInstalled` (boolean): `status`, `download` and `installed` are display text, and `status` is translated. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
 
 **Waiting on another install.** The Hub and the CLI share one install lock, so while the Hub (or another CLI) is installing, `unity install`, `unity install-modules` and `unity projects require` print `Waiting for another install to finish before continuing…` on stderr and carry on once it finishes. That wait has no limit by default. In a script or CI job, bound it:
 
@@ -275,18 +307,60 @@ Module installers honor the per-module install command from the release manifest
 unity install 6000.0.47f1 --yes --no-wait
 
 # Wait up to 10 minutes in total, then fail the same way
-unity install-modules -e 6000.0.47f1 -m android --wait-timeout 600
+unity install-modules -e 6000.0.47f1 -m android --timeout 600
 ```
 
-`--wait-timeout <seconds>` takes a whole number of seconds greater than 0 (digits only: `5m` and `1.5` are rejected) and is one budget for the whole command, not per module; `--no-wait` wins if both are given. Either way the command exits **9** with error code `INSTALL_LOCK_BUSY` (in the json envelope's `errors[].code`, and in the ndjson `result` frame), distinct from a failed install's exit 6, so a script can retry later. The error says another install is in progress and to run the command again once it finishes; the "Waiting for another install" line on stderr only appears while a wait is running, the default one or a bounded one, and never under `--no-wait`.
+`--timeout <seconds>` takes a whole number of seconds greater than 0 (digits only: `5m` and `1.5` are rejected) and is one budget for the whole command, not per module; `--no-wait` wins if both are given. CLI releases before it was renamed spell it `--wait-timeout`, which still works but prints a deprecation warning. Either way the command exits **9** with error code `INSTALL_LOCK_BUSY` (in the json envelope's `errors[].code`, and in the ndjson `result` frame), distinct from a failed install's exit 6, so a script can retry later. The error says another install is in progress and to run the command again once it finishes; the "Waiting for another install" line on stderr only appears while a wait is running, the default one or a bounded one, and never under `--no-wait`.
 
 The lock is taken per item, so exit 9 does not mean nothing changed. `--no-wait` refuses an item before its download only when the lock is already held; if the Hub takes it while the item downloads, the item fails after the download. And `unity install <version> -m android --no-wait` can install the editor, then stop at the module: check `data.completedUids` in the ndjson `result` frame, and finish with `unity install-modules -e <version> -m android` rather than re-running `unity install`, which now fails because the editor is already installed. A second `unity install` of the **same** version fails at once with exit 6 ("Another install of … is already in progress") before it reaches this lock, whatever the flags.
+
+#### Another operating system's Editor (`--operating-system`)
+
+`unity releases` and `unity install --dry-run` look up the host's OS by default. `--operating-system <windows|macos|linux>` looks up another one, so you can check what a Windows build machine would download from a Mac. It has no short flag.
+
+```bash
+# Windows releases, from any host
+unity releases --operating-system windows --limit 5 --format json
+
+# What a Windows install of this version and its modules would download (il2cpp resolves to windows-il2cpp)
+unity install 6000.0.47f1 --dry-run --operating-system windows -m il2cpp --format json
+```
+
+Another OS's listing asks for the builds that OS ships and prefers its usual one: arm64 on macOS, x86_64 on Windows and Linux. Pass `--architecture arm64` to `install` for a Windows arm64 build. Its `installed` column is always false, because this machine can't hold another OS's Editor. The dry run's `data.editor` gains `"operatingSystem": "windows"` and `alreadyInstalled` is always false; the human plan adds an `Operating system: Windows` line. Naming the host's own OS changes nothing.
+
+The CLI never runs another OS's installer. Without `--dry-run`, or with `--changeset` or `--resume`, it stops with exit 2 and `CROSS_OS_INSTALL_UNSUPPORTED`, naming the dry run and `unity releases`. An unknown value is exit 2 with `INVALID_OPERATING_SYSTEM`. `--list-modules` lists an installed Editor's modules, so it can't be combined with `--operating-system` (exit 2); `unity modules list` and `unity editors --releases` stay on the host's OS.
 
 #### Linux arm64: experimental x86_64 Editor under FEX-Emu
 
 Unity ships no Linux arm64 Editor. On a Linux arm64 host you can opt in to running the x86_64 Editor under [FEX-Emu](https://github.com/FEX-Emu/FEX) by setting `UNITY_EXPERIMENTAL_FEX_EMU=1`. The opt-in takes effect only when a FEX-Emu entry point (`FEX`, or the older `FEXLoader`) is on PATH and an x86_64 RootFS resolves (`FEX_ROOTFS`, or the `RootFS` in FEX-Emu's own `Config.json`); `unity doctor` reports both as its `fex-emu` row. While it is active, `unity install` defaults to `x86_64`, and every Editor launch (`open`, `projects open`, `run`, `test`, `build`, `projects create`) runs as `FEX <editor> <args>` with no `binfmt_misc` needed.
 
 This is **experimental and unsupported**: C# script compilation is known to crash under FEX-Emu ([FEX-Emu/FEX#5766](https://github.com/FEX-Emu/FEX/issues/5766)), so don't use it for real development. Every command it affects says so: a warning on stderr for human and tsv output, and a `FEX_EMU_EXPERIMENTAL` entry in the envelope's `notifications` for json and ndjson. Without the opt-in nothing changes.
+
+#### Portable install into a folder (`--download-directory`)
+
+`-d, --download-directory <dir>` (the old `--install-dir` spelling still works, but it is deprecated and prints a warning) installs a self-contained Editor into a folder you name, for an ephemeral CI workspace or a side-by-side copy. The Editor lands in `<dir>/<version>` (or `<dir>/<version>-<arch>` when that slot is taken), with its own `modules.json` and `metadata.hub.json`. Nothing else changes: the global install path (`unity install-path`), the Hub's Editor list and the Linux desktop entry are left alone, so `unity editors` doesn't list it. A folder outside the Hub's install folder doesn't touch the shared install-state database either. A relative path resolves against the working directory.
+
+```bash
+# CI: install into the workspace, no prompts, machine-readable result
+unity install 6000.0.47f1 -d ./.unity -m android --non-interactive --yes --accept-eula --format json
+
+# See where it would go first
+unity install 6000.0.47f1 -d ./.unity --dry-run --format json
+
+# Add a module later: point install-modules at the same folder
+unity install-modules -e 6000.0.47f1 -d ./.unity -m ios --yes
+
+# Register it with the Hub afterwards, if you want it listed (Linux path shown;
+# a human install run prints the exact command for your platform)
+unity editors add ./.unity/6000.0.47f1/Editor/Unity
+```
+
+- The json/ndjson result carries the Editor folder as `data.path` (the dry run too). A human run prints the folder and the `unity editors add` command that registers it.
+- Only the target folder is checked for an existing copy: a second install there fails with exit 6 unless you pass `--force`.
+- Installs into different folders run at once: each folder has its own lock, and none of them waits on the Hub's install lock. Two installs of one version into the **same** folder still refuse each other.
+- A `-d` that names the Hub's own install folder (or any folder, when the install-path config can't be read) locks like a normal install: it waits on the Hub's install lock and uses the shared install-state database.
+- `--resume` can't be combined with it (exit 2): there is no per-folder download state to resume. Re-run the install instead.
+- `--list-modules` can't be combined with it either (a usage error, exit 2).
 
 ### Uninstall
 
@@ -346,6 +420,9 @@ unity install-modules --editor-version 6000.0.47f1 --module android --retries 0
 
 # Windows: skip the elevated (UAC) install helper (also via UNITY_NO_ELEVATE=1)
 unity install-modules --editor-version 6000.0.47f1 --module android --no-elevate
+
+# An Editor installed with `unity install --download-directory`: look it up in that folder
+unity install-modules --editor-version 6000.0.47f1 --download-directory ./.unity --module android
 ```
 
 `--list` and `--all` are mutually exclusive. `--list` is also mutually exclusive with `--module`.

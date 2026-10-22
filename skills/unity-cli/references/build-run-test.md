@@ -154,6 +154,33 @@ unity test /path/to/MyProject --shard 2/5 --shard-inventory ./ci/full-run.xml
 
 It deliberately does **not** pass `-quit`: `-runTests` quits the editor itself once results are written, so forcing `-quit` would terminate it before the report exists. Anything after `--` is forwarded to the editor verbatim, except reserved flags (`-projectPath`, `-batchmode`, `-runTests`, `-testPlatform`, `-testResults`, `-testFilter`, `-quit`, `-useHub`, `-hubIPC`, `-enableCodeCoverage`, `-coverageResultsPath`, `-coverageOptions`), which are rejected — those are managed by the command (use `--coverage` for the coverage trio); `-useHub`/`-hubIPC` are deliberately never passed (the CLI runs no Hub IPC server).
 
+#### Run the cheapest test that proves the change
+
+`unity test` is not only a CI step. A whole-suite run after every edit is slow, and a suite only grows, so pick the cheapest run that can still fail for the change you made:
+
+1. **EditMode before PlayMode.** An EditMode run needs no Play Mode session. Start there, and use `--mode PlayMode` only for behavior that needs frames, physics or a running scene.
+2. **Narrow the run while you iterate.** `--filter` runs the tests you name, `--affected --since <ref>` runs the test assemblies the change can reach, and `--rerun-failed` runs only the failures a report holds. `--affected` needs the NUnit report of an earlier full run as its inventory, so seed it with one full run before its first use. It runs the whole suite when the change edits a test file, so name those tests with `--filter` instead.
+3. **Run the full suite on the final code before you hand the work back,** once for each mode the project has tests in. Selection is an approximation, so the full run is the proof. A green `--rerun-failed` run is not.
+4. **Never re-run a suite on code that has not changed.** The last run's report already holds the answer, so read it. Exit `8` means the tests ran and failed: fix the cause, then use `--rerun-failed`. Repeat a run only when it never produced a verdict (exit `6`) and the cause is gone.
+
+Keep each report where the next run expects it:
+
+- A plain run writes over `--output`, and that includes one with `--filter` or `--mode PlayMode`. Keep the full run's report as the record, and give every other plain run its own `--output`.
+- Write the record as NUnit, the default. `--affected` and `--rerun-failed` cannot read a JUnit-only report.
+- `--affected` reads its inventory from `--output` and writes `<name>.affected.xml` beside it. `--rerun-failed` reads its failures from `--output` and writes `<name>.rerun.xml`. After a failing `--affected` run, point `--rerun-failed` at its `<name>.affected.xml`. If `--rerun-failed` says there is nothing to re-run, check that it read the report of the run that failed. A wrong path looks like a pass.
+- Keep the reports in a folder outside the repository (`/path/to/reports` below). `--affected` counts any file git shows as changed or untracked outside `Assets`, `Packages` and `ProjectSettings`, a report included, as a change outside the project, and then runs the whole suite. Don't edit `.gitignore` to hide them: that edit is a change outside the project too.
+
+```bash
+unity test /path/to/MyProject --mode EditMode --output /path/to/reports/full.xml     # the full run: the record
+unity test /path/to/MyProject --mode PlayMode --output /path/to/reports/play.xml     # the PlayMode suite, its own report
+unity test /path/to/MyProject --mode EditMode --filter "MyNamespace.MyTests" --output /path/to/reports/filter.xml
+unity test /path/to/MyProject --mode EditMode --affected --since origin/main --output /path/to/reports/full.xml   # writes full.affected.xml
+unity test /path/to/MyProject --mode EditMode --rerun-failed --output /path/to/reports/filter.xml                 # a --filter run's failures
+unity test /path/to/MyProject --mode EditMode --rerun-failed --output /path/to/reports/full.affected.xml          # an --affected run's failures
+```
+
+`unity test` starts its own batch Editor, so it refuses a project that is already open in an Editor (exit `6`, "already open in a running Editor"). The message says to close that Editor. Don't, when it is the user's: it may be in Play Mode, and closing it ends their session. Run the tests in that Editor through the Pipeline's `run_tests` command instead, and only after `editor_status` shows that it is not playing (its `playMode` reads `stopped`). If it shows anything else, ask the user.
+
 #### Report formats (CI-native JUnit)
 
 The editor only ever writes NUnit3, so JUnit is produced by converting that report after the run. `--report-format` decides what `--output` contains:
@@ -360,9 +387,11 @@ The first-class build workflow. Rule of thumb vs `unity run`: building a player 
 
 Pick one build strategy: a Unity 6+ Build Profile (`--profile`), a built-in desktop player build (`--target` with a desktop target, `--output-path` required), or a custom `--execute-method` (your method is responsible for the actual build, including honoring `--output-path`). Non-desktop targets need `--profile` or `--execute-method`.
 
-The build log is always written to the log file **and** streamed to stdout at the same time; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`).
+The build log is always written to the log file **and** streamed at the same time — to stdout, or to stderr under `--format json` so stdout holds only the result document; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`). The streamed copy masks the credentials the CLI passes the Editor (the `-accessToken` value, the Android keystore passwords) with `***`, as do `run` and `test` wherever they relay the Editor's log.
 
 **How the outcome is decided — do not gate CI on Unity's exit code alone.** For a built-in build (`--profile`, or `--target` without `--execute-method`) the CLI does not trust Unity's process exit code by itself: a real Editor exits `0` from a player build its own log reports as failed. When the log carries Unity's terminal verdict, that verdict decides the outcome, so a failed build exits **6** even where the Unity process exited `0`, and the provenance manifest records the failure. A log with no verdict falls back to the exit code, and an `--execute-method` build always does — your method owns the code it returns, including when it deliberately tolerates a build it reports on itself. A build that succeeds with errors still in its log reports them on stderr rather than dropping them; they also ride `editorErrors` under `--format json`.
+
+**Writing scripts for a player build? Keep one `MonoBehaviour` per `.cs` file, named after its class.** Unity ties a `MonoBehaviour` to its script by file name, so `PlayerController` belongs alone in `PlayerController.cs`. Several in one file can run fine in the Editor and Play Mode with no warning. The built player then crashes at startup with `The file '.../level0' is corrupted! Remove it and launch unity again!`. `level0` is the first scene in the build (later ones are `level1`, `level2`, and so on), so the message points at scene data, not the scripts. If you see it, look for a `.cs` file that declares more than one `MonoBehaviour` (one deriving from another of yours counts) and give each its own file, named after its class, before you bisect scenes. Check the scripts you wrote or generated this session before you build, and leave existing code alone until the error appears.
 
 ```bash
 # Build with a custom build method
@@ -389,7 +418,7 @@ unity build /path/to/MyProject --profile "Windows Release" --output-path ./Build
 | `--create-profile <target>` | Create a Build Profile for a target and exit without building (Unity 6+); build with it afterwards via `--profile`. |
 | `--build-target-group <group>` | Forwarded to Unity as `-buildTargetGroup`. |
 | `-o, --output-path <path>` | Output path. With `--execute-method`, passed as `-buildOutput` (your method must honor it); otherwise the built-in build's destination (required). |
-| `-l, --log-file <path>` | Log file path. Default: `<project>/Logs/build-<target>-<timestamp>.log`. Streamed to stdout by default (see `--no-tail`). |
+| `-l, --log-file <path>` | Log file path. Default: `<project>/Logs/build-<target>-<timestamp>.log`. Streamed to stdout by default, stderr under `--format json` (see `--no-tail`). |
 | `--editor-version <version>` | Override editor version (default: from `ProjectVersion.txt`). |
 | `-e, --editor-path <path>` | Use a specific editor binary. |
 | `-a, --architecture <arch>` | Editor architecture (`x86_64` or `arm64`). |
@@ -426,16 +455,17 @@ Keystore flags are validated together. Secrets passed as command-line flags surf
 
 **Interrupt exit codes** — interrupting `unity build` exits with the conventional signal code (`130` for Ctrl-C / SIGINT, `143` for SIGTERM) rather than a generic `1`, so callers and CI can tell an aborted build apart from a failed one. The temporary Android keystore is scrubbed before exit.
 
-**Stall heartbeat** — a long build prints a periodic heartbeat (`Still building — 4m30s elapsed, last log output 3m10s ago`) tracking both total elapsed time and time since the Editor log last grew, so silence in the log no longer looks the same as a hang. Detection itself reads the Editor log's size directly, so it keeps working regardless of output mode — but whether the heartbeat is *printed* depends on the mode: on the human path it goes to stderr (so the streamed log stays clean) and is unaffected by `--no-tail`, but **`--quiet` suppresses it entirely** in human mode. Under `--format json`/`--format ndjson` it appears as periodic progress frames and is emitted regardless of `--quiet` — quiet only silences the human path.
+**Stall heartbeat** — a long build prints a periodic heartbeat (`Still building — 4m30s elapsed, last log output 3m10s ago`) tracking both total elapsed time and time since the Editor log last grew, so silence in the log no longer looks the same as a hang. Detection itself reads the Editor log's size directly, so it keeps working regardless of output mode — but whether the heartbeat is *printed* depends on the mode: on the human path it goes to stderr (so the streamed log stays clean) and is unaffected by `--no-tail`, but **`--quiet` suppresses it entirely** in human mode. Under `--format json`/`--format ndjson` it appears as periodic progress frames (on stderr under json, on stdout under ndjson) and is emitted regardless of `--quiet` — quiet only silences the human path.
 
 ```bash
-# With --format json, stdout includes newline-delimited JSON progress frames before the final envelope:
-unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output-path ./build/output --format json
-# Output (each line is a JSON object):
+# With --format json, stdout is the result document alone; the progress frames and the streamed log go to stderr:
+unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output-path ./build/output --format json > result.json
+# stderr (each progress line is a JSON object, the Editor log lines between them):
 # {"type":"progress","command":"build","message":"Resolving project..."}
 # {"type":"progress","command":"build","message":"Resolving editor..."}
 # {"type":"progress","command":"build","message":"Starting Unity..."}
 # {"type":"progress","command":"build","message":"Unity exited (code 0)"}
+# result.json:
 # { "success": true, "command": "build", "data": { "target": "...", "logFile": "...", "outputPath": "/path/to/MyProject/build/output" } }
 ```
 
@@ -482,7 +512,7 @@ The [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) i
 unity test /path/to/MyProject
 
 # One-shot override / opt-out
-unity build /path/to/MyProject --target StandaloneLinux64 --accelerator cache.example.com:10080
+unity build /path/to/MyProject --target StandaloneLinux64 --output-path ./Build/MyGame.x86_64 --accelerator cache.example.com:10080
 unity test /path/to/MyProject --no-accelerator
 ```
 

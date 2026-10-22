@@ -62,6 +62,16 @@ unity config update-check on       # enable
 unity config update-check --json
 ```
 
+#### config path
+
+Print where the CLI keeps its configuration: the settings file every `config` key is stored in (`user-settings.json`, shared with the Hub) and the directory that holds it and the CLI's other config files. Works in every output format.
+
+```bash
+unity config path                  # Config file: ... / Config directory: ...
+unity config path --format tsv     # file<TAB>... and directory<TAB>... rows
+unity config path --json           # {file, directory}
+```
+
 #### config accelerator
 
 View or change the [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) (asset-import cache server) endpoint. Once persisted, `unity run`, `unity test` and `unity build` inject it into the Editor automatically — see [build-run-test.md](build-run-test.md).
@@ -125,6 +135,7 @@ Recognized keys, and what they back onto:
 | `proxy.bypass` | `unity config proxy <url> --bypass <hosts>` | Comma-separated hosts; writing/clearing it leaves the sibling `proxy` key untouched. |
 | `accelerator` | `unity config accelerator <endpoint>` | Normalized to `host:port` on write. |
 | `update-check` | `unity config update-check on\|off` | Value is `on`/`off`. |
+| `proxyRequestLogging` | `unity --log-proxy`'s persisted setting | Strict boolean `true`/`false`; the third tier of `--log-proxy`'s precedence (flag, then `UNITY_LOG_PROXY`, then this setting). |
 
 An unknown key, a read-only key (none exist yet — the mechanism exists for a future resolved-only value), or an invalid value for a writable key is rejected with exit **2** and a message pointing at `unity config list`. `--format json` returns `{key, value}` for `get`/`set`, `{key, cleared}` for `unset`, and `{entries: [{key, value, writable}, …]}` for `list`.
 
@@ -184,7 +195,7 @@ Bootstrap Unity Hub on a clean machine from the command line.
 unity hub install
 
 # Install a specific Hub version
-unity hub install --hub-version 3.17.0
+unity hub install --version 3.17.0
 
 # Force reinstall even when Hub is already detected
 unity hub install --force
@@ -199,11 +210,11 @@ unity hub install --architecture x64
 unity hub install --skip-signature-check
 ```
 
-Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--hub-version <version>` (default `latest`, and a leading `v` as in `v3.17.0` is accepted), `--skip-signature-check`.
+Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--version <version>` (default `latest`, and a leading `v` as in `v3.17.0` is accepted; `--hub-version` still works, but it is deprecated and prints a warning), `--skip-signature-check`.
 
 **Integrity & signature verification** — every download is checked against the SHA-512 from the HTTPS manifest, then the installer's **code signature** is verified before it runs with elevation: on macOS via `codesign` (signer `Developer ID Application: Unity Technologies`), on Windows via Authenticode (signer subject `Unity Technologies`), checked *before* the UAC prompt. Verification is **fail-closed** — if it fails or the verifier is unavailable, the command aborts with exit 6 and does not run the installer. Linux `.AppImage` has no standard verifier, so it is SHA-512-only. Pass `--skip-signature-check` to bypass (prints a warning; not recommended).
 
-**`--hub-version` behaviour** — fetches the version-specific manifest from the CDN; if that version does not exist, the command exits with code 6 (no fallback to latest).
+**`--version` behaviour** — fetches the version-specific manifest from the CDN; if that version does not exist, the command exits with code 6 (no fallback to latest).
 
 ```bash
 # JSON output

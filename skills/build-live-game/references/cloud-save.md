@@ -93,7 +93,7 @@ Task<List<EntityData>> QueryAsync(Query query, QueryOptions options)
 Read-only from the client. Write via Cloud Code modules or `IAdminClient.CloudSaveData` from the `com.unity.services.apis` package. All methods require a `customDataID` parameter -- the namespace configured in the Unity Dashboard.
 
 > **To write Custom Data from the editor or a deploy command**, use `IAdminClient.CloudSaveData.SetCustomItem` /
-> `SetCustomItemBatch`. See [apis.md](apis.md) for setup and code templates. The client SDK has no write
+> `SetCustomItemBatch`. See `references/apis.md` for setup and code templates. The client SDK has no write
 > path for Custom Data.
 
 ```csharp

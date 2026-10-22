@@ -437,7 +437,7 @@ if (result.TryGetValue("player_level", out var item))
 
 Writes to Protected and Custom buckets must go through a Cloud Code module. The module uses `IGameApiClient` with the service token to call Cloud Save server-side APIs.
 
-To create the module, follow [cloud-code.md — Module Creation](cloud-code.md#module-creation). All scaffolding files are required:
+To create the module, follow the Module Creation section of `references/cloud-code.md`. All scaffolding files are required:
 
 - [ ] `.sln` (generate fresh GUIDs)
 - [ ] `.csproj` (net9.0, CloudCode.Apis + CloudCode.Core)
