@@ -43,7 +43,7 @@ Exceptions that always require reading first:
 
 Follow these rules for configuring a component:
 
-- Never write serialized fields — the serialized names differ from public names. Drive everything through public properties and methods via `eval`.
+- Never write serialized fields — the serialized names differ from public names. Drive everything through public properties and methods via `script eval`.
 - Definition and geometry are separate: a pose's body settings live in its definition; an area's shape is its geometry. Configure them independently. A change to either needs its apply call before it takes effect — the type page states which one.
 - Before configuring any component, fetch its API page and use only members it lists. Read the installed version from `Packages/packages-lock.json` (major.minor, e.g. `1.1`), then fetch:
 `https://docs.unity3d.com/Packages/com.unity.2d.physics@<version>/api/Unity.U2D.Physics.<Type>.html`

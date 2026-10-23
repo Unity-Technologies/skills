@@ -19,20 +19,20 @@ and discovering the Editor's command catalog. Follow it first; don't re-derive a
 
 Two things it can't know for you:
 
-- **You need `eval` in particular**, not just a reachable Editor. Confirm it appears in the
+- **You need `script eval` in particular**, not just a reachable Editor. Confirm it appears in the
   catalog. Its presence depends on the Pipeline package version, not on the CLI, so a healthy
   install can still lack it — if it's missing, say so and stop.
 - **Do not hand-edit `.meta` files to change import settings.** Importer values only take effect
   through `SaveAndReimport()` in a live Editor, so an unreachable Editor is a stop, not a cue to
   edit metadata directly.
 
-Run C# with `unity command eval --code '<snippet>'`. Discover the parameter shape from
+Run C# with `unity command script eval --code '<snippet>'`. Discover the parameter shape from
 `unity command --format json` rather than assuming one. `unity command` defaults to a 30 second
 timeout.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**. Two consequences, both of which cause a compile
+`script eval` compiles a **statement block, not a file**. Two consequences, both of which cause a compile
 error rather than a warning:
 
 - **No `using` directives.** The compiler reads `using UnityEngine;` as a resource-disposal
@@ -41,13 +41,13 @@ error rather than a warning:
   (`CS0246` / `CS0103`), and a bare `Object` is ambiguous with `object` (`CS0104`).
 
 The recipes in [resources/audio-import-api.md](resources/audio-import-api.md) are written
-fully qualified so they can be passed to `eval` as-is.
+fully qualified so they can be passed to `script eval` as-is.
 
 ## 1. Pre-Flight: Detect Audio System
 
 Before doing anything else, establish the audio environment:
 
-1. **Detect platform and sample rate:** Use `eval` to read `EditorUserBuildSettings.activeBuildTarget` and `AudioSettings.outputSampleRate`. The output sample rate affects whether overriding clip sample rates will actually save memory.
+1. **Detect platform and sample rate:** Use `script eval` to read `EditorUserBuildSettings.activeBuildTarget` and `AudioSettings.outputSampleRate`. The output sample rate affects whether overriding clip sample rates will actually save memory.
 2. **Detect AudioMixer presence:** Use the mixer-asset query recipe in [resources/audio-import-api.md](resources/audio-import-api.md) to see if a mixer graph exists. If none exists, note that routing and effect costs are not a concern.
 3. **Detect AudioListener:** Use the scene-component query recipe in [resources/audio-import-api.md](resources/audio-import-api.md) for `UnityEngine.AudioListener` to confirm exactly one listener is present. Multiple listeners produce incorrect spatialization; zero listeners produce silence.
 4. **Proceed** only after platform and listener state are confirmed.
@@ -56,8 +56,8 @@ Before doing anything else, establish the audio environment:
 
 Before recommending any change, gather observable data:
 
-1. **Find all AudioSources:** Use the scene-component query recipe in [resources/audio-import-api.md](resources/audio-import-api.md) for `UnityEngine.AudioSource`. For each result, use **one** `eval` call to batch-read properties — see the batch read recipe in [resources/audio-import-api.md](resources/audio-import-api.md).
-2. **Inspect mixer topology:** If a mixer was found in Pre-Flight, use `eval` to read the AudioMixer's exposed parameters and group count. A group count above ~8 or effects on the Master group are immediate flags.
+1. **Find all AudioSources:** Use the scene-component query recipe in [resources/audio-import-api.md](resources/audio-import-api.md) for `UnityEngine.AudioSource`. For each result, use **one** `script eval` call to batch-read properties — see the batch read recipe in [resources/audio-import-api.md](resources/audio-import-api.md).
+2. **Inspect mixer topology:** If a mixer was found in Pre-Flight, use `script eval` to read the AudioMixer's exposed parameters and group count. A group count above ~8 or effects on the Master group are immediate flags.
 3. **Check DSP buffer size:** Use the DSP buffer recipe in [resources/audio-import-api.md](resources/audio-import-api.md) to read buffer size. See DSP Buffer Size Guidelines in [resources/platform-settings.md](resources/platform-settings.md) for recommended values.
 4. **Report findings before making changes:** Summarize ALL detected sources, the listener count, and mixer depth to the user. Flag any immediate risks (e.g., stereo clip with `spatialBlend = 1`, Decompress On Load on a clip > 1 MB, reverb on the Master group).
 
@@ -88,15 +88,15 @@ Use the findings from Section 2 to determine which sub-section applies. More tha
 
 For any AudioSource where `spatialBlend > 0` (3D positioned sound):
 
-1. **Check clip channel count:** Use `eval` to read `audioSource.clip.channels`. If `channels == 2` and `spatialBlend == 1`, only the left channel plays — this is a bug, not a feature.
+1. **Check clip channel count:** Use `script eval` to read `audioSource.clip.channels`. If `channels == 2` and `spatialBlend == 1`, only the left channel plays — this is a bug, not a feature.
 2. **Recommend Force To Mono:** Use the read importer recipe in [resources/audio-import-api.md](resources/audio-import-api.md) to inspect current settings, then apply Force To Mono using the force-to-mono recipe.
 3. **Apply and reimport:** Report before/after channel counts to the user.
-4. **Verify spatial blend:** Use `eval` to confirm `audioSource.spatialBlend` is `1.0` (full 3D) and `audioSource.rolloffMode` is set to an appropriate curve.
+4. **Verify spatial blend:** Use `script eval` to confirm `audioSource.spatialBlend` is `1.0` (full 3D) and `audioSource.rolloffMode` is set to an appropriate curve.
 
 ### 4B. AudioMixer Audit
 
-1. **Measure group depth:** Use `eval` to walk the mixer's group tree and count levels. More than 3 levels (Master → SFX / Music / Voice → sub-bus) adds routing overhead every frame, even when children are silent.
-2. **Check effects on silent groups:** Use `eval` to query each group's effects list. Effects such as `AudioReverbFilter` run their DSP at full cost even when no AudioSource routes to that group.
+1. **Measure group depth:** Use `script eval` to walk the mixer's group tree and count levels. More than 3 levels (Master → SFX / Music / Voice → sub-bus) adds routing overhead every frame, even when children are silent.
+2. **Check effects on silent groups:** Use `script eval` to query each group's effects list. Effects such as `AudioReverbFilter` run their DSP at full cost even when no AudioSource routes to that group.
 3. **Flag SFX Reverb on parent groups:** This is the most expensive built-in effect. If found on the Master or a high-level group, flag it explicitly.
 4. **Present recommendations to the user:**
    - Remove or bypass effects on groups that have no active sources.
@@ -122,7 +122,7 @@ For any AudioSource where `spatialBlend > 0` (3D positioned sound):
 
 ### 4E. Load Type and Streaming
 
-1. **Audit Load Type per clip:** Use `eval` to read `clip.loadType` for each clip found in Section 2.
+1. **Audit Load Type per clip:** Use `script eval` to read `clip.loadType` for each clip found in Section 2.
 2. **Apply the decision rule:** See Load Type Decision Table in [resources/platform-settings.md](resources/platform-settings.md).
 3. **Flag mismatches:** See Load Type Mismatch Flags in [resources/platform-settings.md](resources/platform-settings.md). Report both types of mismatches to the user.
 4. **Apply `Load In Background`** for any Streaming clip — use the Load In Background recipe in [resources/audio-import-api.md](resources/audio-import-api.md).
@@ -131,7 +131,7 @@ For any AudioSource where `spatialBlend > 0` (3D positioned sound):
 
 After any import setting or mixer change:
 
-1. **Re-read clip stats:** Use `eval` to re-read `clip.loadType`, `clip.channels`, `AudioSettings.outputSampleRate`, and the importer's `compressionFormat` to confirm the change applied after reimport.
+1. **Re-read clip stats:** Use `script eval` to re-read `clip.loadType`, `clip.channels`, `AudioSettings.outputSampleRate`, and the importer's `compressionFormat` to confirm the change applied after reimport.
 2. **Confirm AudioSource routing:** Use the scene-component query recipe for `UnityEngine.AudioSource` and verify `audioSource.outputAudioMixerGroup` is assigned as expected after any mixer restructure.
 3. **Report delta:** State the before and after values for each setting changed. Do not assume the change was effective without reading back the applied importer values.
 4. **Iterate limit:** Maximum 3 adjust-and-verify cycles before pausing to ask the user for feedback.
@@ -154,7 +154,7 @@ After any import setting or mixer change:
 ### AudioMixer CPU spike — DSP thread hot
 
 1. Confirm with the mixer-asset query recipe that the mixer graph exists.
-2. Use `eval` to list all groups and their attached effects. Look for reverb, chorus, or EQ on high-level groups.
+2. Use `script eval` to list all groups and their attached effects. Look for reverb, chorus, or EQ on high-level groups.
 3. Move expensive effects down to leaf groups that are only active when sources are playing.
 4. Use snapshots to bypass effect chains during gameplay states where they are not heard (e.g., bypass reverb during a menu).
 5. If the DSP buffer is small (64 or 128 samples), raise it — see DSP Buffer Size Guidelines in [resources/platform-settings.md](resources/platform-settings.md).
@@ -168,7 +168,7 @@ After any import setting or mixer change:
 
 ### AudioListener count is not exactly one
 
-- **Zero listeners:** All audio will be silent. Use `eval` to add an `AudioListener` component to the main camera: `UnityEngine.Camera.main.gameObject.AddComponent<UnityEngine.AudioListener>()`.
+- **Zero listeners:** All audio will be silent. Use `script eval` to add an `AudioListener` component to the main camera: `UnityEngine.Camera.main.gameObject.AddComponent<UnityEngine.AudioListener>()`.
 - **Multiple listeners:** Unity uses the last enabled one, producing unpredictable spatialization. Use the scene-component query recipe for `UnityEngine.AudioListener` and disable all but the intended one.
 
 ### `Load In Background` causes first-play silence

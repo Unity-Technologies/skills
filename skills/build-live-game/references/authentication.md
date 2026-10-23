@@ -404,19 +404,19 @@ await AuthenticationService.Instance.DeleteAccountAsync();
 
 Throws `AuthenticationException` (extends `RequestFailedException`) on failure. Use `ex.ErrorCode` and compare against `AuthenticationErrorCodes`:
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `ClientInvalidUserState` | 10000 | Operation not valid in current state |
-| `ClientNoActiveSession` | 10001 | No active session |
-| `InvalidParameters` | 10002 | Bad input parameters |
-| `AccountAlreadyLinked` | 10003 | External ID already linked to another player |
-| `AccountLinkLimitExceeded` | 10004 | Max linked accounts for this provider type |
-| `ClientUnlinkExternalIdNotFound` | 10005 | External ID not linked |
-| `ClientInvalidProfile` | 10006 | Invalid profile name |
-| `InvalidSessionToken` | 10007 | Session token invalid or expired |
-| `InvalidProvider` | 10008 | Unknown identity provider |
-| `BannedUser` | 10009 | Player has been banned |
-| `EnvironmentMismatch` | 10010 | Session token from a different environment |
+| Constant | Value | Meaning | Fix |
+|---|---|---| :-- |
+| `ClientInvalidUserState` | 10000 | Operation not valid in current state | Check the player's sign-in state before the call; call `SignOut()` first when switching profile |
+| `ClientNoActiveSession` | 10001 | No active session | Sign in before calling the operation |
+| `InvalidParameters` | 10002 | Bad input parameters | Validate the input against the provider or username rules before the call |
+| `AccountAlreadyLinked` | 10003 | External ID already linked to another player | Sign in with that identity, or link with `ForceLink` only after the player confirms |
+| `AccountLinkLimitExceeded` | 10004 | Max linked accounts for this provider type | Unlink an existing identity of that provider type first |
+| `ClientUnlinkExternalIdNotFound` | 10005 | External ID not linked | Check `PlayerInfo.Identities` before unlinking |
+| `ClientInvalidProfile` | 10006 | Invalid profile name | Use a valid profile name |
+| `InvalidSessionToken` | 10007 | Session token invalid or expired | Clear the token with `ClearSessionToken()` and sign in again only if the player has a linked identity; for an anonymous-only player keep the token, because clearing it permanently loses the account |
+| `InvalidProvider` | 10008 | Unknown identity provider | Check the provider name matches the one configured in the Dashboard |
+| `BannedUser` | 10009 | Player has been banned | Not retryable; the player cannot sign in |
+| `EnvironmentMismatch` | 10010 | Session token from a different environment | Keep the token for its original environment and sign in to the other environment under a separate profile with `SwitchProfile`; clear the token only if the player has a linked identity |
 
 **Error response format:** Authentication errors follow RFC 7807 (Problem Details). Branch your error handling on `status` and `title` fields, never on `detail` -- the detail message may change without notice.
 
@@ -429,9 +429,3 @@ Throws `AuthenticationException` (extends `RequestFailedException`) on failure. 
 **Anonymous-only accounts:** Calling `ClearSessionToken()` or `SignOut(clearCredentials: true)` on an account that ONLY has anonymous sign-in will **permanently lose** that account. Always link at least one external provider before clearing credentials.
 
 **DeleteAccountAsync compliance:** iOS App Store (Guideline 5.1.1) requires apps that support account creation to offer account deletion. `DeleteAccountAsync()` only deletes **Authentication data**. It does NOT automatically clean up data in other UGS services (Cloud Save, Leaderboards, etc.). You must manually delete data from each service before calling `DeleteAccountAsync()`.
-
----
-
-## Asset Store Building Blocks
-
-- **Player Account Building Block:** Ready-made sign-in UI (anonymous, Unity browser, username/password), Cloud Save integration for player data, and a Cloud Code module for server-authoritative writes. [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-player-account-341928)

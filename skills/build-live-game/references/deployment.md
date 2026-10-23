@@ -32,13 +32,16 @@ Each service package registers its own file types with the Deployment Window. In
 | Service | Package | File Type(s) | Min Version |
 |---|---|---|---|
 | Cloud Code Scripts | `com.unity.services.cloudcode` | `.js` | 2.1.0 |
-| Cloud Code C# Modules | `com.unity.services.cloudcode` | `.ccmr` | 2.5.0 |
+| Cloud Code C# Modules (native) | `com.unity.services.cloudcode` | `.ccmu` | 3.0.0 |
+| Cloud Code C# Modules (legacy) | `com.unity.services.cloudcode` | `.ccmr` | 2.5.0 |
 | Remote Config | `com.unity.remote-config` | `.rc` | 3.2.0 |
 | Leaderboards | `com.unity.services.leaderboards` | `.lb` | 2.0.0 |
 | Game Server Hosting | `com.unity.services.multiplayer` | `.gsh` | 1.1.0 |
 | Matchmaker | `com.unity.services.multiplayer` | `.mmq` | 1.0 |
 | Game Overrides | `com.unity.services.tooling` | `.ugo` | 1.3.0 |
 | Access Control | `com.unity.services.tooling` | `.ac` | 1.0 |
+| Triggers | `com.unity.services.tooling` | `.tr` | 1.4.2 |
+| Scheduler | `com.unity.services.tooling` | `.sched` | 1.4.2 |
 | Deployment Definitions | `com.unity.services.deployment` | `.ddef` | -- |
 
 ## Workflow
@@ -193,23 +196,36 @@ static void RegisterProvider()
 
 ### Code Template -- Trigger Deployment Programmatically
 
+Run it with `unity command run_script --file AgentScripts/Deploy.cs --entry Deploy.Run --args '[["Assets/MyConfig.rc"]]'`
+(needs the `com.unity.pipeline` and `com.unity.services.deployment.api` packages; keep the file outside `Assets/`). `DeploymentWindow` throws
+*"Deployment Window must be opened for this operation."* until the window is open, so the script opens it
+and waits.
+
 ```csharp
+// AgentScripts/Deploy.cs — deploys to the active environment. Await; never .Wait(), which deadlocks the main thread.
+using System.Linq;
+using System.Threading.Tasks;
 using Unity.Services.DeploymentApi.Editor;
+using UnityEditor;
 
-// Deploy all items
-var allItems = Deployments.Instance.DeploymentWindow.GetAllDeploymentItems();
-var result = await Deployments.Instance.DeploymentWindow.Deploy(allItems);
-
-// Deploy by file paths
-await Deployments.Instance.DeploymentWindow.Deploy(new[] { "Assets/MyConfig.rc" });
-
-// Listen for deployment events
-Deployments.Instance.DeploymentWindow.DeploymentStarting += items =>
+public static class Deploy
 {
-    Debug.Log($"Deploying {items.Count} items...");
-};
-Deployments.Instance.DeploymentWindow.DeploymentEnded += items =>
-{
-    Debug.Log($"Deployment complete: {items.Count} items");
-};
+    public static async Task<string> Run(string[] paths)
+    {
+        var deployments = Deployments.Instance;
+        if (!(deployments.DeploymentWindow is EditorWindow))
+            deployments.DeploymentWindow.OpenWindow();
+        for (var i = 0; i < 100 && !(deployments.DeploymentWindow is EditorWindow); i++)
+            await Task.Delay(100);
+
+        var items = deployments.DeploymentWindow.GetFromFiles(paths);
+        var found = items.Where(item => item != null).ToList();
+        // Deploy all items instead: await deployments.DeploymentWindow.Deploy(deployments.DeploymentWindow.GetAllDeploymentItems());
+        if (found.Count > 0)
+            await deployments.DeploymentWindow.Deploy(found);
+        return string.Join("\n", paths.Select((path, i) => items[i] == null
+            ? $"{path}: not a deployable item"
+            : $"{path}: {items[i].Status.MessageSeverity} {items[i].Status.Message} {items[i].Status.MessageDetail}"));
+    }
+}
 ```

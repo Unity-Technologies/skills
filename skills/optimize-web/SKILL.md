@@ -71,7 +71,7 @@ The KTX API (`KtxUnity`) is part of the `com.unity.cloud.ktx` package. It is ver
 
 1. Get the project context: the Unity version from `ProjectSettings/ProjectVersion.txt`, and the versions of the packages you need (`com.unity.cloud.ktx`, `com.unity.addressables`, `com.unity.web.stripping-tool`) from `Packages/packages-lock.json`. If there's no project, assume Unity `6000.0`. For any package not listed in `packages-lock.json`, assume the latest version in that package's documentation. Preserve every version you do find — only default the values that are actually missing. Name each assumption in your report and carry on. If the user hasn't said what to optimize and there's no project to read, ask what they want to improve.
 2. Read the docs pages that cover the task, from the [Full topic map](#full-topic-map).
-3. Set up `eval` as described in [Running C# in the Editor](#running-c-in-the-editor). If no Editor is reachable or `eval` is missing, say so, skip to step 5, then go straight to step 9. Mark build validation and runtime checks as unperformed in your report, and base your recommendations on the user's request and the docs from step 2.
+3. Set up `script eval` as described in [Running C# in the Editor](#running-c-in-the-editor). If no Editor is reachable or `script eval` is missing, say so, skip to step 5, then go straight to step 9. Mark build validation and runtime checks as unperformed in your report, and base your recommendations on the user's request and the docs from step 2.
 4. Run [0. Pre-Flight](#0-pre-flight) and [1. Assess Current State](#1-assess-current-state). Their results are your baseline.
 5. Match the request to a row in [2. Understand Request](#2-understand-request).
 6. Create a restore point, then apply the changes from [3. Web Build Optimization Workflow](#3-web-build-optimization-workflow). If a symptom matches [5. Troubleshooting](#5-troubleshooting), follow that entry.
@@ -89,7 +89,7 @@ re-derive any of it here.
 
 Two things it can't know for you:
 
-- **You need `eval` in particular**, not just a reachable Editor. Confirm it appears in the catalog.
+- **You need `script eval` in particular**, not just a reachable Editor. Confirm it appears in the catalog.
   Its presence depends on the Pipeline package version, not on the CLI, so a healthy install can
   still lack it — if it's missing, say so and skip the steps that read or write settings.
 - **You can read Player Settings from `ProjectSettings/ProjectSettings.asset` in a pinch, but do not
@@ -97,12 +97,12 @@ Two things it can't know for you:
   are per-build-target, and a hand-edited value silently disagrees with what the build actually
   uses. An unreachable Editor is a stop for the write steps.
 
-Run C# with `unity command eval --code '<snippet>'`. `unity command` defaults to a 30 second
+Run C# with `unity command script eval --code '<snippet>'`. `unity command` defaults to a 30 second
 timeout.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**, so write the code without `using` directives and
+`script eval` compiles a **statement block, not a file**, so write the code without `using` directives and
 with fully qualified types. If the code doesn't compile, look up the error here:
 
 | Error | Cause | Fix |
@@ -161,7 +161,7 @@ than assuming the repository carries it.
 
 Most of the writes in this skill are a single batch, and
 [scripts/WebOptimizer.cs](scripts/WebOptimizer.cs) already is that batch. It declares a class
-with a `[MenuItem]`, so it is a **project file, not `eval` input** — a class declaration cannot be
+with a `[MenuItem]`, so it is a **project file, not `script eval` input** — a class declaration cannot be
 flattened into a statement block. Save it under `Assets/Editor/`, let Unity compile, then invoke it
 in one line:
 
@@ -170,7 +170,7 @@ UnityEditor.EditorApplication.ExecuteMenuItem("Tools/Apply Web Release Settings"
 ```
 
 Keep its `using` directives; they are correct in a file. For one-off changes — a single quality
-level, a frame-rate flip — an inline `eval` statement is fine.
+level, a frame-rate flip — an inline `script eval` statement is fine.
 
 ### Verify from disk, not from the objects you just wrote
 
@@ -184,7 +184,7 @@ everything, read back Brotli / High / None, said it was done, and the file on di
 So after any write:
 
 1. **Save.** `UnityEditor.AssetDatabase.SaveAssets()`. `WebOptimizer.cs` now does this itself; an
-   inline `eval` write has to do it explicitly.
+   inline `script eval` write has to do it explicitly.
 2. **Read the values back and report them.** Not "applied successfully" but the actual values, so the
    user can see what is stored. `WebOptimizer.cs` logs all nine.
 3. **For anything per-build-target, name the target you read.** Several of these settings exist once
@@ -247,7 +247,7 @@ Adapt the script to the user's project needs (e.g. keep exceptions if they use `
 
 ### Player Settings audit
 
-Verify and set these values through `eval`:
+Verify and set these values through `script eval`:
 
 | Setting | Release recommendation |
 |---|---|
@@ -320,12 +320,12 @@ Test after stripping — make sure you didn't remove any referenced shaders.
 Lower quality levels reduce load time and improve runtime performance. Set via `Edit > Project Settings > Quality`:
 
 - Use **Very Low** or **Low** as the default Web quality level.
-- Set it with `eval`: `UnityEngine.QualitySettings.SetQualityLevel(0, true);` where 0 = Very Low.
+- Set it with `script eval`: `UnityEngine.QualitySettings.SetQualityLevel(0, true);` where 0 = Very Low.
 - Consider creating a Web-specific quality level that disables features unnecessary in-browser (real-time shadows, post-processing effects, high particle counts).
 
 ### Frame rate on Web
 
-- Set it with `eval`: `UnityEngine.Application.targetFrameRate = -1;` — let the browser use `requestAnimationFrame`.
+- Set it with `script eval`: `UnityEngine.Application.targetFrameRate = -1;` — let the browser use `requestAnimationFrame`.
 - Note: **Safari caps at 60 fps** in WebGL; high-refresh targets do not apply.
 - Use `OnDemandRendering.renderFrameInterval` to drop to 5–10 fps on static/idle screens to save battery.
 

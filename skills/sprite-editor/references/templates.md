@@ -2,7 +2,7 @@
 
 ## Safe Core Pattern (MANDATORY)
 
-Types are fully qualified because this runs through `eval`, which rejects `using` directives.
+Types are fully qualified because this runs through `script eval`, which rejects `using` directives.
 If you save it as a `.cs` file instead, add `using UnityEditor.U2D.Sprites;` and shorten them.
 
 Use this structure for all sprite modification tasks.

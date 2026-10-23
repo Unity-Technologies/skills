@@ -1,9 +1,9 @@
 # Audio Import API Recipes
 
-C# code recipes for `unity command eval --code '<snippet>'`. All examples target the Unity 6
+C# code recipes for `unity command script eval --code '<snippet>'`. All examples target the Unity 6
 AudioImporter API.
 
-`eval` compiles a statement block, so there are no `using` directives and every type is written
+`script eval` compiles a statement block, so there are no `using` directives and every type is written
 fully qualified. Each recipe `return`s its result as a string rather than calling `Debug.Log`, so
 the value comes back on the CLI's stdout instead of only reaching the Editor console.
 
@@ -75,7 +75,7 @@ importer.SaveAndReimport();
 
 ## Read AudioSource Properties (Batch)
 
-Read multiple properties in a single `eval` call:
+Read multiple properties in a single `script eval` call:
 
 ```csharp
 var src = audioSource;
@@ -103,7 +103,7 @@ if (path.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase))
 
 ## Resolving `audioSource` / `clip` inside a snippet
 
-The recipes above are written against an `audioSource` or `clip` variable. `eval` runs each
+The recipes above are written against an `audioSource` or `clip` variable. `script eval` runs each
 snippet in a fresh scope, so nothing carries over between calls — resolve the object at the top of
 the same snippet that uses it.
 

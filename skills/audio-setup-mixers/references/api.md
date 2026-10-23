@@ -27,7 +27,7 @@ to add any missing groups (two clicks in a window they already have open), and t
 routing itself. The tedious part — walking dozens of Audio Sources and classifying them — is the
 part that was worth automating anyway.
 
-All snippets below are written for `unity command eval --code '<snippet>'`: fully qualified, no
+All snippets below are written for `unity command script eval --code '<snippet>'`: fully qualified, no
 `using` directives, returning their result rather than logging it.
 
 ## Inventory the project's mixers and their groups

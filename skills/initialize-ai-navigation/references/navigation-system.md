@@ -1,8 +1,8 @@
 #> **Which snippets go where.** The recipes below — movement, patrol, click-to-move, animation
 > coupling, path inspection — are **written as game scripts**: save them into the project with
 > their `using UnityEngine.AI;` and short type names intact. Only the Editor-side operations
-> (installing the package, querying the live scene) are meant to be passed to `eval`, and those
-> are fully qualified because `eval` takes no usings.
+> (installing the package, querying the live scene) are meant to be passed to `script eval`, and those
+> are fully qualified because `script eval` takes no usings.
 
 # Table of Contents
 - [Performance Notes](#performance-notes)
@@ -370,7 +370,7 @@ Editing `Packages/manifest.json` is the route that needs no Editor. When one is 
 this is the equivalent C#:
 
 ```csharp
-// Fully qualified: this runs through `eval`, which rejects `using` directives.
+// Fully qualified: this runs through `script eval`, which rejects `using` directives.
 var request = UnityEditor.PackageManager.Client.Add("com.unity.ai.navigation@2");
 UnityEngine.Debug.Log("Requested com.unity.ai.navigation@2. Progress shows in the Package Manager window.");
 ```

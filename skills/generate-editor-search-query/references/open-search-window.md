@@ -24,8 +24,8 @@ Delete the temporary file afterwards.
 
 Replace `QUERY_BASE64` with that output.
 
-Run it through the Editor with `unity command eval --code '<snippet>'`. Fully qualified, with no
-`using` directives, because `eval` compiles a statement block rather than a file.
+Run it through the Editor with `unity command script eval --code '<snippet>'`. Fully qualified, with no
+`using` directives, because `script eval` compiles a statement block rather than a file.
 
 ```csharp
 var query = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String("QUERY_BASE64"));

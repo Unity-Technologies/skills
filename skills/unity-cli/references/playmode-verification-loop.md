@@ -117,7 +117,7 @@ wait started, server-side, with no client polling loop:
 ```bash
 unity command job wait -- \
   --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' \
-  --timeout_s 10
+  --timeout 10
 ```
 
 `op: changed` needs no `value`: it is met the first time the member differs from the value observed

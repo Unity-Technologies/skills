@@ -268,7 +268,7 @@ unity command gameobject create   # act on the live, active scene
 unity command scene save          # persist the active scene
 ```
 
-Command names are defined by the Editor, so run `unity command` (or `unity list`) to see the exact set — don't assume a name.
+Commands are grouped and invoked as `unity command <group> <name>`. Their names are defined by the Editor, so run `unity command` (or `unity list`) to see the exact set — don't assume a name.
 
 > **Never hand-edit `.unity`, `.prefab`, or `.asset` YAML while a live Editor is reachable.** Raw-file edits are:
 > - **error-prone** — fileIDs and GUIDs are assigned by hand and easy to get wrong;
