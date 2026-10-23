@@ -100,27 +100,9 @@ public class AchievementDefinition
 | `IsHidden` | `bool` | If true, hide until unlocked (secret achievements) |
 | `ProgressTarget` | `int` | Target count for multi-stage achievements; 0 or 1 = single unlock |
 
-### AchievementRecord (client-side)
+### AchievementRecord (defined once, in the cloud assembly)
 
-Stored in Cloud Save as a JSON array under the `"achievements"` key.
-
-```csharp
-using System;
-
-[Serializable]
-public class AchievementRecord
-{
-    public string Id;
-    public bool Unlocked;
-    public int ProgressCount;
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `Id` | `string` | Matches `AchievementDefinition.Id` |
-| `Unlocked` | `bool` | True once the achievement is fully earned |
-| `ProgressCount` | `int` | Current progress toward `ProgressTarget` |
+Stored in Cloud Save as a JSON array under the `"achievements"` key. Define it once, in `AchievementModule.cs` (see [Server-Side Model](#server-side-model)), as a class of public settable members. The source generator emits a data-only stub of the same name and namespace, `AchievementModule.Cloud.AchievementRecord`, into the client assembly, so client code uses that type and never declares its own copy. `Id` matches `AchievementDefinition.Id`; `ProgressCount` is the current progress toward `ProgressTarget`.
 
 ---
 
@@ -167,9 +149,7 @@ Cloud Code and Cloud Save errors surface as typed exceptions on the client:
 ```csharp
 try
 {
-    await CloudCodeService.Instance.CallModuleEndpointAsync(
-        "AchievementModule", "UnlockAchievement",
-        new Dictionary<string, object> { { "achievementId", "first_win" } });
+    await m_Client.UnlockAchievement("first_win");
 }
 catch (CloudCodeException ex)
 {
@@ -184,6 +164,11 @@ catch (CloudSaveException ex)
     Debug.LogError($"[Achievements] Cloud Save error: {ex.Reason} — {ex.Message}");
 }
 ```
+
+| Error | Cause | Fix |
+| :-- | :-- | :-- |
+| `CloudCodeException` with reason `ScriptError` | The module threw, for example on a failed validation | Read `ex.Message`, then correct the arguments or the player's state |
+| `CloudSaveException` with a `403` | The client attempted a direct write to the Protected bucket | Route the write through the Cloud Code module |
 
 ---
 
@@ -284,33 +269,7 @@ async Task SaveRecordsAsync(List<AchievementRecord> records)
 
 In production, route all mutations through Cloud Code module endpoints. The module uses its service token to write to the Protected bucket, bypassing Access Control restrictions that block the player client.
 
-### Unlock an Achievement
-
-```csharp
-await CloudCodeService.Instance.CallModuleEndpointAsync(
-    "AchievementModule", "UnlockAchievement",
-    new Dictionary<string, object> { { "achievementId", achievementId } });
-```
-
-### Update Achievement Progress
-
-```csharp
-await CloudCodeService.Instance.CallModuleEndpointAsync(
-    "AchievementModule", "UpdateAchievementProgress",
-    new Dictionary<string, object>
-    {
-        { "achievementId", achievementId },
-        { "count", newCount }
-    });
-```
-
-### Reset Achievements
-
-```csharp
-await CloudCodeService.Instance.CallModuleEndpointAsync(
-    "AchievementModule", "ResetAchievements",
-    new Dictionary<string, object>());
-```
+The module's endpoints are `UnlockAchievement(achievementId)`, `UpdateAchievementProgress(achievementId, count)` and `ResetAchievements()`. The client calls them through the generated `AchievementModuleClient`, as in the client implementation below: `await m_Client.UnlockAchievement(id)`. `count` is the amount to add, not the new total.
 
 ### Delete / Reset Player Records (Direct)
 
@@ -331,9 +290,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AchievementModule.Client;
+using AchievementModule.Cloud;
 using Newtonsoft.Json;
 using Unity.Services.Authentication;
-using Unity.Services.CloudCode;
 using Unity.Services.CloudSave;
 using Unity.Services.CloudSave.Models;
 using Unity.Services.CloudSave.Models.Data.Player;
@@ -350,6 +310,8 @@ public class AchievementManager : MonoBehaviour
     // Set to false for direct Cloud Save writes (development only).
     [SerializeField] bool m_UseTrustedWrites = true;
 
+    AchievementModuleClient m_Client;
+
     public List<AchievementDefinition> Definitions { get; private set; } = new();
     public List<AchievementRecord> Records { get; private set; } = new();
 
@@ -360,6 +322,7 @@ public class AchievementManager : MonoBehaviour
     {
         await UnityServices.InitializeAsync();
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        m_Client = new AchievementModuleClient();
         await LoadAsync();
         Loaded?.Invoke();
     }
@@ -419,9 +382,7 @@ public class AchievementManager : MonoBehaviour
         if (m_UseTrustedWrites)
         {
             // Server validates and writes -- bypasses Access Control restrictions.
-            await CloudCodeService.Instance.CallModuleEndpointAsync(
-                "AchievementModule", "UnlockAchievement",
-                new Dictionary<string, object> { { "achievementId", achievementId } });
+            await m_Client.UnlockAchievement(achievementId);
         }
         else
         {
@@ -450,13 +411,7 @@ public class AchievementManager : MonoBehaviour
 
         if (m_UseTrustedWrites)
         {
-            await CloudCodeService.Instance.CallModuleEndpointAsync(
-                "AchievementModule", "UpdateAchievementProgress",
-                new Dictionary<string, object>
-                {
-                    { "achievementId", achievementId },
-                    { "count", newCount }
-                });
+            await m_Client.UpdateAchievementProgress(achievementId, amount);
         }
         else
         {
@@ -513,15 +468,28 @@ public class AchievementManager : MonoBehaviour
 
 The `AchievementModule` reads and writes to the **Protected** Cloud Save bucket using its service token, bypassing Access Control restrictions imposed on the player client.
 
-> **Module scaffolding — follow the Module Creation section of `references/cloud-code.md`.**
-> Replace `MyModule` / `MyModuleCCM` with `AchievementModule` / `AchievementsCCM` throughout.
-> You **must** create every file listed there — missing any one will cause deployment to fail:
+> **Create the module with the Editor, not by hand.** Right-click a folder under `Assets/` ->
+> **Create > Services > Cloud Code Module Script** and name it `AchievementModule`. See
+> the Creating a Cloud Code Module section of `references/cloud-code-modules.md`.
 >
-> - [ ] `.sln` (generate fresh GUIDs)
-> - [ ] `.csproj` (net9.0, CloudCode.Apis + CloudCode.Core)
-> - [ ] `ModuleSetup.cs` (registers `GameApiClient`)
-> - [ ] `Properties/PublishProfiles/FolderProfile.pubxml` — **without this file, deployment fails with "Failed to retrieve main project"**
-> - [ ] `Assets/CloudCode/AchievementModule.ccmr` (points to the `.sln`)
+> The Editor generates the following. Use the list to check what you got — there is nothing here to
+> type out, and no `.sln`, `.csproj`, `.pubxml` or test project:
+>
+> - [ ] `Assets/CloudCode/AchievementModule/AchievementModule.ccmu` (holds the two asmdef GUIDs)
+> - [ ] `Cloud/AchievementModule.asmdef` — Editor-only, `noEngineReferences`, `autoReferenced: false`
+> - [ ] `Cloud/AchievementModule.cs` — rename/replace with the `[CloudCodeFunction]` endpoints below
+> - [ ] `Client/AchievementModuleClient.asmdef` — references the cloud assembly
+> - [ ] `Client/AchievementModuleClient.cs` — `[CloudModuleClient(typeof(AchievementModule))]` partial
+>
+> One file the Editor does **not** generate, which this module needs because its endpoints inject
+> `IGameApiClient`:
+>
+> - [ ] `Cloud/CloudSetup.cs` — an `ICloudCodeSetup` calling `config.AddGameApiClient()`
+> - [ ] `Newtonsoft.Json.dll` added to `precompiledReferences` in `Cloud/AchievementModule.asmdef` — the generated asmdef ships that array empty, and this module's code uses `JsonConvert` (see `references/cloud-code-modules.md`)
+>
+> The deployed module name is the **cloud asmdef's name** (`AchievementModule`), not the `.ccmu` filename.
+>
+> The client calls the module through the generated `AchievementModuleClient`. The assembly that holds `AchievementManager` must reference the module's client assembly; the Editor creates it auto-referenced, so the default game assembly already does.
 
 ### AchievementModule.cs
 
@@ -534,99 +502,105 @@ using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
 using Unity.Services.CloudSave.Model;
 
-// Each public method decorated with [CloudCodeFunction] becomes a callable endpoint.
-// IExecutionContext and IGameApiClient are injected automatically by the framework.
-public class AchievementModule
+namespace AchievementModule.Cloud
 {
-    const string AchievementsKey = "achievements";
-
-    [CloudCodeFunction("UnlockAchievement")]
-    public async Task<AchievementRecord> UnlockAchievement(
-        IExecutionContext context, IGameApiClient client, string achievementId)
+    // Each public method decorated with [CloudCodeFunction] becomes a callable endpoint.
+    // Injected services are method parameters marked [CloudCodeService]. Without the attribute a
+    // parameter leaks into the generated client binding as an argument the caller must supply.
+    public class AchievementModule
     {
-        var records = await LoadRecordsAsync(context, client);
+        const string AchievementsKey = "achievements";
 
-        var record = records.FirstOrDefault(r => r.Id == achievementId);
-        if (record == null)
+        [CloudCodeFunction("UnlockAchievement")]
+        public async Task<AchievementRecord> UnlockAchievement(
+            [CloudCodeService] IExecutionContext context, [CloudCodeService] IGameApiClient client, string achievementId)
         {
-            record = new AchievementRecord { Id = achievementId, Unlocked = true };
-            records.Add(record);
-        }
-        else
-        {
-            record.Unlocked = true;
-        }
+            var records = await LoadRecordsAsync(context, client);
 
-        await SaveRecordsAsync(context, client, records);
-        return record;
-    }
+            var record = records.FirstOrDefault(r => r.Id == achievementId);
+            if (record == null)
+            {
+                record = new AchievementRecord { Id = achievementId, Unlocked = true };
+                records.Add(record);
+            }
+            else
+            {
+                record.Unlocked = true;
+            }
 
-    [CloudCodeFunction("UpdateAchievementProgress")]
-    public async Task<AchievementRecord> UpdateAchievementProgress(
-        IExecutionContext context, IGameApiClient client, string achievementId, int count)
-    {
-        var records = await LoadRecordsAsync(context, client);
-
-        var record = records.FirstOrDefault(r => r.Id == achievementId);
-        if (record == null)
-        {
-            record = new AchievementRecord { Id = achievementId, ProgressCount = count };
-            records.Add(record);
-        }
-        else
-        {
-            record.ProgressCount += count;
+            await SaveRecordsAsync(context, client, records);
+            return record;
         }
 
-        await SaveRecordsAsync(context, client, records);
-        return record;
-    }
+        [CloudCodeFunction("UpdateAchievementProgress")]
+        public async Task<AchievementRecord> UpdateAchievementProgress(
+            [CloudCodeService] IExecutionContext context, [CloudCodeService] IGameApiClient client, string achievementId, int count)
+        {
+            var records = await LoadRecordsAsync(context, client);
 
-    [CloudCodeFunction("ResetAchievements")]
-    public async Task ResetAchievements(IExecutionContext context, IGameApiClient client)
-    {
-        // Uses ServiceToken so the write bypasses Access Control restrictions on the player client.
-        await client.CloudSaveData.DeleteProtectedItemAsync(
-            context, context.ServiceToken, AchievementsKey,
-            context.ProjectId, context.PlayerId!);
-    }
+            var record = records.FirstOrDefault(r => r.Id == achievementId);
+            if (record == null)
+            {
+                record = new AchievementRecord { Id = achievementId, ProgressCount = count };
+                records.Add(record);
+            }
+            else
+            {
+                record.ProgressCount += count;
+            }
 
-    async Task<List<AchievementRecord>> LoadRecordsAsync(
-        IExecutionContext context, IGameApiClient client)
-    {
-        var result = await client.CloudSaveData.GetProtectedItemsAsync(
-            context, context.ServiceToken, context.ProjectId,
-            context.PlayerId, new List<string> { AchievementsKey });
+            await SaveRecordsAsync(context, client, records);
+            return record;
+        }
 
-        var value = result.Data?.Results?.FirstOrDefault()?.Value?.ToString();
-        if (string.IsNullOrEmpty(value))
-            return new List<AchievementRecord>();
+        [CloudCodeFunction("ResetAchievements")]
+        public async Task ResetAchievements([CloudCodeService] IExecutionContext context, [CloudCodeService] IGameApiClient client)
+        {
+            // Uses ServiceToken so the write bypasses Access Control restrictions on the player client.
+            await client.CloudSaveData.DeleteProtectedItemAsync(
+                context, context.ServiceToken, AchievementsKey,
+                context.ProjectId, context.PlayerId!);
+        }
 
-        return JsonConvert.DeserializeObject<List<AchievementRecord>>(value);
-    }
+        async Task<List<AchievementRecord>> LoadRecordsAsync(
+            IExecutionContext context, IGameApiClient client)
+        {
+            var result = await client.CloudSaveData.GetProtectedItemsAsync(
+                context, context.ServiceToken, context.ProjectId,
+                context.PlayerId, new List<string> { AchievementsKey });
 
-    async Task SaveRecordsAsync(
-        IExecutionContext context, IGameApiClient client, List<AchievementRecord> records)
-    {
-        var json = JsonConvert.SerializeObject(records);
-        var body = new SetItemBody(AchievementsKey, json);
-        await client.CloudSaveData.SetProtectedItemAsync(
-            context, context.ServiceToken, context.ProjectId, context.PlayerId, body);
+            var value = result.Data?.Results?.FirstOrDefault()?.Value?.ToString();
+            if (string.IsNullOrEmpty(value))
+                return new List<AchievementRecord>();
+
+            return JsonConvert.DeserializeObject<List<AchievementRecord>>(value);
+        }
+
+        async Task SaveRecordsAsync(
+            IExecutionContext context, IGameApiClient client, List<AchievementRecord> records)
+        {
+            var json = JsonConvert.SerializeObject(records);
+            var body = new SetItemBody(AchievementsKey, json);
+            await client.CloudSaveData.SetProtectedItemAsync(
+                context, context.ServiceToken, context.ProjectId, context.PlayerId, body);
+        }
     }
 }
 ```
 
 ### Server-Side Model
 
-Must match client-side field names exactly for JSON round-trip. Server-side uses properties
-(not fields) for serialization compatibility with `Newtonsoft.Json`.
+The single definition of the record, in `AchievementModule.cs`. Use public members with a public getter and setter, as the auto-properties below: the generator copies only those into the client stub, as `{ get; set; }` properties, and `Newtonsoft.Json` serializes them for the Cloud Save round-trip. Keep it in the module's `Cloud` namespace, and do not declare a second `AchievementRecord` in client code.
 
 ```csharp
-public class AchievementRecord
+namespace AchievementModule.Cloud
 {
-    public string Id { get; set; }
-    public bool Unlocked { get; set; }
-    public int ProgressCount { get; set; }
+    public class AchievementRecord
+    {
+        public string Id { get; set; }
+        public bool Unlocked { get; set; }
+        public int ProgressCount { get; set; }
+    }
 }
 ```
 
@@ -642,7 +616,7 @@ Add these entries to your Unity project's `Packages/manifest.json` dependencies:
 {
   "dependencies": {
     "com.unity.services.authentication": "3.6.1",
-    "com.unity.services.cloudcode": "2.10.2",
+    "com.unity.services.cloudcode": "3.0.0",
     "com.unity.services.cloudsave": "3.4.0",
     "com.unity.services.core": "1.16.0",
     "com.unity.services.deployment": "1.7.2",
@@ -651,6 +625,11 @@ Add these entries to your Unity project's `Packages/manifest.json` dependencies:
   }
 }
 ```
+
+> `com.unity.services.cloudcode` **`3.0.0`** is the native-authoring line, which the `.ccmu` module
+> below requires — see the Requirements section of `references/cloud-code-modules.md`. The `2.10.x` line
+> deploys legacy `.ccmr` modules only; use it when maintaining one, not for new work.
+
 
 The `com.unity.services.tooling` package is required for `.ac` file deployment. The `com.unity.services.deployment` package provides the Deployment Window. `Newtonsoft.Json` is provided as a transitive dependency and does not need an explicit entry.
 
@@ -703,12 +682,12 @@ Deploy via **Services > Deployment** — the Deployment Window auto-discovers `.
 
 ### Cloud Code Module
 
-> Create the full module solution using the file table and templates in
-> [Cloud Code Module](#cloud-code-module) above.
-> All scaffolding files (`.sln`, `.csproj`, `ModuleSetup.cs`, `FolderProfile.pubxml`) are
-> **required** — the Deployment Window will fail without them. See
-> the Module Creation section of `references/cloud-code.md` for the generic templates;
-> replace `MyModule` / `MyModuleCCM` with `AchievementModule` / `AchievementsCCM`.
+> Create the module files listed in [Cloud Code Module](#cloud-code-module) above.
+> See the Creating a Cloud Code Module section of `references/cloud-code-modules.md`
+> for the generic templates; replace `MyModule` with `AchievementModule`.
+>
+> The `.ccmu` is deployed by the Deployment Window like any other cloud asset, but its code is compiled by
+> Unity — a project that does not compile has nothing to deploy.
 
 ### Access Control -- `Assets/Config/DenyPlayerCloudSaveWrites.ac`
 
@@ -747,7 +726,7 @@ Deploy all cloud resources via **Services > Deployment** before testing:
 - [ ] All packages added to `Packages/manifest.json` with correct minimum versions
 - [ ] `Assets/Config/Achievements.rc` -- Remote Config achievement definitions
 - [ ] `Assets/Config/DenyPlayerCloudSaveWrites.ac` -- Access Control policy blocking direct player writes
-- [ ] Cloud Code module scaffolded with **all required files**: `.sln`, `.csproj`, `ModuleSetup.cs`, `FolderProfile.pubxml`, `.ccmr` (see file table in [Cloud Code Module](#cloud-code-module))
+- [ ] Cloud Code module authored as a `.ccmu`: module asset, `Cloud/` + `Client/` asmdefs, endpoint class, `CloudSetup.cs` (see file list in [Cloud Code Module](#cloud-code-module))
 - [ ] `AchievementModule.cs` added to the module project with `UnlockAchievement`, `UpdateAchievementProgress`, `ResetAchievements` functions
 - [ ] Environment selected in the Deployment Window dropdown
 - [ ] All resources deployed via the Deployment Window
@@ -757,11 +736,10 @@ Deploy all cloud resources via **Services > Deployment** before testing:
 
 ## Official Unity Reference
 
-- **Achievements Building Block (Asset Store):** The official [Unity Building Block — Achievements](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-achievements-341918) uses the same Remote Config + Cloud Save + Cloud Code pattern described here. Import from the Asset Store for ready-made UI, Cloud Code module, `.ac` / `.rc` / `.ccmr` cloud resources, and generated client bindings.
-- **Unity Cloud Save documentation:** https://docs.unity.com/ugs/en-us/manual/cloud-save/manual
-- **Unity Remote Config documentation:** https://docs.unity.com/ugs/en-us/manual/remote-config/manual
-- **Unity Cloud Code documentation:** https://docs.unity.com/ugs/en-us/manual/cloud-code/manual
-- **Access Control documentation:** https://docs.unity.com/ugs/en-us/manual/access-control/manual
+- **Unity Cloud Save documentation:** https://docs.unity.com/en-us/cloud-save.md
+- **Unity Remote Config documentation:** https://docs.unity.com/en-us/remote-config.md
+- **Unity Cloud Code documentation:** https://docs.unity.com/en-us/cloud-code.md
+- **Access Control documentation:** https://docs.unity.com/en-us/cloud-code/modules/how-to-guides/access-control.md
 
 ---
 
@@ -772,8 +750,8 @@ After implementing achievements, verify:
 1. **Compilation:** The project compiles without errors. Ensure namespace aliases (`PlayerLoadOptions`, `PlayerSaveOptions`, `PlayerDeleteOptions`) are present.
 2. **Initialization order:** `UnityServices.InitializeAsync()` then `AuthenticationService.Instance.SignInAnonymouslyAsync()` then service calls.
 3. **Access class match:** If `m_UseTrustedWrites` is true, reads use `ProtectedReadAccessClassOptions()`. If false, reads use `PublicReadAccessClassOptions(playerId)`. Mismatched access classes return empty data.
-4. **Cloud Code module builds:** The `.sln` at `AchievementsCCM/AchievementModule.sln` targets `net9.0` and publishes to `linux-x64`.
-5. **Server-side model uses properties:** The `AchievementRecord` class in the Cloud Code module uses `{ get; set; }` properties (not fields) for JSON serialization compatibility with `Newtonsoft.Json`.
+4. **Cloud Code module builds:** `AchievementModule` compiles as part of the Unity project — the Editor-only cloud assembly has no compile errors, and the project's Api Compatibility Level is `.NET Standard 2.1`.
+5. **One record definition:** `AchievementRecord` is declared only in the Cloud Code module, as `{ get; set; }` properties, and the client uses the generated stub of that type.
 6. **Access Control deployed:** The `.ac` file denies direct player writes to Cloud Save. Without this, the trusted-write path has no enforcement advantage.
 7. **Remote Config key matches:** The `.rc` file key (`"achievements"`) matches the key used in `result.config["achievements"]` on the client and `AchievementsKey` in the module.
-8. **All cloud resources deployable:** The `.rc`, `.ac`, and `.ccmr` files are in the `Assets/` folder hierarchy and appear in the Deployment Window.
+8. **All cloud resources deployable:** The `.rc`, `.ac`, and `.ccmu` files are in the `Assets/` folder hierarchy and appear in the Deployment Window.

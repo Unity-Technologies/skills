@@ -69,7 +69,7 @@ Used for backend tooling, editor extensions, Deployment Window integrations, and
 ```csharp
 using Unity.Services.Apis;
 
-var adminClient = UnityServicesApiClient.AdminClient;
+var adminClient = ApiService.CreateAdminClient();
 adminClient.SetServiceAccount(keyId, keySecret);
 ```
 
@@ -135,7 +135,7 @@ Same pattern for **Private Custom** (`GetPrivateCustomItems`, `SetPrivateCustomI
 
 ## IGameClient
 
-Created via `UnityServicesApiClient.GameClient` after player authentication. Runtime only.
+Created via `ApiService.CreateGameClient()` after player authentication. Runtime only.
 
 | Property | Type | Service |
 |---|---|---|
@@ -162,7 +162,7 @@ Most developers use the high-level SDKs (`CloudSaveService.Instance`, `Leaderboa
 Used from dedicated game servers. Authenticated with a server key or service account.
 
 ```csharp
-var serverClient = UnityServicesApiClient.ServerClient;
+var serverClient = ApiService.CreateServerClient();
 await serverClient.SignInFromServer();
 ```
 
@@ -182,7 +182,7 @@ await serverClient.SignInFromServer();
 Elevated server client with admin-equivalent access to player data. Use when a dedicated server needs to read or modify any player's data with elevated privileges.
 
 ```csharp
-var trustedClient = UnityServicesApiClient.TrustedClient;
+var trustedClient = ApiService.CreateTrustedClient();
 trustedClient.SetServiceAccount(keyId, keySecret);
 await trustedClient.SignInWithServiceAccount(projectId, environmentId);
 ```
@@ -199,7 +199,7 @@ Same service area properties as `IServerClient`, plus `PlayerAuthentication` and
 using Unity.Services.Apis;
 
 // Admin client is editor-only. Guard with #if UNITY_EDITOR in runtime assemblies.
-var adminClient = UnityServicesApiClient.AdminClient;
+var adminClient = ApiService.CreateAdminClient();
 adminClient.SetServiceAccount("your-key-id", "your-key-secret");
 ```
 
@@ -211,7 +211,7 @@ This is the pattern for Deployment Window integrations that push JSON into Cloud
 using Unity.Services.Apis;
 using Unity.Services.Apis.Admin.CloudSave;
 
-var adminClient = UnityServicesApiClient.AdminClient;
+var adminClient = ApiService.CreateAdminClient();
 adminClient.SetServiceAccount(keyId, keySecret);
 
 string projectId = CloudProjectSettings.projectId;
@@ -253,7 +253,7 @@ async Task SetupGameClient()
     await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
     // Game client is automatically authenticated via the signed-in player
-    var client = UnityServicesApiClient.GameClient;
+    var client = ApiService.CreateGameClient();
     var scores = await client.Leaderboards.GetScoresAsync("WEEKLY_LB");
 }
 ```
@@ -264,7 +264,7 @@ async Task SetupGameClient()
 using Unity.Services.Apis;
 
 // serverAuthToken provided by the Multiplay server environment
-var serverClient = UnityServicesApiClient.ServerClient;
+var serverClient = ApiService.CreateServerClient();
 await serverClient.SignInFromServer();
 
 await serverClient.Lobby.CreateOrJoinLobbyAsync(...);
