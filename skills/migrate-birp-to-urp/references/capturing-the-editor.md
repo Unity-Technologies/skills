@@ -1,6 +1,6 @@
 # Capturing the Editor for visual checks
 
-There is no capture command in the Pipeline catalog. Run the capture as C# through `eval`, write
+There is no capture command in the Pipeline catalog. Run the capture as C# through `script eval`, write
 a PNG, then **read that file** — reading an image is something the agent does natively, so the
 two-step version is equivalent to a single capture tool.
 

@@ -9,16 +9,16 @@ Project Auditor carries out a static analysis scan of the Unity Project and repo
 
 ## Prerequisites
 To use Project Auditor you'll need the Unity CLI installed - see the unity-cli skill for more details.
-Once you have that, the audit and audit_status commands run Project Auditor checks.
+Once you have that, the `diagnostics run_audit` and `diagnostics audit_status` commands run Project Auditor checks.
 
 ```bash
-unity command audit                              # optional: --categories Code,ProjectSetting --output my.csv
-unity command audit_status                       # repeat until a terminal status is returned
+unity command diagnostics run_audit              # optional: --categories Code,ProjectSetting --output my.csv
+unity command diagnostics audit_status           # repeat until a terminal status is returned
 ```
 
-`audit_status` terminal status are `completed` (with `csvPath` + `issueCount`), `failed`, `unavailable`, and
-`interrupted` (a domain reload killed the scan — just re-run `audit`). Polling is responsive while a
-scan compiles assemblies and is busy on the main thread. You can only run one scan at a time: a second `audit`
+`diagnostics audit_status` terminal status are `completed` (with `csvPath` + `issueCount`), `failed`, `unavailable`, and
+`interrupted` (a domain reload killed the scan — just re-run `diagnostics run_audit`). Polling is responsive while a
+scan compiles assemblies and is busy on the main thread. You can only run one scan at a time: a second `diagnostics run_audit`
 returns `busy`. There is no cancel — stop polling to abandon a scan.
 
 The output CSV has columns: `Category, Severity, Areas, Description, RelativePath, Line, DescriptorId, Recommendation`
@@ -26,17 +26,17 @@ The output CSV has columns: `Category, Severity, Areas, Description, RelativePat
 
 > **Requires Project Auditor plus its rules.** `unavailable` means the Editor has no Project Auditor,
 > or it has no analysis rules — in a built-in-module Editor the rules live in the separate
-> `com.unity.project-auditor-rules` package (`unity command package_add --identifier
+> `com.unity.project-auditor-rules` package (`unity command package add --identifier
 > com.unity.project-auditor-rules --confirm true`). Read the `message` field; the command never reports
 > an empty `completed` scan that would look like a clean project.
 
 ## Gotchas
 
-- **`set_autotick` first.** Without it, recompile and tests can hang while the editor is
+- **`editor set_auto_tick` first.** Without it, recompile and tests can hang while the editor is
   unfocused. The package's watchdog relies on the tick loop staying alive.
-- **Hot reload needs the game running.** `reload_file_override` / `reload_file` apply to a live
-  game — enter Editor Play Mode (`unity command editor_play`) first, or run a dev Player.
-- **Player-only commands need a dev Player.** `log`, `set_timescale`, `runtime_status`, etc. hit
+- **Method reload needs the game running.** `script.methodreload reload` applies to a live
+  game — enter Editor Play Mode (`unity command editor.playmode start`) first, or run a dev Player.
+- **Player-only commands need a dev Player.** `console write`, `runtime set_time_scale`, `runtime status`, etc. hit
   the Runtime server, which does not run in the Editor.
 - **Async commands poll.** `recompile`→`recompile_status`, `run_tests --async_tests`→
   `test_status`. Never assume completion from the trigger call's response.

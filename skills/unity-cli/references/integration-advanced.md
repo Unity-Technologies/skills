@@ -324,14 +324,14 @@ Rendered from markdown and paged like `unity changelog`. Unlike `plugin upgrade 
 
 > **Promoted to production in `0.1.0-beta.8`.** In earlier betas these were development-only (and the Pipeline package was Unity-internal). They now talk to any running Unity Editor over its Pipeline server, and the supporting Editor-side package (`com.unity.pipeline`) is resolved from the **Unity (UPM) registry** and added to the project's `Packages/manifest.json` — no internal access or manual setup required. The Editor defines each command's parameters, help, and error messages, so the commands a connected Editor exposes are usable without a CLI update.
 
-**Why drive a live Editor instead of a fresh batch job?** `command`, `list`, and `eval` round-trip
+**Why drive a live Editor instead of a fresh batch job?** `command`, `list`, and `script eval` round-trip
 against an already-loaded Editor in roughly **200–600 ms with no script recompile and no domain
 reload** — far cheaper than a cold `unity run` per action. That makes it practical for an agent to
 create GameObjects, edit assets, run a test, or evaluate C# iteratively within a single warm session.
 
 #### Getting an Editor to drive
 
-`command`, `list`, `eval`, and `status` attach to an **already-running** Editor with the Pipeline
+`command`, `list`, `script eval`, and `status` attach to an **already-running** Editor with the Pipeline
 package — they connect to its Pipeline server, they don't start one. One gotcha up front: a bare
 `unity run <project>` (**without** `--command`) is *not* a way to get one — it runs batch mode to
 completion and exits on its own (the log ends `Exiting batchmode successfully now!`). Use one of the
@@ -560,7 +560,7 @@ unity commands --grep '^plugin ' --format json
 
 #### Available in production — the common live commands
 
-Everything reached through **`unity command <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. A live-Editor task never needs a development build: a production Editor exposes this command surface, so treat the Editor as drivable whenever `unity status` reports one.
+Everything reached through **`unity command <group> <name>`** is part of the project's `com.unity.pipeline` package and works against a normal, **production** Editor (or a Player runtime via `--runtime`) — it is *not* development-gated. A live-Editor task never needs a development build: a production Editor exposes this command surface, so treat the Editor as drivable whenever `unity status` reports one.
 
 The Pipeline package ships a set of built-in scene/GameObject commands. The common ones (names and parameters come from the Editor, so confirm the exact set with `unity command` / `unity list`):
 
@@ -872,8 +872,10 @@ The command surface is extensible from the **project** side: tag a `static` meth
 and it becomes callable via `unity command <name>` (warm) or `unity run --command <name>` (one-shot),
 and discoverable via `unity list` — no CLI release required. Parameters, help text, and errors are
 surfaced to the CLI automatically. `[CliCommand]` and `[CliArg]` live in the `Unity.Pipeline.Commands`
-namespace (assembly `Unity.Pipeline`, from `com.unity.pipeline`); `MainThreadRequired` and `RuntimeOnly`
-are **named properties on `[CliCommand]`**, not separate attributes.
+namespace (assembly `Unity.Pipeline`, from `com.unity.pipeline`); `MainThreadRequired` and `Tags`
+are **named properties on `[CliCommand]`**, not separate attributes. `[CliCommand(name, description)]`
+puts the command in the `global` group, which runs by its name alone;
+`[CliCommand(group, name, description)]` puts it in a group, run as `unity command <group> <name>`.
 
 ```csharp
 using Unity.Pipeline.Commands;   // [CliCommand] / [CliArg] — assembly: Unity.Pipeline
@@ -897,8 +899,8 @@ public static class MyPipelineCommands
   `Editor/` folder, or an asmdef that references `Unity.Pipeline`) so it loads with the Pipeline server.
 - `MainThreadRequired` defaults to **true** — keep it for anything that reads or mutates engine/editor
   state (scene graph, assets, serialized objects); set it `false` only for pure, thread-safe work.
-- `RuntimeOnly = true` hides the command from an Editor server's listing (Player/dev-build only); reach
-  such a command with `unity command <command> --runtime <runtime>`. 
+- `Tags = new[] { "runtime" }` marks a Player/dev-build command; reach such a command with
+  `unity command <command> --runtime <runtime>`.
 - After adding or changing a command, rebuild with `unity recompile` — it triggers the recompile, polls
   to completion and reports any compile errors in one call — then `unity list` to confirm it registered.
   (The raw `unity command script recompile` + polling `unity command script recompile_status` until `completed` still
