@@ -48,9 +48,9 @@ Official English references:
 - [Search expressions](https://docs.unity3d.com/Manual/search-expressions.html)
 - [SearchService.ShowWindow](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Search.SearchService.ShowWindow.html)
 
-## Passing C# to `eval`
+## Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**. Two consequences, both compile errors:
+`script eval` compiles a **statement block, not a file**. Two consequences, both compile errors:
 
 - **No `using` directives.** The compiler reads `using UnityEditor;` as a resource-disposal
   statement and rejects it (`CS0210`).
@@ -59,7 +59,7 @@ Official English references:
 
 The `unity-cli` skill owns the prerequisites — installing the CLI, confirming a connected Editor,
 adding the project's `com.unity.pipeline` package, and discovering the command catalog. You need
-`eval` in particular; if it is absent, generate the query text and say the window can't be opened.
+`script eval` in particular; if it is absent, generate the query text and say the window can't be opened.
 
 ## Query Generation Rules
 

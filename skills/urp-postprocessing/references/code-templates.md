@@ -1,9 +1,9 @@
 ## Code Templates
 
-Each template is a snippet to run through the Editor's `eval` command. Hard stops `throw`,
+Each template is a snippet to run through the Editor's `script eval` command. Hard stops `throw`,
 so the eval fails loudly; anything the caller needs to read is `return`ed.
 
-**`eval` compiles a statement block, not a file.** `using` directives are rejected there — the
+**`script eval` compiles a statement block, not a file.** `using` directives are rejected there — the
 compiler reads `using UnityEngine;` as a resource-disposal statement and fails. So these
 templates fully qualify every type. If you instead save the code as a `.cs` file for the user
 to keep, add the usings back and drop the qualification.
@@ -100,10 +100,10 @@ if (volumeObj != null && volumeObj.TryGetComponent<UnityEngine.Rendering.Volume>
 }
 ```
 
-### Making a change undoable through `eval`
+### Making a change undoable through `script eval`
 
 `Undo.RecordObject` alone does **not** produce an undo entry when the snippet runs through the
-Editor's `eval` command (measured: nothing appeared on the undo stack). `RecordObject` takes a
+Editor's `script eval` command (measured: nothing appeared on the undo stack). `RecordObject` takes a
 *deferred* snapshot that Unity flushes at the end of an Editor event, and a snippet executed by
 the Pipeline server is outside that loop.
 

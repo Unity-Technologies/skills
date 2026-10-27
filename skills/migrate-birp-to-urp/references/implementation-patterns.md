@@ -2,11 +2,11 @@
 
 > **How to run the C# in this file.** Blocks that declare a `class`, a `static` method, or a
 > `[MenuItem]` are project files — save them under `Assets/Editor/`, let Unity compile, then call
-> their entry point through a one-line `unity command eval`. Keep their `using` directives; they are
-> correct in a file. Blocks that are a bare sequence of statements can go straight to `eval`, but
-> only fully qualified and with no `using` lines — `eval` compiles a statement block, so a `using`
+> their entry point through a one-line `unity command script eval`. Keep their `using` directives; they are
+> correct in a file. Blocks that are a bare sequence of statements can go straight to `script eval`, but
+> only fully qualified and with no `using` lines — `script eval` compiles a statement block, so a `using`
 > is read as a resource-disposal statement and rejected (`CS0210`). Extension methods are
-> unavailable through `eval` for the same reason: write `System.Linq.Enumerable.FirstOrDefault(seq,
+> unavailable through `script eval` for the same reason: write `System.Linq.Enumerable.FirstOrDefault(seq,
 > pred)` and `GetComponent<UniversalAdditionalCameraData>()` instead of the extension forms.
 
 Use these patterns when executing a migration, not for planning-only answers. They exist for fragile steps where a generic script often appears to work in tool logs but fails to persist saved project state. Treat these patterns as lower-freedom implementation requirements, not optional inspiration.

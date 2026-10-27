@@ -6,7 +6,7 @@ Classify the request, inspect the current project state, choose the correct migr
 
 ## Mandatory Execution Reference
 
-For any actual migration or repair pass, read [references/implementation-patterns.md](references/implementation-patterns.md) before the first `eval` call that edits project settings, materials, post-processing, lighting, probes, or scenes. This is mandatory even for short prompts such as "migrate this project to URP" when rollback safety is already confirmed.
+For any actual migration or repair pass, read [references/implementation-patterns.md](references/implementation-patterns.md) before the first `script eval` call that edits project settings, materials, post-processing, lighting, probes, or scenes. This is mandatory even for short prompts such as "migrate this project to URP" when rollback safety is already confirmed.
 
 If that resource cannot be loaded, use the embedded rules in this SKILL.md and lower your confidence: do not claim PPv2 conversion, lighting/probe refresh, or migration completion from intent or tool logs alone.
 
@@ -93,7 +93,7 @@ it here.
 
 Two things it can't know for you:
 
-- **You need `eval` in particular**, not just a reachable Editor. Confirm it appears in the
+- **You need `script eval` in particular**, not just a reachable Editor. Confirm it appears in the
   catalog. Its presence depends on the Pipeline package version, not on the CLI, so a healthy
   install can still lack it — if it's missing, say so and stop.
 - **On an Editor older than 6000.3, expect the Pipeline package not to work at all**, and read the
@@ -111,13 +111,13 @@ Two things it can't know for you:
   materials, and rebaking lighting all need a live Editor. An unreachable Editor is a stop, not a
   cue to hand-edit `ProjectSettings/GraphicsSettings.asset`.
 
-Run C# with `unity command eval --code '<snippet>'`. `unity command` defaults to a 30 second
+Run C# with `unity command script eval --code '<snippet>'`. `unity command` defaults to a 30 second
 timeout, which matters here: installing URP triggers a package refresh and domain reload that will
 outlast it. Treat that as a phase boundary rather than raising the timeout.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**. Three consequences, all of which cause a compile
+`script eval` compiles a **statement block, not a file**. Three consequences, all of which cause a compile
 error rather than a warning:
 
 - **No `using` directives.** The compiler reads `using UnityEngine;` as a resource-disposal
@@ -135,15 +135,15 @@ error rather than a warning:
 The references carry both shapes, and they are not interchangeable:
 
 - **Statement-shaped** (a bare sequence of statements, like the detection snippets above) — pass
-  straight to `eval`, fully qualified, with no `using` lines.
+  straight to `script eval`, fully qualified, with no `using` lines.
 - **Class- or method-shaped** (anything declaring a `class`, a `static` method, or a `[MenuItem]`,
-  such as the material-snapshot pattern) — these are **project files, not `eval` input**. A class
+  such as the material-snapshot pattern) — these are **project files, not `script eval` input**. A class
   declaration cannot be flattened into a statement block. Save the snippet under
-  `Assets/Editor/`, let Unity compile it, then invoke its entry point through a one-line `eval`
+  `Assets/Editor/`, let Unity compile it, then invoke its entry point through a one-line `script eval`
   call. Keep the `using` directives in that file; they are correct there.
 
 For a multi-step migration the script route is the more reliable one anyway: it survives the domain
-reloads that URP installation and material conversion trigger, whereas a long `eval` payload does
+reloads that URP installation and material conversion trigger, whereas a long `script eval` payload does
 not.
 
 ### Detecting the active render pipeline
@@ -204,7 +204,7 @@ Before making any changes, **inspect what already exists**:
 1. **Inspect pipeline state and assignment points:**
    - Run both render-pipeline detection snippets from the execution-path section above — the Graphics-settings one and the per-quality-level one.
    - If the project has Quality levels, inspect which Render Pipeline Asset each level uses before assuming the project is fully switched.
-2. **Inventory migration surfaces:** Use `eval` with `UnityEditor.AssetDatabase.FindAssets` or equivalent asset queries to inventory:
+2. **Inventory migration surfaces:** Use `script eval` with `UnityEditor.AssetDatabase.FindAssets` or equivalent asset queries to inventory:
    - materials, including particle/VFX materials that often use built-in particle shaders
    - vegetation materials, including grass, tree, terrain-detail, SpeedTree, billboard, leaf-card, cutout, and wind-driven foliage materials
    - shaders
@@ -212,7 +212,7 @@ Before making any changes, **inspect what already exists**:
    - URP assets and renderer assets, if any
    - post-processing profiles / volume profiles
    - Lighting Settings assets, Lighting Data assets, lightmaps, light probes, reflection probes, and mixed/baked lights
-3. **Scan for rendering risk markers:** Use available project-file search, `AssetDatabase.FindAssets`, or a short `eval` file scan to search the project for rendering-specific patterns such as:
+3. **Scan for rendering risk markers:** Use available project-file search, `AssetDatabase.FindAssets`, or a short `script eval` file scan to search the project for rendering-specific patterns such as:
    - `PostProcessLayer`, `PostProcessVolume`, `UnityEngine.Rendering.PostProcessing`
    - `OnRenderImage(`, `RenderWithShader`, `SetReplacementShader`
    - `#pragma surface`, `GrabPass`, `CGPROGRAM`
@@ -284,8 +284,8 @@ Follow this exact setup order:
 
 1. **Ensure URP is installed.**
    - Installing URP can trigger package refresh, compilation, and domain reload. Treat this as a phase boundary.
-   - Do not spin-wait indefinitely inside an `eval` call on `UnityEditor.PackageManager.Client.Add`. Request installation, then verify through `Packages/manifest.json`, package listing, or the presence of URP types/assets after Unity finishes refreshing.
-   - If the package install causes the `eval` call to time out or return nothing, resume in a fresh turn after Unity finishes compiling. Do not restart the whole migration or reinstall URP; inspect the partial state and continue from there.
+   - Do not spin-wait indefinitely inside an `script eval` call on `UnityEditor.PackageManager.Client.Add`. Request installation, then verify through `Packages/manifest.json`, package listing, or the presence of URP types/assets after Unity finishes refreshing.
+   - If the package install causes the `script eval` call to time out or return nothing, resume in a fresh turn after Unity finishes compiling. Do not restart the whole migration or reinstall URP; inspect the partial state and continue from there.
 2. **Create the required URP asset and renderer asset** if they do not already exist.
 3. **Assign the URP asset in Graphics settings** and in all relevant Quality levels.
 4. **For 2D projects,** create and assign the correct 2D Renderer asset before conversion.

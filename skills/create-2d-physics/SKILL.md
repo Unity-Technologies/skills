@@ -21,9 +21,9 @@ Do not weigh 3D physics options. If evidence shows the user means 3D, say so and
 - Verify runtime behaviour with temporary `Debug.Log` lines, then remove them, because the user didn't ask for logging and leftover lines clutter their script and console. Don't build settle-detection or permanent logging they didn't ask for. See [Final step](#final-step).
 - Never reflect over types to discover an API — fetch the member page instead. The system probe is the one exception.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a statement block, not a file, so write the code without `using` directives and with fully qualified types. `return` what you want to read; it arrives at `data.result.result`. If the code doesn't compile, look up the error here:
+`script eval` compiles a statement block, not a file, so write the code without `using` directives and with fully qualified types. `return` what you want to read; it arrives at `data.result.result`. If the code doesn't compile, look up the error here:
 
 | Error | Cause | Fix |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ Key:
 
 Probe:
 ```
-unity command eval --code 'var r = ""; foreach (var n in new[] { "UnityEngine.Rigidbody2D", "Unity.U2D.Physics.PhysicsWorld", "UnityEngine.LowLevelPhysics2D.PhysicsWorld", "Unity.U2D.Physics.PhysicsPose" }) { var f = false; foreach (var a in System.AppDomain.CurrentDomain.GetAssemblies()) if (a.GetType(n) != null) f = true; r += f + ","; } return r;'
+unity command script eval --code 'var r = ""; foreach (var n in new[] { "UnityEngine.Rigidbody2D", "Unity.U2D.Physics.PhysicsWorld", "UnityEngine.LowLevelPhysics2D.PhysicsWorld", "Unity.U2D.Physics.PhysicsPose" }) { var f = false; foreach (var a in System.AppDomain.CurrentDomain.GetAssemblies()) if (a.GetType(n) != null) f = true; r += f + ","; } return r;'
 ```
 The Probe returns: legacy present, Core as `Unity.U2D.Physics`, Core as `UnityEngine.LowLevelPhysics2D`, Core components present. Core exists if either Core value is true; the true one gives the namespace. `false` rules that route out.
 
@@ -116,10 +116,10 @@ Physics changes alter runtime behaviour, so a clean compile isn't enough. Run th
 
 1. Use `console_status` to check the project has zero console errors.
 2. Read back what you changed, because a change can compile cleanly and still do nothing:
-   - For components you added or configured in the scene, use `eval` to check each one exists on its GameObject and its properties hold the values you set, such as a Collider 2D's `isTrigger` or the members listed on a Core component's type page.
+   - For components you added or configured in the scene, use `script eval` to check each one exists on its GameObject and its properties hold the values you set, such as a Collider 2D's `isTrigger` or the members listed on a Core component's type page.
    - For a script, read it back and check it uses the system and namespace from [Step 0](#step-0-which-physics-system), and sets each Core body's `type` explicitly.
 3. Add temporary `Debug.Log` lines that print the behaviour you changed, such as a body's position or velocity, or a contact or trigger callback firing.
-4. Enter Play mode and check the console shows the expected log lines and still has zero errors. You can also read the world through `eval`. Take no screenshots, because they take too much time.
+4. Enter Play mode and check the console shows the expected log lines and still has zero errors. You can also read the world through `script eval`. Take no screenshots, because they take too much time.
 5. Exit Play mode, remove the temporary `Debug.Log` lines, and check the console again has zero errors.
 
 ## Final report

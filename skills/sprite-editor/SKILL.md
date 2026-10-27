@@ -16,23 +16,23 @@ first; don't re-derive any of it here.
 
 Two things it can't know for you:
 
-- **You need `eval` in particular**, not just a reachable Editor. Confirm it appears in the
+- **You need `script eval` in particular**, not just a reachable Editor. Confirm it appears in the
   catalog — its presence depends on the Pipeline package version, not on the CLI.
 - **Never hand-edit a `.meta` file to change sprite metadata.** The importer owns that data
   and the capability checks below exist to prevent corruption, so an unreachable Editor is a
   stop, not a cue to improvise.
 
-Run C# through the connected Editor with the `eval` command. Discover its parameter shape
+Run C# through the connected Editor with the `script eval` command. Discover its parameter shape
 from `unity command --format json` rather than assuming one — the inline form is
-`unity command eval --code '<snippet>'`, and some Pipeline versions also register
-`eval_file` for running a snippet from a file. **Check the catalog before reaching for
-`eval_file`; it is frequently absent.** `unity command` defaults to a 30 second timeout.
+`unity command script eval --code '<snippet>'`, and some Pipeline versions also register
+`script eval_file` for running a snippet from a file. **Check the catalog before reaching for
+`script eval_file`; it is frequently absent.** `unity command` defaults to a 30 second timeout.
 
 Generates C# editor scripts to manipulate Unity sprites using ISpriteEditorDataProvider. Works with TextureImporter, PSBImporter, and custom importers.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**. Two consequences, both of which cause a
+`script eval` compiles a **statement block, not a file**. Two consequences, both of which cause a
 compile error rather than a warning:
 
 - **No `using` directives.** The compiler reads `using UnityEngine;` as a resource-disposal
@@ -41,7 +41,7 @@ compile error rather than a warning:
   (`CS0246` / `CS0103`), and a bare `Object` is ambiguous with `object` (`CS0104`).
 
 Where a snippet below is written as a file — with usings, for readability, or because it is
-meant to be saved into the project — qualify the types before passing it to `eval`.
+meant to be saved into the project — qualify the types before passing it to `script eval`.
 
 ## Workflow
 

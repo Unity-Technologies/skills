@@ -448,27 +448,17 @@ catch (CloudSaveException ex)
 
 ### `CloudSaveExceptionReason` Enum
 
-| Reason | Value | Meaning |
-|---|---|---|
-| `Unknown` | 0 | Unknown error |
-| `NoInternetConnection` | 1 | No network |
-| `ProjectIdMissing` | 2 | Project ID not set |
-| `PlayerIdMissing` | 3 | Player not signed in |
-| `AccessTokenMissing` | 4 | No access token |
-| `InvalidArgument` | 5 | Bad input |
-| `Unauthorized` | 6 | Not authorized |
-| `KeyLimitExceeded` | 7 | Too many keys stored |
-| `NotFound` | 8 | Key not found |
-| `TooManyRequests` | 9 | Rate limited |
-| `ServiceUnavailable` | 10 | Service down |
-| `Conflict` | 11 | Write-lock conflict |
-
----
-
-## Asset Store Building Blocks
-
-The following Building Blocks from the Unity Asset Store demonstrate Cloud Save patterns:
-
-- **Achievements Building Block** — Reads/writes achievement records in Protected buckets via Cloud Code, with Access Control denying direct player writes. [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-achievements-341918)
-- **Player Account Building Block** — Stores player profile data in Default and Public access classes with direct client writes for non-sensitive data. [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-player-account-341928)
-- **Leaderboards Building Block** — Uses Cloud Save for player score data alongside Cloud Code modules. [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-leaderboards-341926)
+| Reason | Value | Meaning | Fix |
+|---|---|---| :-- |
+| `Unknown` | 0 | Unknown error | Log `ex.Message`, retry once, then report it |
+| `NoInternetConnection` | 1 | No network | Retry when connectivity returns |
+| `ProjectIdMissing` | 2 | Project ID not set | Link the project in **Project Settings > Services** |
+| `PlayerIdMissing` | 3 | Player not signed in | Sign in before calling Cloud Save |
+| `AccessTokenMissing` | 4 | No access token | Sign in and check the token has not expired |
+| `InvalidArgument` | 5 | Bad input | Correct the keys or values named in the validation details |
+| `Unauthorized` | 6 | Not authorized | Check the access class and any Access Control policy denying the call |
+| `KeyLimitExceeded` | 7 | Too many keys stored | Delete unused keys |
+| `NotFound` | 8 | Key not found | Check the key and the access class used to read it |
+| `TooManyRequests` | 9 | Rate limited | Back off and retry after `RetryAfter` |
+| `ServiceUnavailable` | 10 | Service down | Retry with backoff |
+| `Conflict` | 11 | Write-lock conflict | Reload the keys, merge your change and retry with the new write lock |

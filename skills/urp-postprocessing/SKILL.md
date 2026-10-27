@@ -17,19 +17,19 @@ Editor/runtime object state — the checks and edits below all run C# inside a l
 **The `unity-cli` skill owns getting you there** — installing the CLI, confirming a connected
 Editor, adding the project's `com.unity.pipeline` package, telling a genuinely absent Editor
 apart from one stuck in Safe Mode, and discovering the Editor's command catalog. Follow it
-first; don't re-derive any of it here. You need `eval` in particular, not just a reachable
+first; don't re-derive any of it here. You need `script eval` in particular, not just a reachable
 Editor: its presence depends on the Pipeline package version, not on the CLI. If it's
 missing, say so and stop.
 
-Run C# through the connected Editor with the `eval` command. Discover its parameter shape
+Run C# through the connected Editor with the `script eval` command. Discover its parameter shape
 from `unity command --format json` rather than assuming one — the inline form is
-`unity command eval --code '<snippet>'`, and some Pipeline versions also register
-`eval_file` for running a snippet from a file. **Check the catalog before reaching for
-`eval_file`; it is frequently absent.** `unity command` defaults to a 30 second timeout.
+`unity command script eval --code '<snippet>'`, and some Pipeline versions also register
+`script eval_file` for running a snippet from a file. **Check the catalog before reaching for
+`script eval_file`; it is frequently absent.** `unity command` defaults to a 30 second timeout.
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
-`eval` compiles a **statement block, not a file**. Two consequences, both of which cause a
+`script eval` compiles a **statement block, not a file**. Two consequences, both of which cause a
 compile error rather than a warning:
 
 - **No `using` directives.** The compiler reads `using UnityEngine;` as a resource-disposal
@@ -38,7 +38,7 @@ compile error rather than a warning:
   (`CS0246` / `CS0103`), and a bare `Object` is ambiguous with `object` (`CS0104`).
 
 Where a snippet below is written as a file — with usings, for readability, or because it is
-meant to be saved into the project — qualify the types before passing it to `eval`.
+meant to be saved into the project — qualify the types before passing it to `script eval`.
 
 ## 0. Pre-Flight Checks
 
@@ -55,7 +55,7 @@ Before configuring any effect, **verify all checks**. Fix failures first.
 Run this to verify the setup programmatically:
 
 ```csharp
-// `eval` compiles a statement block, not a file: no `using` directives are
+// `script eval` compiles a statement block, not a file: no `using` directives are
 // allowed, so every type is fully qualified.
 var report = new System.Text.StringBuilder();
 
@@ -122,8 +122,8 @@ For code templates:
 
 ### Required Usings
 
-These apply when you write a `.cs` file into the project. **A snippet passed to `eval` cannot
-carry them** — qualify the types instead (see "Passing C# to `eval`" above).
+These apply when you write a `.cs` file into the project. **A snippet passed to `script eval` cannot
+carry them** — qualify the types instead (see "Passing C# to `script eval`" above).
 
 ```csharp
 using UnityEngine.Rendering;           // Volume, VolumeProfile, VolumeComponent, VolumeParameter

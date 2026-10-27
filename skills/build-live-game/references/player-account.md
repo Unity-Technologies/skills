@@ -31,7 +31,6 @@
   - [PlayerAccountsException](#playeraccountsexception)
   - [CloudSaveException](#cloudsaveexception)
 - [Validation](#validation)
-- [Asset Store Building Block](#asset-store-building-block)
 
 ---
 
@@ -124,8 +123,12 @@ Ensure the following packages are listed in `Packages/manifest.json`:
 **Optional** — add `com.unity.services.cloudcode` if using Protected player data or Custom (shared) data:
 
 ```json
-    "com.unity.services.cloudcode": "2.10.3"
+    "com.unity.services.cloudcode": "3.0.0"
 ```
+
+> `com.unity.services.cloudcode` **`3.0.0`** is the native-authoring line, which the `.ccmu` module
+> below requires — see the Requirements section of `references/cloud-code-modules.md`. The `2.10.x` line
+> deploys legacy `.ccmr` modules only; use it when maintaining one, not for new work.
 
 ---
 
@@ -437,13 +440,24 @@ if (result.TryGetValue("player_level", out var item))
 
 Writes to Protected and Custom buckets must go through a Cloud Code module. The module uses `IGameApiClient` with the service token to call Cloud Save server-side APIs.
 
-To create the module, follow the Module Creation section of `references/cloud-code.md`. All scaffolding files are required:
+Create it with the Editor rather than by hand: right-click a folder under `Assets/` →
+**Create > Services > Cloud Code Module Script** and name it `PlayerAccountModule`. See
+the Creating a Cloud Code Module section of `references/cloud-code-modules.md`.
+The Editor generates the following — use the list to check what you got, not as files to type out. There is
+no `.sln`, `.csproj`, `.pubxml` or test project.
 
-- [ ] `.sln` (generate fresh GUIDs)
-- [ ] `.csproj` (net9.0, CloudCode.Apis + CloudCode.Core)
-- [ ] `ModuleSetup.cs` (registers `GameApiClient`)
-- [ ] `Properties/PublishProfiles/FolderProfile.pubxml` — **without this file, deployment fails with "Failed to retrieve main project"**
-- [ ] `Assets/CloudCode/<ModuleName>.ccmr` (points to the `.sln`)
+- [ ] `Assets/CloudCode/PlayerAccountModule/PlayerAccountModule.ccmu` (holds the two asmdef GUIDs)
+- [ ] `Cloud/PlayerAccountModule.asmdef` — Editor-only, `noEngineReferences`, `autoReferenced: false`
+- [ ] `Cloud/PlayerAccountModule.cs` — rename/replace with the `[CloudCodeFunction]` endpoints
+- [ ] `Client/PlayerAccountModuleClient.asmdef` — references the cloud assembly
+- [ ] `Client/PlayerAccountModuleClient.cs` — `[CloudModuleClient(typeof(PlayerAccountModule))]` partial
+
+One file the Editor does **not** generate, which this module needs because its endpoints inject
+`IGameApiClient`:
+
+- [ ] `Cloud/CloudSetup.cs` — an `ICloudCodeSetup` calling `config.AddGameApiClient()`
+
+The deployed module name is the **cloud asmdef's name** (`PlayerAccountModule`), not the `.ccmu` filename.
 
 ---
 
@@ -741,11 +755,11 @@ catch (RequestFailedException ex)
 
 Key error codes:
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `AccountAlreadyLinked` | 10003 | Username already exists (on sign-up) or external ID already linked |
-| `InvalidParameters` | 10002 | Bad input parameters |
-| `ClientInvalidUserState` | 10000 | Operation not valid in current state |
+| Constant | Value | Meaning | Fix |
+|---|---|---| :-- |
+| `AccountAlreadyLinked` | 10003 | Username already exists (on sign-up) or external ID already linked | Sign in instead on sign-up, or link with `ForceLink` only after the player confirms |
+| `InvalidParameters` | 10002 | Bad input parameters | Validate the input before the call |
+| `ClientInvalidUserState` | 10000 | Operation not valid in current state | Check the player's sign-in state before the call |
 
 ### PlayerAccountsException
 
@@ -764,10 +778,10 @@ catch (PlayerAccountsException ex)
 
 Key error codes (from `PlayerAccountsErrorCodes`):
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `InvalidState` | 10101 | Player is already signed in |
-| `MissingClientId` | 10102 | Client ID not configured in Unity Dashboard |
+| Constant | Value | Meaning | Fix |
+|---|---|---| :-- |
+| `InvalidState` | 10101 | Player is already signed in | Check `PlayerAccountService.Instance.IsSignedIn` before `StartSignInAsync` |
+| `MissingClientId` | 10102 | Client ID not configured in Unity Dashboard | Configure the Unity identity provider's client ID in the Unity Dashboard |
 
 ### CloudSaveException
 
@@ -805,9 +819,3 @@ After implementing a player account feature, verify:
 4. **SignedIn event wiring:** `PlayerAccountService.Instance.SignedIn` is subscribed **before** calling `StartSignInAsync()`. The `StartSignInAsync` Task completes when the browser opens, not when sign-in finishes.
 5. **Access class matching:** Data saved with `PublicWriteAccessClassOptions` is loaded with `PublicReadAccessClassOptions`. Data saved with no options (Default) is loaded with `DefaultReadAccessClassOptions` or no options. Mismatched access classes return empty results without error.
 6. **SignOut is synchronous:** `AuthenticationService.Instance.SignOut()` and `PlayerAccountService.Instance.SignOut()` are both `void` methods. Do not `await` them.
-
----
-
-## Asset Store Building Block
-
-- **Player Account Building Block:** Complete reference implementation with sign-in UI (anonymous, Unity browser, username/password), Cloud Save data management, and a Cloud Code module with generated client bindings. [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-player-account-341928)

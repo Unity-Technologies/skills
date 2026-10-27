@@ -1,6 +1,6 @@
 # Security notes: asset-transformer-toolkit
 
-This skill has the agent write C# and run it inside the user's live Unity Editor, to create and edit Asset Transformer RuleSets. It doesn't say which command runs the code; with the `unity` CLI that is `unity command eval`. Automated skill scanners flag running generated code as a powerful capability. It is intentional, and it is limited by the safeguards below.
+This skill has the agent write C# and run it inside the user's live Unity Editor, to create and edit Asset Transformer RuleSets. It doesn't say which command runs the code; with the `unity` CLI that is `unity command script eval`. Automated skill scanners flag running generated code as a powerful capability. It is intentional, and it is limited by the safeguards below.
 
 ## Accepted risks
 

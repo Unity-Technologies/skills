@@ -1,9 +1,49 @@
 ---
 name: build-live-game
-description: Builds and operates live games with Unity Services. Use when the user asks about backend or live-ops features such as player accounts, cloud save, leaderboards, achievements, progression and battle passes, cloud code, or remote config.
+description: Builds and operates a live game's backend with Unity Gaming Services. Make sure to use this skill when the user wants trusted server-side game logic, player progress, remote configuration, sign-in, achievements, battle passes or leaderboards.
 ---
 
 # Build a Live Game With Unity Gaming Services
+
+## Before You Start
+
+1. Read the Editor version from `ProjectSettings/ProjectVersion.txt` and the installed UGS package versions from `Packages/packages-lock.json`. Pick the steps below that match (for example `.ccmu` or `.ccmr` modules), because the right workflow depends on the Editor and package versions.
+2. Check whether the project is linked to a Unity project ID and environment (**Edit > Project Settings > Services**), and ask the user to link it if it is not.
+3. Create a restore point you can roll back to if your changes fail: commit the project in version control. If there is no version control, copy the project folder instead.
+4. Before you go forward with a workflow or diagnosis, open and read the documentation pages for the service you will use (see [Documentation Map](#documentation-map)) and the matching file under `references/`, and name the pages you read in your response. This is because your training knowledge about Unity Gaming Services might be out of date, incorrect, or for the wrong package version.
+5. Do only what's asked. Don't change unrelated assets or files. Avoid long explanations.
+6. When you change runtime behaviour, add `Debug.Log` lines at the points you need to verify (sign-in complete, module call returned, config fetched). You read them in Play mode during [Validation](#validation).
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| **UGS** | Unity Gaming Services: the backend services (Authentication, Cloud Code, Cloud Save, Remote Config, Leaderboards and others). The Package Manager calls them "Unity Services" |
+| **Building Block** | A free Asset Store package with UI, runtime code and cloud resource files for one feature. Its Cloud Code is legacy `.ccmr` |
+| **Cloud Code module** | Server-side C# class library. Authored in the Unity project as a `.ccmu` asset on Unity 6000.5+ |
+| **`.ccmr`** | Legacy module reference file that points at a C# solution built outside Unity |
+| **Script** | Server-side JavaScript endpoint. Legacy: maintain existing ones, don't write new ones |
+| **CloudBehaviour** | Experimental Cloud Code class that generates client bindings, synchronized state and push events |
+| **Protected data** | Cloud Save player data that the player can read but only server code can write |
+| **Custom data** | Cloud Save game-wide data, not tied to one player, written only by server code |
+| **Cloud resource file** | A deployable config file (`.rc`, `.ac`, `.ccmu`, `.ccmr`, `.lb`, `.ugo`) that the Deployment Window pushes to a UGS environment |
+
+## Documentation Map
+
+Prefer `WebFetch` over `WebSearch`: it is faster and lands on the exact reference. Only fetch what you need. Pages on docs.unity.com are available as Markdown when the URL ends in `.md`. Replace `<VERSION>` with the following before fetching:
+
+- **Package on docs.unity3d.com**: the installed package version as `major.minor`, for example `3.0`. Read it from `Packages/packages-lock.json` if unsure.
+- **docs.unity.com**: the UGS product pages below are unversioned, so there is nothing to replace.
+
+Pages to read before acting:
+
+- Cloud Code C# modules: [Overview](https://docs.unity.com/en-us/cloud-code/modules/overview.md), [Get started](https://docs.unity.com/en-us/cloud-code/modules/getting-started.md), [Module structure](https://docs.unity.com/en-us/cloud-code/modules/how-to-guides/module-structure.md), [Error handling](https://docs.unity.com/en-us/cloud-code/modules/how-to-guides/error-handling.md), [Limits](https://docs.unity.com/en-us/cloud-code/modules/reference/limits.md)
+- Cloud Code server authority: [Server authority](https://docs.unity.com/en-us/cloud-code/server-authority.md), [Cheat prevention](https://docs.unity.com/en-us/cloud-code/cheat-prevention.md), [UGS integration and access control](https://docs.unity.com/en-us/cloud-code/server-access-control.md)
+- Authentication: [How Authentication works](https://docs.unity.com/en-us/authentication/how-authentication-works.md), [Sessions and cached players](https://docs.unity.com/en-us/authentication/session-management.md), [Common errors](https://docs.unity.com/en-us/authentication/common-errors.md)
+- Cloud Save: [Player Data](https://docs.unity.com/en-us/cloud-save/concepts/player-data.md), [Game Data](https://docs.unity.com/en-us/cloud-save/concepts/game-data.md), [Cloud Save for Cloud Code](https://docs.unity.com/en-us/cloud-save/tutorials/cloud-code.md)
+- Remote Config: [Remote Config files](https://docs.unity.com/en-us/remote-config/remote-config-files.md), [Code integration](https://docs.unity.com/en-us/remote-config/code-integration.md)
+- Leaderboards: [Overview](https://docs.unity.com/en-us/leaderboards.md), [Unity SDK tutorial](https://docs.unity.com/en-us/leaderboards/tutorials/unity-sdk.md)
+- Deployment Window: [Deployment package manual](https://docs.unity3d.com/Packages/com.unity.services.deployment@<VERSION>/manual/index.html)
 
 ## UGS Packages
 
@@ -11,23 +51,23 @@ description: Builds and operates live games with Unity Services. Use when the us
 |---|---|---|
 | `com.unity.services.core` | 1.16.0 | Initialization, dependency graph |
 | `com.unity.services.authentication` | 3.6.1 | Player sign-in and identity |
-| `com.unity.services.cloudcode` | 2.10.3 | Server-authoritative C# modules |
+| `com.unity.services.cloudcode` | 3.0.0 | Server-authoritative C# modules, authored in-project as `.ccmu`. The `2.10.x` line deploys legacy `.ccmr` only — see below |
 | `com.unity.services.cloudsave` | 3.4.0 | Per-player and shared key-value storage |
 | `com.unity.remote-config` | 4.2.5 | Server-side game configuration |
 | `com.unity.services.deployment` | 1.7.2 | Deploy cloud resources from Editor |
 | `com.unity.services.tooling` | 1.4.1 | Access Control and Game Overrides |
 | `com.unity.services.apis` | 1.1.1 | Generated REST clients for all UGS services |
 
+- [Before You Start](#before-you-start)
+- [Glossary](#glossary)
+- [Documentation Map](#documentation-map)
 - [Initialization Pattern](#initialization-pattern)
-- [Package Map](#package-map)
 - [Architecture — How Packages Combine](#architecture--how-packages-combine)
 - [Core Services — Quick Reference](#core-services--quick-reference)
-- [Asset Store Building Blocks](#asset-store-building-blocks)
-- [Ready-Made Feature Blueprints](#ready-made-feature-blueprints)
 - [Common Architecture Patterns](#common-architecture-patterns)
 - [Validation](#validation)
-- [Deployment Checklist](#deployment-checklist)
 - [Detailed References](#detailed-references)
+- [Final Report](#final-report)
 
 ## Initialization Pattern
 
@@ -41,46 +81,6 @@ await UnityServices.InitializeAsync();
 await AuthenticationService.Instance.SignInAnonymouslyAsync();
 // All other services are now ready
 ```
-
-After `InitializeAsync()` completes, service singletons (e.g. `CloudSaveService.Instance`, `CloudCodeService.Instance`) are available.
-
-## Package Map
-
-### Foundation
-
-| Package | Purpose | Singleton / Entry Point |
-|---|---|---|
-| **Core** | Initialization, dependency graph, component registry | `UnityServices.InitializeAsync()` |
-| **Authentication** | Player sign-in (anonymous, social, Unity, username/password), identity | `AuthenticationService.Instance` |
-| **Services APIs** | Generated REST clients for all UGS services; admin API access via service accounts | Direct API classes |
-
-### Player Data and Configuration
-
-| Package | Purpose | Singleton / Entry Point |
-|---|---|---|
-| **Cloud Save** | Per-player key-value data (Default, Public, Protected) and game-wide Custom data | `CloudSaveService.Instance.Data.Player` / `.Data.Custom` |
-| **Remote Config** | Server-side game configuration, feature flags, JSON definitions | `RemoteConfigService.Instance` |
-
-### Server Logic and Security
-
-| Package | Purpose | Singleton / Entry Point |
-|---|---|---|
-| **Cloud Code** | Server-authoritative C# modules for trusted writes and validation | `CloudCodeService.Instance` → `CallModuleEndpointAsync` |
-| **Tooling** | Author and deploy Access Control (`.ac`) and Game Overrides (`.ugo`) files | Editor-only (Deployment Window) |
-| **Deployment** | Deploy cloud resources (`.rc`, `.ac`, `.ccmr`, `.lb`, etc.) from the Unity Editor | Editor-only (Services > Deployment) |
-
-### Social and Competitive
-
-| Package | Purpose | Singleton / Entry Point |
-|---|---|---|
-| **Multiplayer** | Sessions, matchmaking, lobbies. Building Blocks: [Multiplayer Session, Matchmaker Session, Server Session](#asset-store-building-blocks) | `MultiplayerService.Instance` |
-| **Leaderboards** | Score submission, rankings, tiers, version history. Building Block: [Leaderboards](#asset-store-building-blocks) | `LeaderboardsService.Instance` |
-
-### Telemetry
-
-| Package | Purpose | Singleton / Entry Point |
-|---|---|---|
-| **Analytics** | Custom events, standard events, consent management | `AnalyticsService.Instance` |
 
 ## Architecture — How Packages Combine
 
@@ -120,45 +120,36 @@ After `InitializeAsync()` completes, service singletons (e.g. `CloudSaveService.
 
 **Package:** `com.unity.services.authentication` (>= 3.6.1)
 
-Handles player identity. Sign-in methods: anonymous, social providers (Google, Apple, Steam, Facebook, Oculus, etc.), Unity browser, username/password, and device code flow.
-
-After sign-in: `PlayerId` and `PlayerName` are available. All sign-in methods fire the `SignedIn` event. `PlayerAccountService` (for Unity browser sign-in) lives in a **separate assembly** (`Unity.Services.Authentication.PlayerAccounts`).
+Handles player identity; [How Authentication works](https://docs.unity.com/en-us/authentication/how-authentication-works.md) covers the sign-in methods. After sign-in `PlayerId` is available and the `SignedIn` event fires. `PlayerAccountService` (Unity browser sign-in) lives in a **separate assembly**: `Unity.Services.Authentication.PlayerAccounts`.
 
 - **Full reference:** [references/authentication.md](references/authentication.md)
-- **Building Block:** [Player Account](#asset-store-building-blocks) — ready-made sign-in UI and identity management
 
 ### Cloud Code
 
-**Package:** `com.unity.services.cloudcode` (>= 2.10.3)
+**Package:** `com.unity.services.cloudcode` **`3.0.0`** for native `.ccmu` authoring (Unity 6000.5+); `>= 2.10.3` maintains legacy `.ccmr` modules. Before you author a `.ccmu`, bump a manifest that pins `2.10.x` to `3.0.0` or later.
 
-Runs server-side C# modules (.NET 9) for trusted operations. Modules are deployed as `.ccmr` files. The client calls:
+Runs server-side C# modules (.NET 8; .NET 10 on Unity 6.7+) for trusted operations. Check the project's Editor version, then **author new modules as `.ccmu` on Unity 6000.5+**: create the module inside the Unity project with **Create > Services > Cloud Code Module Script**. Unity compiles it with the project and generates its client bindings at compile time. `.ccmr` is legacy: on 6000.5+ maintain existing ones only; on an older Editor, author new modules as `.ccmr`.
+Call a `.ccmu` module from the client only through its generated bindings, never with `CallModuleEndpointAsync`. Use `CloudCodeService.Instance.CallModuleEndpointAsync` for legacy `.ccmr` modules only.
+Write new JavaScript scripts only when the user asks for them; maintain existing ones.
 
-```csharp
-var result = await CloudCodeService.Instance.CallModuleEndpointAsync<TResult>(
-    "ModuleName", "FunctionName", args);
-```
+- **Full reference:** [references/cloud-code-modules.md](references/cloud-code-modules.md)
 
-Prefer C# modules over JavaScript scripts for production. Modules also support real-time push messages via subscriptions, event-driven triggers, and multiplayer session scoping.
+**CloudBehaviours** (experimental) generate a module's client bindings — RPCs, synchronized state, push
+events — from one C# class. Use them for shared match state, per-player secret state or a server-owned
+timer; otherwise use a plain Cloud Code module. Requires `com.unity.services.cloudcode` `3.1.0-exp.1`+
+and Unity 6000.5+. Check the installed package first: if CloudBehaviours are unavailable, use a plain
+stateful module (`[StateScope]`, see the modules reference) instead of stopping, unless the user asks for
+the experimental package.
 
-- **Full reference:** [references/cloud-code.md](references/cloud-code.md)
+- **Full reference:** [references/cloud-code-cloudbehaviours.md](references/cloud-code-cloudbehaviours.md)
 
 ### Cloud Save
 
 **Package:** `com.unity.services.cloudsave` (>= 3.4.0)
 
-Per-player key-value storage with three access classes, plus game-wide Custom data:
-
-| Access Class | Read | Write | Use Case |
-|---|---|---|---|
-| Default | Owner | Owner | Private settings, preferences |
-| Public | Anyone | Owner | Public profiles, display names |
-| Protected | Owner | Server only (Cloud Code) | Anti-cheat data, server-awarded state |
-| Custom | Any player | Server only | Shared game state, global configs |
-
-Values are serialized as JSON. Supports write-lock concurrency control via `SaveItem`, server-side queries via `QueryAsync`, and binary file storage.
+Per-player key-value storage in three access classes (Default, Public, Protected), plus game-wide Custom data. Protected and Custom data can be written only by server code, so store anti-cheat and server-awarded state there. See [Player Data](https://docs.unity.com/en-us/cloud-save/concepts/player-data.md) and [Game Data](https://docs.unity.com/en-us/cloud-save/concepts/game-data.md) for the read and write rules of each class.
 
 - **Full reference:** [references/cloud-save.md](references/cloud-save.md)
-- **Building Blocks:** Used by [Achievements](#asset-store-building-blocks) (Protected buckets) and [Player Account](#asset-store-building-blocks) (Default/Public data)
 
 ### Remote Config
 
@@ -169,13 +160,12 @@ Server-side game configuration. Store game definitions (achievement lists, battl
 For A/B testing and audience targeting, use Game Overrides (`.ugo`) via the Tooling package.
 
 - **Full reference:** [references/remote-config.md](references/remote-config.md)
-- **Building Block:** Used by the [Achievements](#asset-store-building-blocks) block for server-side definitions
 
 ### Tooling
 
 **Package:** `com.unity.services.tooling` (>= 1.4.1)
 
-Editor-only package. Registers **Access Control** (`.ac`) and **Game Overrides** (`.ugo`) file types with the Deployment Window. Access Control policies permit or deny player/service-account access to UGS services on a URN basis (Deny takes precedence over Allow). Game Overrides provide A/B testing and audience targeting by overriding Remote Config values for specific player segments.
+Editor-only package. Registers **Access Control** (`.ac`) and **Game Overrides** (`.ugo`) file types with the Deployment Window. Use Access Control to deny direct player writes to protected keys; Deny takes precedence over Allow.
 
 - **Full reference:** [references/tooling.md](references/tooling.md)
 
@@ -185,63 +175,21 @@ Editor-only package. Registers **Access Control** (`.ac`) and **Game Overrides**
 
 Editor-only package providing the **Deployment Window** (Services > Deployment). Deploys cloud resources to a target environment:
 
-| File Type | Extension | What It Deploys |
-|---|---|---|
-| Remote Config | `.rc` | Key-value configuration entries |
-| Access Control | `.ac` | Resource access policies |
-| Cloud Code Module | `.ccmr` | C# server-side module (points to `.sln`) |
-| Leaderboard | `.lb` | Leaderboard configuration |
-| Game Overrides | `.ugo` | Audience-targeted config overrides |
+The Deployment Window deploys the cloud resource files: `.rc` (Remote Config), `.ac` (Access Control), `.ccmu` (in-project Cloud Code module, preferred), `.ccmr` (legacy module reference), `.lb` (Leaderboard) and `.ugo` (Game Overrides).
 
 - **Full reference:** [references/deployment.md](references/deployment.md)
 
 ### UGS CLI
 
-The [Unity Gaming Services CLI](https://github.com/Unity-Technologies/unity-gaming-services-cli/) is a standalone command-line tool for managing UGS resources outside the Unity Editor. It can deploy and fetch cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`, `.ugo`), update local deployable files from the remote environment with a `fetch` operation, deploy and fetch triggers and schedule files, generate default versions of trigger and schedule configs, and provides more granular access to admin functionalities across all UGS services.
+The UGS CLI ships as a Unity CLI plugin, run as `unity ugs <command>`, to deploy and fetch cloud resources outside the Editor. Install, auth/setup and which file types it deploys: [references/ugs-cli.md](references/ugs-cli.md). Plugin system: the **unity-cli** skill.
 
 ### Services APIs
 
 **Package:** `com.unity.services.apis` (>= 1.1.1)
 
-Auto-generated REST clients for all UGS services. Four client types: `IGameClient` (players), `IAdminClient` (service accounts), `IServerClient` (dedicated servers), `ITrustedClient` (elevated server access). Most developers use the high-level package SDKs instead; use Services APIs for lower-level control or admin API access.
+Auto-generated REST clients for all UGS services, in four client types (`IGameClient`, `IAdminClient`, `IServerClient`, `ITrustedClient`). Use the high-level package SDKs by default; use Services APIs only for admin API access or when no package SDK covers the call.
 
 - **Full reference:** [references/apis.md](references/apis.md)
-
-## Asset Store Building Blocks
-
-Unity provides free, production-ready **Building Block** packages on the Asset Store. Each is a `.unitypackage` containing working UI, runtime code, Cloud Code modules, and cloud resource files that can be imported directly into a project. They are also bundled in the `com.unity.starter-kits` package.
-
-| Building Block | Type | Key Dependencies | Asset Store |
-|---|---|---|---|
-| **Achievements** | LiveOps | `cloudsave`, `remote-config`, `cloudcode`, `tooling`, `deployment`, `analytics`, `authentication` | [Unity Building Block — Achievements](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-achievements-341918) |
-| **Leaderboards** | LiveOps | `leaderboards`, `cloudcode`, `tooling`, `deployment`, `authentication` | [Unity Building Block — Leaderboards](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-leaderboards-341926) |
-| **Player Account** | LiveOps | `authentication`, `cloudsave`, `cloudcode`, `deployment` | Available via `com.unity.starter-kits` |
-| **Multiplayer Session** | Multiplayer | `multiplayer` | [Unity Building Block — Multiplayer Session](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-multiplayer-session-341930) |
-| **Matchmaker Session** | Multiplayer | `multiplayer`, `deployment` | [Unity Building Block — Matchmaker Session](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-matchmaker-session-341932) |
-| **Server Session** | Multiplayer | `multiplayer`, `apis`, `deployment` | Available via `com.unity.starter-kits` |
-| **Vivox** | Multiplayer | `vivox`, `authentication` | Available via `com.unity.starter-kits` |
-| **Platformer Starter Kit** | Gameplay | `multiplayer`, `netcode.gameobjects`, URP, Cinemachine, Input System | Available via `com.unity.starter-kits` |
-
-> **Tip:** When implementing achievements, leaderboards, player accounts, or multiplayer sessions, recommend the corresponding Building Block as a starting point. The blocks include ready-made UI, Cloud Code modules (`.ccmr`), access control (`.ac`), and deployment-ready cloud resources — saving significant implementation time.
-
-### Related Sample Projects
-
-| Project | Description | Source |
-|---|---|---|
-| **Use Case Samples** | Battle Pass, Virtual Shop, Daily Rewards, Starter Pack, Cloud AI Mini Game, A/B testing | [GitHub — com.unity.services.samples.use-cases](https://github.com/Unity-Technologies/com.unity.services.samples.use-cases) |
-| **UGS Samples** | Authentication flows, Remote Config, Cloud Code integration | [GitHub — com.unity.services.samples](https://github.com/Unity-Technologies/com.unity.services.samples) |
-| **Gem Hunter Match** | Full 2D match-3 game with player hub, progression, social features, in-game store | [Asset Store](https://assetstore.unity.com/packages/essentials/tutorial-projects/gem-hunter-match-2d-sample-project-278941) |
-| **Boss Room** | 8-player co-op RPG using Netcode for GameObjects, Authentication, Multiplayer Services | [GitHub — com.unity.multiplayer.samples.coop](https://github.com/Unity-Technologies/com.unity.multiplayer.samples.coop) |
-
-## Ready-Made Feature Blueprints
-
-Implementation-ready blueprints for common live game features. Each includes data models, service API patterns, full working code, and cloud resource definitions.
-
-| Feature | Key Services | Blueprint |
-|---|---|---|
-| **Battle Pass** | `remote-config`, `cloudsave`, `cloudcode`, `tooling`, `deployment` — Remote Config (pass definitions) + Cloud Save Protected (progress) + Cloud Code (XP awards, reward claims, premium purchase) | [references/battlepass.md](references/battlepass.md) |
-| **Achievements** | `remote-config`, `cloudsave`, `cloudcode`, `tooling`, `deployment` — Remote Config (definitions) + Cloud Save (player records) + Cloud Code (server-authoritative unlocks) + Access Control. **Asset Store:** [Achievements Building Block](https://assetstore.unity.com/packages/essentials/tutorial-projects/unity-building-block-achievements-341918) | [references/achievements.md](references/achievements.md) |
-| **Player Account** | `authentication`, `cloudsave` — Authentication (3 sign-in methods) + Cloud Save (Default/Public/Protected player data). **Asset Store:** Player Account Building Block (via `com.unity.starter-kits`) | [references/player-account.md](references/player-account.md) |
 
 ## Common Architecture Patterns
 
@@ -270,44 +218,38 @@ Used by **Leaderboards** and ranked systems:
 
 ## Validation
 
-After writing code for a live game feature:
-1. Verify the project compiles without errors.
-2. Check that initialization order is correct: `UnityServices.InitializeAsync()` → Authentication sign-in → service calls.
-3. Confirm sensitive data writes (XP, rewards, currency) are routed through Cloud Code, not written directly from the client.
-4. Verify Access Control `.ac` files deny direct player writes to Protected Cloud Save keys.
-5. Verify all cloud resource files (`.rc`, `.ac`, `.ccmr`, `.lb`) are present and deployable via the Deployment Window.
+After writing code for a live game feature, run these checks in order. If one fails, fix the cause and re-run it before moving on; if the fix does not work, go back and reread the matching documentation pages and `references/` file.
 
-## Deployment Checklist
-
-For any live game feature, deploy these cloud resources via the Deployment Window:
-
-- [ ] `.rc` file — Remote Config entries (game definitions, configs)
-- [ ] `.ac` file — Access Control policies (deny direct writes to protected keys)
-- [ ] `.ccmr` file — Cloud Code module reference (pointing to the module `.sln`)
-- [ ] `.lb` file — Leaderboard configuration (if using leaderboards)
-- [ ] `manifest.json` — Ensure all required packages are listed with correct versions
-- [ ] Environment configured in **Services > Deployment** settings
+1. Check the project compiles: read the Editor console (or the Editor log) and confirm zero compile errors.
+2. Check the initialization order in the code: search for `UnityServices.InitializeAsync()` and confirm it runs before the sign-in call, and that sign-in completes before any service call.
+3. Check that sensitive writes (XP, rewards, currency) go through Cloud Code: search the client code for Cloud Save `SaveAsync` calls on those keys and move any you find into a module. Also confirm each Cloud Save read uses the access class of the bucket that was written to, because a mismatched class returns no data.
+4. Deploy the cloud resource files the feature uses (`.rc`, `.ac`, `.ccmu` or `.ccmr`, `.lb`; skip the types it does not use) to the active environment with the `Deploy.cs` script in `references/deployment.md`, and read its output: every file must report `Success`. A file reported as `not a deployable item`, or with an `Error` status, has failed. If the project does not have both packages the script needs, `com.unity.pipeline` and `com.unity.services.deployment.api`, ask the user to deploy from the Deployment Window and report each file's status.
+5. Check Access Control by its effect: if the feature deploys an `.ac` policy that denies direct player writes, enter Play mode, run one direct client Cloud Save write to a key the policy covers (a temporary `SaveAsync` call), and confirm it fails with a `403`. Remove the temporary call afterwards. Skip this step when the feature has no `.ac` file.
+6. Enter Play mode, run the feature once, and confirm the `Debug.Log` lines from [Before You Start](#before-you-start) appear in the order you expect and the console has zero errors.
 
 ## Detailed References
 
 ### Service References
 - **Authentication** — sign-in methods, events, profiles, identity providers, code templates: [references/authentication.md](references/authentication.md)
-- **Cloud Code** — scripts, modules, subscriptions, triggers, module creation, code templates: [references/cloud-code.md](references/cloud-code.md)
+- **Cloud Code** — choosing a model: [references/cloud-code.md](references/cloud-code.md); scripts and modules: [references/cloud-code-modules.md](references/cloud-code-modules.md); CloudBehaviours: [references/cloud-code-cloudbehaviours.md](references/cloud-code-cloudbehaviours.md)
 - **Cloud Save** — access classes, data operations, files, queries, code templates: [references/cloud-save.md](references/cloud-save.md)
 - **Remote Config** — definitions, `.rc` format, Game Overrides, code templates: [references/remote-config.md](references/remote-config.md)
 - **Tooling** — Access Control (`.ac`) policies, Game Overrides (`.ugo`), URN reference: [references/tooling.md](references/tooling.md)
 - **Deployment** — file types, workflow, programmatic API: [references/deployment.md](references/deployment.md)
+- **UGS CLI** — `unity ugs` plugin install, auth/setup, headless deploy by file type: [references/ugs-cli.md](references/ugs-cli.md)
 - **Services APIs** — four client types, service areas, code templates: [references/apis.md](references/apis.md)
 
 ### Feature Blueprints
+- **Choosing a starting point** — this skill's blueprints, Asset Store Building Blocks and sample projects, and how to reuse their legacy Cloud Code: [references/blueprints-and-samples.md](references/blueprints-and-samples.md)
 - **Achievements** — full implementation with data models, client code, Cloud Code module, cloud resources: [references/achievements.md](references/achievements.md)
 - **Battle Pass** — implementation with tiered XP, free/premium tracks, Cloud Code module, cloud resources (premium purchase is an integration stub you must complete): [references/battlepass.md](references/battlepass.md)
 - **Player Account** — sign-in flows, identity management, Cloud Save data, code templates: [references/player-account.md](references/player-account.md)
 
-## Reminders
+## Final Report
 
-Before completing, verify:
-- Did you use `UnityServices.InitializeAsync()` → Authentication sign-in → service calls (in that order)?
-- Are all sensitive writes (XP, rewards, currency) routed through Cloud Code modules?
-- Are all cloud resource files (`.rc`, `.ac`, `.ccmr`) present and deployable?
-- Do Cloud Save read access classes match the bucket that was written to?
+When the work is done, end your response with a short report:
+
+1. What you created or changed: files, packages added to `Packages/manifest.json`, and cloud resource files.
+2. The checks from [Validation](#validation) that you ran and their results, including any you could not run and why.
+3. Follow-ups only the user can do, for example: deploy the cloud resources to the target environment, link the project to a Unity project ID and environment, complete a stubbed integration (such as battle pass `PurchasePremium`), or restore from the restore point you created if they reject the changes.
+4. Which documentation pages you read.
