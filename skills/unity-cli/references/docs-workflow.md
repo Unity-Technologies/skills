@@ -8,13 +8,26 @@ is the order an agent follows, with 2D examples.
 **Why use it:** the pages `unity docs` resolves match the Editor version of the project you are in. An API
 remembered from another Unity version is a common source of wrong code, 2D physics and Tilemap included.
 
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+## Contents
+
+- The flow
+- Version flags
+- The page index cache
+- Rules for agents
+
 ## The flow
 
 1. **Find the page with `docs toc`.** It lists real pages, so you never guess a name.
 2. **Resolve the address with `docs --url`.** It prints the docs.unity.com address and opens nothing.
-3. **Cite or open it.** Put the address in your answer or review comment. Without `--url`, `unity docs`
-   opens the page in the default browser (only useful when a person is watching).
-4. **Pin the version** whenever the project is not the one you are standing in.
+3. **Cite or read it.** Put the address in your answer or review comment, or print the page's Markdown with
+   `docs --content`. Without `--url` or `--content`, `unity docs` opens the page in the default browser
+   (only useful when a person is watching).
+4. **Cache the docs with `docs cache add`** before working offline, or when you will read many pages.
+5. **Pin the version** whenever the project is not the one you are standing in (see Version flags).
+
+For a package's manual (`com.unity.*`), use `docs --package` instead of steps 1 and 2.
 
 ### 1. Find a page: `docs toc`
 
@@ -60,7 +73,52 @@ a list of results, not the page. For a scripting API page, run `docs toc` and pi
 no name lookup, so `docs --url --manual` always returns search results: for a manual page, cite the `url` of
 the `docs toc --manual` entry you picked.
 
-### 3. Other documentation sets
+### 3. Read a page: `docs --content`
+
+```bash
+unity docs --content Rigidbody2D.AddForce                      # the page's Markdown on stdout
+unity docs --content Rigidbody2D.AddForce --format json        # wrapped with url, version and source
+```
+
+The scripting API resolves by name as `--url` does. The manual has no name lookup, so `--content --manual`
+fails; read a cached manual page from its file instead (below).
+
+### Package manuals: `docs --package`
+
+```bash
+unity docs --package com.unity.2d.sprite --url                   # the manual for the version the project uses
+unity docs --package com.unity.inputsystem --url --format json   # adds package, packageVersion and resolvedBy
+```
+
+Package manuals live on docs.unity3d.com, not docs.unity.com. The version is the one in the project's
+`Packages/packages-lock.json`, a package built into the Editor uses its one manual version, and anything else
+(outside a project too) uses the newest release on the Unity registry. A name the registry doesn't list fails
+with `DOCS_PACKAGE_UNKNOWN`, and a registry that can't be reached with `NETWORK_UNREACHABLE`. `--package`
+takes no topic and can't be combined with another documentation set, `--search` or `--editor-version`.
+
+### 4. Work offline: `docs cache`
+
+```bash
+unity docs cache add                                     # the manual, this project's version
+unity docs cache add --api --editor-version 6000.0       # the scripting API too (about 96,000 pages)
+unity docs cache --format json                      # what is cached, per version
+```
+
+`add` prints the folder it fills: one Markdown file per page, `<section>/<path>.md` under the version, with
+the section's listing in `<section>.txt` beside it. After that:
+
+- `docs --content` reads a cached page without a request (`source: cache` in json), and caches every page it
+  fetches online too.
+- `docs toc` and the name lookup behind `docs --url` and `--content` use the cached listing when
+  docs.unity.com can't be reached.
+- Manual pages are read from their files: `docs toc --manual` path `get-started/first-time-user/2dor3d` is
+  `manual/get-started/first-time-user/2dor3d.md` under the version's folder.
+
+A failed `add` (`DOCS_CACHE_INCOMPLETE`) resumes where it stopped when run again. Cached pages don't
+expire: run `add` again to refresh them, `docs cache clear --yes` to delete them. `unity cache clean`
+deletes them with the other downloads.
+
+### Other documentation sets
 
 `--cli`, `--hub` and `--cloud` look a topic up in the Unity CLI, Unity Hub or Unity Cloud documentation. Topic
 names are lowercase and hyphenated (`use-unity-cli`, `project-create`, `developer-data/collection-settings`).
@@ -104,18 +162,8 @@ local cache after that, so repeat calls in a session are fast. With no connectio
 - `docs --url` does not fail. It builds a qualified name directly when a version is known (a project or
   `--editor-version`) and sends anything else to search.
 
-The cache holds the page index only. It does not hold page content, so it does not make the documentation
-readable offline.
-
-## Not available yet
-
-These are planned and not in the CLI yet. Check `unity docs --help` before
-relying on any of them.
-
-- **Reading a page's content in the terminal** (`unity docs ... --content`). Until it ships, use
-  `docs --url` to get the address and open it, or ask the user for the text.
-- **Offline use of page content**.
-- **Package and local documentation** (`--package`).
+This daily cache holds the page index only. For page content offline, and an index that never expires, use
+`docs cache add` (step 4): with a cached version, `docs toc` lists it offline instead of failing.
 
 ## Rules for agents
 
@@ -123,4 +171,5 @@ relying on any of them.
   version exists.
 - Prefer `--format json` and read `resolvedBy`, so you can tell a real page from a search.
 - Don't open a browser from an unattended run: use `--url`.
-- Only use `docs.unity.com` addresses the CLI printed.
+- Only use documentation addresses the CLI printed: `docs.unity.com` for the Engine, CLI, Hub and Cloud
+  docs, and `docs.unity3d.com/Packages/` for package manuals from `docs --package`.

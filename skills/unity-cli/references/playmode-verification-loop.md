@@ -7,6 +7,14 @@ flags (`--format json`, `--non-interactive`, `--yes`, `--proxy`, ...) apply to e
 this page is the recipe for one specific loop: enter Play mode, confirm the game is actually
 running (not frozen), look at it, read its console, and tune it, all without leaving the CLI.
 
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+## Contents
+
+- Why this loop, and not `editor.playmode start` + a screenshot
+- The recipe
+- Summary: the ordered commands
+
 ## Why this loop, and not `editor.playmode start` + a screenshot
 
 A screenshot renders on demand: it can capture the last frame a frozen Game view drew and look
@@ -16,14 +24,14 @@ actually proves frames are advancing before you trust anything else you observe.
 
 **Command names, parameters, and defaults below are the connected Editor's, not the CLI's own**:
 they come from the project's `com.unity.pipeline` package and can change between package versions.
-Confirm the exact set for your project with `unity command` / `unity list` before relying on any of
+Confirm the exact set for your project with `unity command` before relying on any of
 this, the same caution [integration-advanced.md](integration-advanced.md#available-in-production--the-common-live-commands)
 already gives for `script eval`.
 
 **Put pipeline-specific flags after a `--` fence.** `unity command` recognizes a small set of its
 own flags (`--project-path`, `--runtime`, `--runtime-path`, `--timeout`, `--detach`,
 `--result-only`, plus the global flags) anywhere in the tail, not just at the start, so a
-same-named Editor parameter (`script eval`'s own `timeout`, in **milliseconds**) is swallowed by the CLI's
+same-named Editor parameter (`script eval`'s own `timeout`, in **milliseconds**, or `job wait`'s, in seconds) is swallowed by the CLI's
 `--timeout` (**seconds**) unless it comes after `--`. Every multi-flag example below uses the
 fence; a single positional argument (like a bare `script eval` call at its default timeout) does not need
 one.
@@ -60,8 +68,10 @@ tick at a throttled rate even while unfocused:
 unity command editor set_auto_tick  # enable=true, interval_ms=16 (~60 Hz), persist=true by default
 ```
 
-Call it once per Editor session, before `editor.playmode start`. `persist=true` (the default) survives a
-domain reload, so you do not need to call it again after a recompile in the same session; pass
+Call it before every `editor.playmode start` you drive, not once per Editor session: step 8 turns it off
+when you are done, so a second request in the same Editor session must turn it on again or the game freezes
+at frame 1. `persist=true` (the default) survives a domain reload, so you do not need to call it again after
+a recompile within one Play Mode request; pass
 `-- --persist false` for a one-off setting that should revert after the next unrelated recompile
 instead of sticking for the rest of the session.
 
@@ -120,7 +130,7 @@ unity command job wait -- \
   --timeout 10
 ```
 
-`op: changed` needs no `value`: it is met the first time the member differs from the value observed
+`op` is `equals` (the default), `notEquals`, `greaterThan`, `lessThan`, `contains` or `changed`, spelled in camelCase exactly like that (`not_equals` is an unknown op). `op: changed` needs no `value`: it is met the first time the member differs from the value observed
 when the wait was armed. A `met: true` result with `framesObserved` > 0 is your proof; `timedOut:
 true` with the frame count unmoved is the frozen-at-frame-1 symptom this whole step exists to
 catch. On a session you started, step 2 (`editor set_auto_tick` and `runInBackground`) is the fix to check
@@ -130,7 +140,7 @@ A package that has `editor.playmode set_run_in_background` also reports the play
 `unity status --format json` while in Play mode: `frameCount` and `playerLoopTicking` on the
 instance row. `playerLoopTicking: false` outside a pause is the same frozen symptom, and it costs
 one read instead of a wait. Keep the `job wait` above as the proof; the status fields are a quick
-first check, and an older package omits them. `timeout_s` defaults to 30 if omitted;
+first check, and an older package omits them. `timeout` (`timeout_s` on `com.unity.pipeline` 0.8.x) defaults to 30 if omitted;
 10 seconds above is a shortened budget, since a ticking Editor should advance the frame count within
 a couple of frames of the wait being armed.
 
@@ -141,7 +151,7 @@ true` and poll the result instead of blocking on it:
 
 ```bash
 unity command job wait -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' \
-  --timeout_s 120 --async true          # returns { "waitId": "..." } immediately
+  --timeout 120 --async true          # returns { "waitId": "..." } immediately
 unity command job wait_status -- --wait_id <waitId>
 ```
 
@@ -175,7 +185,7 @@ Each `Step()` advances one frame. Drive it from the host, one call per frame, be
 unity command capture game_view -- --source screen --save_path Screenshots/playtest.png
 ```
 
-Pass `save_path` and the result is a file path, not an inline base64 image, which keeps an agent's
+The flag here is `--save_path`, not the `--output` that `capture screenshot` takes. Pass `save_path` and the result is a file path, not an inline base64 image, which keeps an agent's
 tool result small. The path is **project-relative** (the package's own docs give
 `Screenshots/foo.png` as the example); nothing in the package documentation states a restriction to
 paths under `Assets/`, so do not assume one. When you do need the image inline instead of, or as
@@ -259,7 +269,7 @@ unity command editor set_auto_tick
 unity command editor.playmode set_run_in_background
 unity command editor.playmode start
 unity status --until-ready --project-path <path> --format json
-unity command job wait -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' --timeout_s 10
+unity command job wait -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' --timeout 10
 unity command capture game_view -- --source screen --save_path Screenshots/playtest.png   # --source camera when the machine may be locked
 unity command console get -- --tail 50 --level error
 unity command script eval "<C# to inspect or tune the running game>"

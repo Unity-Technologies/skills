@@ -9,187 +9,225 @@ allowed-tools:
 
 # New Unity Project
 
-A guided flow from an idea to a running, version-controlled Unity project. This skill owns the
-**flow** — the questions, their ordering, running slow installs in the background while you ask,
-and the handoffs. It deliberately does **not** re-document commands; it delegates the mechanics
-to other skills.
+A flow from an idea to a running, version-controlled Unity project. This skill owns the **flow** —
+mode, defaults, ordering, background installs, handoffs.
 
 **Delegates to (read these for the actual commands — don't reinvent them):**
-- **`unity-cli`** — CLI install, auth/license, Editor install, project creation, source control,
-  opening the project. Its "Bootstrap a new project from scratch" workflow is the backbone here.
-- **`unity-package-management`** — installing packages with the Pipeline `package` commands (C# script as the fallback), and
-  choosing packages by genre / platform / monetization.
-- **`urp-postprocessing`**, **`ui`**, **`2d-pixel-perfect`** — the visual baseline (Step 6):
-  post-processing volume setup, HUD framework choice, pixel-perfect 2D.
+- **`unity-cli`** — install, auth/license, Editor install, creation, source control, open. Its
+  "Bootstrap a new project from scratch" workflow is the backbone here.
+- **`unity-package-management`** — packages with the Pipeline `package` commands (C# script fallback).
+- **`urp-postprocessing`**, **`ui`**, **`2d-pixel-perfect`** — visual-baseline mechanics (Step 7).
+- **`craft-game-floors`** — the craft floors (look, feel, audio, shell, live floor, the done gate),
+  loaded at Step 6 and carried through the build.
 - **`implement-in-app-purchases`**, **`levelplay-unity-integration`**, **`build-live-game`** —
   monetization / backend *integration* (invoked at the end).
 
-**Work one step at a time.** Ask only the current step's questions and wait for the user before
-moving on — platform and monetization answers change what you install, so don't gather everything
-up front or scaffold before they're settled.
+## Mode: paved by default, guided on request
+
+Run **paved** unless the user asks for the interview — in words ("ask me questions", "guide me")
+or by pushing back on the manifest; mode is decided once per session. The paved contract:
+**parse the prompt first** · **fill gaps from the Defaults table** · **print the manifest** before
+the create launches · **proceed**, asking only on pushback or an unruled fork ·
+**never consume a human gate** — sign-in and publishing always ask. A **bare/minimal** ask gets
+`--bare`, skips the floors, and states the cost (identity, saves, ranks unwired).
+
+In **guided** mode, ask only the current step's questions and wait. The paved additions (identity,
+floors, baton) are asked at their steps there, never assumed.
+
+## The Defaults table
+
+Every row reverses on a word; change a row only with a run-earned receipt.
+
+| Decision | Paved opinion |
+|---|---|
+| Editor version | `--editor-version latest`, explicit |
+| Template | URP; 3D unless the prompt says 2D (`--template 3d` or `2d`) |
+| Platforms | Desktop only; add modules when the prompt implies them ("mobile game" → ios/android) |
+| Monetization | None at creation; noted for later |
+| Version control | Local git + Unity .gitignore |
+| Player identity | Anonymous accounts — create's when its result shows them, else wired in Step 6 |
+| Craft floors | Always on, via the `craft-game-floors` skill: look, camera, lighting, feedback, audio, shell, live floor, done gate |
+
+Cloud link and diagnostics are **not** a row: create applies its own defaults — narrate them from
+the result, don't re-decide.
+
+## The assumptions manifest
+
+Print exactly one block at the end of Step 2, before the create launches. It **predicts** what
+create will do (the URP template per `--template 3d|2d`, never a guessed id):
+
+> **Paved assumptions:** Unity <editor> · <URP template, 2D/3D> · <platforms> · <monetization> ·
+> anonymous player accounts (create's, else one bootstrap script) · <version control> ·
+> cloud-linked with diagnostics (create's defaults, narrated from the result) · floor packages
+> (Cinemachine; identity + live services when cloud-linked) · craft floors on via `craft-game-floors` ·
+> a one-line handoff note appended to the project's CLAUDE.md.
+> Say the word to change any of these; otherwise I'm proceeding.
+
+One block, every assumption present, each reversible, nothing implied; Step 3 reconciles the
+result against it.
 
 ## Before Step 1: check the delegated skills are loaded
 
-Look for `unity-cli`, `unity-package-management`, `urp-postprocessing` and `ui` in the skills your client lists. The first two carry the commands this flow delegates. Step 6 marks the last two as required. A client that got only this skill won't have the others.
-
-If any is missing, tell the user which one and what it does for them. Offer to install the Unity skills before you start, and don't install without a yes, because it changes their agent setup:
-
-- **Claude Code, with none of the four installed:** `unity setup claude --format json` installs the Unity plugin, which carries all of them. It would duplicate any you already have. An older CLI doesn't know `unity setup`, so use the next route then. A fresh install loads in the next session, or after `/reload-plugins`. Until then, read the skills from the `skillsPath` it reports.
-- **Any other case, including a partial set:** ask the user to run `npx skills add Unity-Technologies/skills -g` in their own terminal, which needs Node.js. They pick only the missing skills and their client at its prompts. Don't run it yourself, since its prompts choose where the skills land. If the client reads a skills folder that command doesn't write to, tell the user to copy each missing skill's folder from github.com/Unity-Technologies/skills (under `skills`) into it.
-
-A newly installed skill may not load until the client restarts. If it still isn't listed, ask where the installer put it and read its `SKILL.md` from there.
-
-Don't stall on the two required skills. If the user would rather go on without them, carry on with Step 6's own guidance for that item. Name the missing skill in your final report, so they know the deeper guidance was skipped. The other two carry commands you shouldn't improvise. `unity skill show` prints `unity-cli` without installing it. Without `unity-package-management`, Step 5 can't run, so say so now, before Step 2 starts an Editor install, and let the user decide.
+Look for `unity-cli`, `unity-package-management`, `urp-postprocessing`, `ui`, `build-live-game`
+and `craft-game-floors` in your client's skills. If any is missing, say which and what it does, and offer the install routes
+in [references/skill-setup.md](references/skill-setup.md) — never install without a yes. Don't
+stall: a decline gets the fallback at its step, gap named in the report. `unity skill show` prints
+`unity-cli` without installing; without `unity-package-management`, Step 5 can't run — say so
+before Step 2.
 
 ## The flow — and where the parallelism is
 
-1. **Concept** — what they're building.
-2. **Platforms & monetization** — then, as soon as platforms are known, **kick off the Editor
-   install in the background** (it takes minutes) and keep talking.
-3. **(joins)** Editor + platform modules finish installing.
-4. **Project + source control** — create from a **URP** template matching 2D/3D; init git.
-5. **Packages** — install with the `package add` command once the Editor is open, else the C# script.
-6. **Visual baseline** — post-processing, camera, quality tier, UI stack, pipeline-correct
-   shaders, so the first frame doesn't look like an untouched template.
-7. **Save & first commit.**
-8. **Hand off** monetization / backend.
+1. **Concept** (paved: parsed from the prompt). 2. **Platforms & monetization** — print the
+manifest (paved), then **start the create in the background**: `projects create --install-editor`
+installs the Editor + modules (minutes), then creates the project; keep talking meanwhile.
+3. **(joins)** reconcile the result against the manifest. 4. **Source control.** 5. **Packages.**
+6. **Player identity, then the craft floors** — confirm create's identity or wire it; load
+`craft-game-floors`. 7. **Visual baseline** on the craft skill's art bible. 8. **Save & first commit.**
+9. **Hand off** + the forward baton.
 
-The whole point of a guided flow over a raw recipe: the multi-minute Editor install overlaps the
-minutes the user spends answering concept questions, so setup feels instant.
+The multi-minute Editor install overlaps the user's answers, so setup feels instant.
 
 ## Step 1 — Concept
 
-Ask with your client's multiple-choice question tool if it has one (`AskUserQuestion` in Claude
-Code, `ask_user` in Copilot CLI, `askQuestions` in VS Code), so the user can pick fast, but let
-them answer freely too. Without one, ask in plain text. Cover:
+**Paved:** the prompt is the spec — parse genre, dimension (2D/3D), look, scope, and name into a
+2–4 line brief; fill gaps from the Defaults table; no read-back.
 
-- **Genre / core loop** — platformer, top-down shooter, puzzle, idle, RPG, racing, card, tower
-  defense, sim, hyper-casual, first-person, etc.
-- **Dimension & look** — 2D or 3D; art style (pixel, low-poly, stylized, realistic, UI-only).
-- **Gameplay** — the one-sentence "what the player does moment to moment."
-- **Scope** — single-screen prototype vs. multi-scene game; single-player or multiplayer.
-
-Also settle on a **project name**. Write a 2–4 line **project brief**, read it back to confirm.
-The brief drives template choice (Step 4), packages (Step 5) and the visual baseline (Step 6):
-note the palette / mood words the user gives, and whether the look is pixel art.
+**Guided:** ask with your client's multiple-choice tool (`AskUserQuestion` in Claude Code,
+`ask_user` in Copilot CLI, `askQuestions` in VS Code); without one, plain text.
+Cover **genre / core loop** · **dimension & look** (2D or 3D; pixel, low-poly, stylized,
+realistic) · **gameplay** (the one-sentence "what the player does moment to moment") · **scope**
+(prototype vs. multi-scene; single- or multiplayer). Settle a **project name**, write the brief,
+read it back. The brief drives the template (Step 2), packages (Step 5) and the baseline (Step 7):
+note the palette / mood words and pixel-art looks.
 
 ## Step 2 — Platforms & monetization, then start installing
 
-Two decisions, because both change what you install:
+Two decisions (paved: filled from the Defaults table, then **print the manifest**):
 
-- **Target platforms** (multi-select): Desktop (Win/macOS/Linux), Mobile (iOS/Android), WebGL,
-  Console. These map to Editor **modules** (Step 3) and argue for leaner packages on mobile/WebGL.
-- **Monetization**: none / premium / in-app purchases / ads / mix. This only decides which
-  handoff skill you invoke in Step 8 — don't integrate it now.
+- **Target platforms**: Desktop, Mobile (iOS/Android), WebGL, Console — they map to Editor
+  **modules** (`--module`) and argue for leaner packages on mobile/WebGL.
+- **Monetization**: none / premium / IAP / ads / mix — this only decides the Step 9 handoff.
 
-Confirm the Editor version to use (**default: latest LTS** — see `unity-cli` for the LTS vs. Tech
-vs. beta trade-off). Ask this *now*, before kicking off the install, so you don't install the
-wrong one.
+Default to an explicit `--editor-version latest` unless the user names a version — without the
+flag, create prefers a stored default or an older installed Editor.
 
-Then confirm prerequisites and **launch the Editor install as a background task** so it runs while
-you continue. See the `unity-cli` skill for exact syntax, module names per platform, and auth /
-license setup:
+Confirm prerequisites, then **start the create as a background task** (`unity-cli` has module
+names and auth / license setup):
 
 ```bash
 unity --version
 unity auth status --format json      # if signed out:  unity auth login
 unity license status --format json   # if none active: unity license activate
 
-# Start in the BACKGROUND, then go straight back to the conversation. Module names per platform
-# (android / ios / webgl / …) are in the unity-cli skill.
-unity install lts --module <platform-modules> --yes --accept-eula
+# Start in the BACKGROUND. Module names per platform are in the unity-cli skill.
+# --bare only on the user's ask (see Mode).
+unity projects create "<Name>" --path <dir> --editor-version latest \
+  --template <3d|2d> --install-editor --module <platform-modules> --accept-eula --format json
 ```
 
-Run that install as a **background task** (don't block on it). If you have nothing left to ask,
-it's fine to just wait — the parallelism only helps when there's a conversation to overlap.
+The command waits for the install, then creates the project, so its one result covers both. If you
+have nothing left to ask, it's fine to just wait.
 
-## Step 3 — Join: Editor ready
+**Template:** `--template 3d` / `2d` resolve to the version's URP templates
+(`com.unity.template.urp-blank`, `com.unity.template.universal-2d`), the default for every game.
+Built-in templates (`com.unity.template.3d`/`.2d` as full ids) are deprecated from 6.5, removed in
+6.7 — pass one only when the user explicitly asks for Built-in.
 
-Before creating the project, confirm the background install finished:
+## Step 3 — Join: project ready, result reconciled
 
-```bash
-unity editors --installed --format json
-```
+Wait for the background create and read its JSON result: `data.path` is the project,
+`data.version` the Editor, `data.editorInstalled` whether this run installed it.
 
-If it failed, surface the error (see `unity-cli` troubleshooting) and stop — nothing downstream
-works without an Editor.
+**Paved: reconcile the result against the manifest**, narrating divergence — the cloud-link
+soft-fail included (`cloudLinked: false`, warnings, project intact; Step 6 keys off it). A 403 on
+the link is often the saved default org refusing new projects — retry
+`unity projects link cloud <path> --cloud-org <an org the user owns>` before concluding
+no-identity. A result carrying a `steps` field reconciles step-by-step from it.
 
-## Step 4 — Create the project + source control
+`--module` only applies when the run installs the Editor: on `data.editorInstalled: false`, add
+the platform modules with `unity install-modules -e <version> -m <platform-modules> --accept-eula`
+(skips what's already there). If create failed, surface the error (`unity-cli` troubleshooting)
+and stop — a failed install creates no project, and nothing downstream works without an Editor.
 
-Follow the **`unity-cli`** "Bootstrap a new project from scratch" workflow verbatim:
+## Step 4 — Source control
 
-- List the **real** template ids the Editor offers (`unity templates list --type core`) and pick by
-  **render pipeline**, not just 2D/3D — don't guess ids. **Default to URP:**
-  `com.unity.template.urp-blank` ("Universal 3D") for 3D, `com.unity.template.universal-2d`
-  ("Universal 2D") for 2D. `com.unity.template.3d` / `com.unity.template.2d` are the **Built-in
-  Render Pipeline** templates — deprecated from Unity 6.5, removed in 6.7 — so choose them only
-  when the user explicitly asks for Built-in. Confirm the pick against the JSON `renderPipeline`
-  field (blank for universal-2d on current releases, so match that one by id).
-- Create with `unity projects create "<Name>" --path <dir> --editor-version <v> --template <id>`.
-- Set up source control — **ask the user which they want**, don't assume: Git (GitHub / GitLab;
-  add `--git-lfs` for asset-heavy games) or **Unity Version Control** (`--vcs uvcs`, which handles
-  large binary assets natively — no LFS), or a purely local `git init` + Unity `.gitignore`.
-  Publish in one step with `unity projects create --vcs … --git-token-from-stdin --no-initial-commit`
-  (tokens on stdin). Pass **`--no-initial-commit`** so the CLI doesn't commit the bare project
-  before packages and `.meta` files exist — you make the real first commit/check-in in Step 7.
-  See the `unity-cli` workflow for exact flags.
+**Paved:** local git + Unity `.gitignore`. **Guided:** ask — Git (GitHub / GitLab; `--git-lfs` for
+asset-heavy games), **Unity Version Control** (`--vcs uvcs` — large binaries natively, no LFS), or
+purely local. Attach with `unity projects link vcs "<project-path>" --vcs …
+--git-token-from-stdin --no-initial-commit` (tokens on stdin) — **`--no-initial-commit`** keeps
+the CLI from committing the bare project before packages and `.meta` files exist; the real first
+commit is Step 8. Exact flags: the `unity-cli` workflow.
 
 ## Step 5 — Packages
 
-Map the brief to a concrete package list and install it via the **`unity-package-management`**
-skill (**never** hand-edit `manifest.json`). Once the Editor is open and ready with `com.unity.pipeline`
-(Step 6 installs it), use that skill's `package add` command. Step 6 opens the Editor, so when
-the packages must land before the first open, use the skill's C# installer script instead (its
-`-quit` gotcha applies). Read that skill for the genre/platform/monetization → package mapping.
-The template already provides the render pipeline — never add `com.unity.render-pipelines.universal`
-to a Built-in template project (nothing assigns a URP asset; materials go pink) or vice versa.
-Read the final list back to the user before installing; verify `manifest.json` afterward.
+Map the brief to a package list and install via **`unity-package-management`** (**never**
+hand-edit `manifest.json`): `package add` once the Editor is open with `com.unity.pipeline`
+(Step 7); its C# installer script when packages must land pre-open (the `-quit` gotcha applies).
+That skill has the genre/platform/monetization → package mapping. Paved
+adds the floors' needs: Cinemachine for any gameplay camera (2D rigs included);
+`com.unity.services.authentication` when Step 6 wires identity; and the live floor's services set
+(cloud save, leaderboards, remote config) on cloud-linked projects — in this pass, not at shell time. The template already provides the
+render pipeline — never add `com.unity.render-pipelines.universal` on a Built-in template
+(materials go pink) or vice versa. Read the list back before installing (paved: print it now);
+verify `manifest.json` after.
 
-## Step 6 — Visual baseline
+## Step 6 — Player identity, then the craft floors
 
-A fresh template renders correctly but looks like a default: no tonemapping, untouched quality
-tier, flat colors. Left there, agents reach for `OnGUI` and guess shader names, which is where
-washed-out or magenta materials come from. Apply this floor **before** any gameplay work.
+**Identity — the create result is the switch** (a `--bare` run skips this whole step: bare
+projects still cloud-link unless `--no-cloud`, and the unwired cost was stated at Mode time):
+identity addressed in the result → confirm it in the reconciliation and **skip**, never wire auth
+twice. No identity and the project cloud-linked →
+wire it: services init plus anonymous sign-in kicked off at bootstrap in **one small bootstrap
+script**, never blocked on (mechanics: **`build-live-game`**, auth section — checked in Before
+Step 1; missing and declined → skip the wiring, gap named); each service dependency is a named
+plan line, declining removes only that line. Cloud link failed or skipped →
+skip with the cost stated (saves and ranks stay local) — never wire services init against a
+project with no cloud id. Invisible to players, upgradeable later — the root the live floor
+builds on.
+
+**A `--bare` run skips the floors too** (the Mode section's stated cost). Otherwise **load the
+`craft-game-floors` skill** (checked in Before Step 1) and follow its floors through the
+build — art bible first, then camera, lighting, feedback, audio, shell, live floor, its done gate.
+Its values supersede the inline fallbacks below whenever present, version skew included. Missing
+and declined → fallbacks, gap named in the report.
+
+## Step 7 — Visual baseline
+
+A fresh template renders correctly but looks like a default; left there, agents reach for `OnGUI`
+and guess shader names. Apply this floor **before** any gameplay work.
 
 **First, `unity pipeline install --project-path "<project-path>"`, before opening the
-Editor.** Running C# in the Editor, and `unity command capture screenshot` below, both need the
-project's `com.unity.pipeline` package. A CLI that predates create adding it by default leaves the project without it (a newer one already added it, and this install then changes nothing), and Step 5
-does not add it: that step installs packages by launching the Editor binary with
-`-batchmode -executeMethod`, which never touches the package. Installing before the open is the
-supported order — the install updates `Packages/manifest.json`, which Unity reads at project
-load. Run it against an already-open project and either the write fails with
-`PIPELINE_MANIFEST_WRITE_FAILED` (ask the user to close the Editor and re-run), or it succeeds
-but the open Editor doesn't load the package until its window regains focus. In the second
-case `unity status` reports `STATUS_PIPELINE_LOAD_PENDING`; ask the user to switch to the
-Editor window. Without the
-package, everything below fails to connect, which looks like the Safe Mode failure `unity-cli`
-describes but has a different cause.
+Editor.** Running C# in the Editor and `unity command capture screenshot` below both need the
+project's `com.unity.pipeline` package. Create adds it by default on newer CLIs (this install then
+changes nothing); older CLIs leave the project without it, and Step 5's `-batchmode` installer
+never touches it. Install-before-open is the supported order; without the package, everything below fails to
+connect (it mimics `unity-cli`'s Safe Mode failure). The failure codes
+(`PIPELINE_MANIFEST_WRITE_FAILED`, a stuck `STATUS_PIPELINE_LOAD_PENDING`) and the stuck-Editor
+recovery are tabled in [references/skill-setup.md](references/skill-setup.md).
 
-**Then** `unity open "<project-path>"` (also what Step 7 needs), wait until `unity status`
-reports the Editor ready, and apply each item below by running C# in it. **`unity-cli` owns
-those commands and their syntax** — don't re-derive them here.
+**Then** `unity open "<project-path>"`, wait until `unity status` reports the Editor ready, and
+apply each item below by running C# in it — **`unity-cli` owns those commands**; don't re-derive
+them here.
 
-Once the Editor is ready, look for `unity-pipeline` in your skills. It is the Pipeline package's own guide, and no client loads it from the package folder. If it is missing, read its `SKILL.md` now. It sits under `.claude/skills/unity-pipeline/` in the package: `Packages/com.unity.pipeline/` if the project embeds the package, otherwise the `Library/PackageCache/com.unity.pipeline@*` folder. List `Library/PackageCache` for the exact name, since the suffix is often a hash, not the version.
+Once the Editor is ready, read the `unity-pipeline` guide if your skills don't list it —
+locations and mirroring routes: [references/skill-setup.md](references/skill-setup.md).
 
-To have your client load it in later sessions, `unity skill install <client> --local` can mirror it, but only for a client with a project scope (`unity skill install --list` shows which, and Claude Desktop has none). It also writes a project copy of `unity-cli` beside it. The `unity-cli` skill suggests running it once, but here, wait until the user asks, and run it from the project folder after the open. In Claude Code with the Unity plugin installed it stops short, because the plugin already carries `unity-cli`. There, with the user's yes, copy the `unity-pipeline` folder into the project's `.claude/skills/` instead. Where no mirror is possible, read the package copy again in each session.
+**Items 1, 2, 5 and 6 assume a URP template**, the Step 2 default. If the user explicitly chose
+Built-in, don't run them as written — `UniversalAdditionalCameraData`, `Light2D`, the
+`urp-postprocessing` volume framework and `Universal Render Pipeline/*` shaders don't exist there;
+post-processing means the legacy Post Processing Stack, the shader names are `Standard` /
+`Unlit/Color`, and items 3–4 apply as written. Don't reach for `migrate-birp-to-urp` — the user
+asked for Built-in.
 
-**Items 1, 2, 5 and 6 assume a URP template**, which is the Step 4 default. If the user
-explicitly chose Built-in, don't run them as written: `UniversalAdditionalCameraData`, `Light2D`,
-the `urp-postprocessing` volume framework and every `Universal Render Pipeline/*` shader are URP
-types that do not exist there, so the generated C# won't compile. On Built-in, items 3 and 4
-still apply as written, post-processing means the legacy Post Processing Stack, and the shader
-names are `Standard` / `Unlit/Color`. Don't reach for `migrate-birp-to-urp` — the user asked for
-Built-in.
-
-1. **Post-processing.** Global Volume with Tonemapping (ACES), low Bloom (intensity 0.5–1,
-   threshold 0.9) and a subtle Vignette (≈ 0.25); set `renderPostProcessing = true` on the main
-   camera's `UniversalAdditionalCameraData`. **REQUIRED SUB-SKILL:** `urp-postprocessing` — its
-   code templates create the volume and check HDR and the Volume layer mask. If it isn't loaded,
-   build the volume from these values and check HDR and the layer mask yourself.
-2. **Camera and light.** 2D → orthographic, solid background color from the brief's palette, and
-   a `Light2D` of type Global in the scene if the template scene has none (the Sprite-Lit shaders
-   render black without one). 3D → perspective; keep the template's directional light and skybox,
-   main-light shadows on.
+1. **Post-processing.** Global Volume — `craft-game-floors`'s scene-lighting values when loaded (they
+   supersede these); fallback: Tonemapping (ACES), Bloom intensity 0.5–1 @ threshold 0.9, Vignette
+   ≈ 0.25; set `renderPostProcessing = true` on the main camera's `UniversalAdditionalCameraData`.
+   **REQUIRED SUB-SKILL:** `urp-postprocessing` — its templates create the volume and check HDR and
+   the layer mask; if it isn't loaded, do both yourself from these values.
+2. **Camera and light.** 2D → orthographic, solid background from the brief's palette, a `Light2D`
+   of type Global if the template scene has none (Sprite-Lit shaders render black without one).
+   3D → perspective, main-light shadows on; `craft-game-floors`'s lighting pass replaces the template's
+   default light story when loaded, else keep the template's directional light and skybox.
 3. **Quality tier.** Read `QualitySettings.names` first — tier names differ per template — then
    `QualitySettings.SetQualityLevel` to the one matching the primary target: the highest tier for
    desktop, the lowest for mobile/WebGL. Leave color space Linear and the Input System as the
@@ -204,11 +242,11 @@ Built-in.
    `currentRenderPipeline`, not `defaultRenderPipeline`: a quality tier can carry its own pipeline
    asset, and item 3 above just set the tier.
 6. **Pixel art only.** Point filter mode on sprites and a Pixel Perfect Camera — see
-   `2d-pixel-perfect`. If it isn't loaded, do those two yourself and put the install route from
-   "Before Step 1" in your final report.
+   `2d-pixel-perfect`. If missing, do both yourself and note the skill-setup install route in the
+   report.
 
-Save the scene, then confirm both of these. **Not with `unity logs`** — that reads the CLI's own
-log, never the Editor's, so it reports clean whatever the scene looks like:
+Save the scene, then confirm both of these — **not with `unity logs`**, which reads the CLI's own
+log and reports clean whatever the scene looks like:
 
 - No render-pipeline or shader errors Editor-side. Read the Editor console through `unity-cli`,
   or read `Editor.log` directly — that skill's "Recovering from Safe Mode" section has the
@@ -216,15 +254,11 @@ log, never the Editor's, so it reports clean whatever the scene looks like:
 - `unity command capture screenshot --output baseline.png` looks lit and tonemapped rather than flat
   gray.
 
-## Step 7 — Save & first commit
+## Step 8 — Save & first commit
 
-The project is already open from Step 6, so `.meta` files exist. Make the first commit **with
-whichever VCS you set up in Step 4**:
-
-```bash
-unity open "<project-path>"     # only if not already open; for headless/CI use the
-                                # "Import & save headlessly" method in unity-package-management
-```
+The project is already open from Step 7, so `.meta` files exist (`unity open "<project-path>"`
+only if not — headless/CI uses the "Import & save headlessly" method in
+`unity-package-management`). Commit **with whichever VCS you set up in Step 4**:
 
 - **Git (GitHub / GitLab / local):**
   ```bash
@@ -233,66 +267,73 @@ unity open "<project-path>"     # only if not already open; for headless/CI use 
   git status                    # Library/ Temp/ obj/ Build/ must NOT be staged
   git commit -m "Initial Unity project: <Name>"
   ```
-  Every `.cs`/asset must be committed together with its `.meta`.
-- **Unity Version Control (UVCS):** check in through your UVCS client/workspace (created during
-  Step 4) — there's no `git` step. Generated folders are still excluded by the ignore rules.
+  Every `.cs`/asset is committed together with its `.meta`.
+- **Unity Version Control (UVCS):** check in through the workspace from Step 4 — no `git` step;
+  generated folders stay excluded by the ignore rules.
 
-Before either commit, if Step 6 mirrored skills into the project (`.claude/skills/` for Claude
-Code), ask the user whether to include them or leave them out.
+If Step 7 mirrored skills into the project, ask whether to include them. If Step 4 linked
+**without** `--no-initial-commit`, the CLI already committed the bare project — add a follow-up
+commit rather than double-committing.
 
-If you published via `--vcs` in Step 4 **without** `--no-initial-commit`, the CLI already made an
-initial commit of the bare project — add a follow-up commit here rather than double-committing.
-
-## Step 8 — Hand off
+## Step 9 — Hand off
 
 Based on Step 2 monetization, invoke the matching skill for the actual integration:
 - IAP → **implement-in-app-purchases**
 - Ads → **levelplay-unity-integration**
 - Accounts / cloud save / economy / remote config / leaderboards → **build-live-game**
 
-If the matching skill isn't loaded, put the install route from "Before Step 1" in the next
-steps rather than integrating from memory.
+If the matching skill isn't loaded, point the next steps at the skill-setup install route rather
+than integrating from memory.
 
-Report the project path, Editor version, render pipeline and template, installed packages, the
-visual baseline applied, any skill that was missing, and next steps.
+**Write the forward baton** (declared on the manifest): one idempotent line appended to the
+project's `CLAUDE.md` or `AGENTS.md` — "When building gameplay, feel, audio, shell, or live
+features, load the `craft-game-floors` skill; if it isn't installed, ask the user whether to run
+`unity skill install <client>` (ask: never run it without a yes)." Commit the note —
+appended after Step 8, it otherwise never reaches clones. Later sessions reach the floors through
+it without this skill re-triggering.
+
+Report the project path, Editor version, pipeline and template, packages, the manifest with its
+reconciliation, identity state, the baseline applied, any missing skill, `craft-game-floors`'s done gate
+as the build's finish line, and next steps.
 
 ## Scope — what this skill does NOT do
 
-- **No gameplay scaffolding.** It gets you to a running, wired project with a visual floor;
-  building the actual game (scenes, controllers, art) is the next conversation — iterate there
-  with the Editor via the `unity-cli` MCP server and the Package Manager. Generic genre skeletons
-  tend to produce throwaway mocked primitives, so this skill intentionally stops at a clean
-  starting point. The visual baseline (Step 6) is settings, not content.
+- **No gameplay scaffolding.** A running, wired project with a visual floor; the game is the next
+  conversation (with `craft-game-floors`). One exception: Step 6's single bootstrap script.
 - **No command reference.** Syntax lives in `unity-cli` / `unity-package-management`.
+- **No re-deciding create's defaults** — narrate them from the result. The Defaults table is this
+  file's only opinions; the guided interview survives untouched.
 
 ## Checklist
 
-- [ ] Delegated skills checked before Step 1 (`unity-cli`, `unity-package-management`,
-      `urp-postprocessing`, `ui`): a missing one offered for install, or named in the final report
-- [ ] Concept brief captured and confirmed (genre, look, gameplay, scope, name)
-- [ ] Platforms + monetization recorded; Editor version chosen
-- [ ] Editor + platform modules installed (started in the background during Step 2)
-- [ ] Project created from a **URP** template (`urp-blank` / `universal-2d`) unless Built-in was
-      explicitly requested; git initialized with a Unity `.gitignore`
-- [ ] Packages installed with `package add` (or the skill's C# script before the first open); `manifest.json` verified; no render-pipeline package added on top of the template
-- [ ] `unity-pipeline` read from the package folder once the Editor was ready, or mirrored into
-      the project with the user's yes
-- [ ] Visual baseline applied: global Volume (tonemapping, bloom, vignette) + camera post-processing on,
-      quality tier set for the target, UI stack chosen (no `OnGUI`), URP shader names, screenshot checked
-- [ ] Project opened/saved so `.meta` files exist; first commit made; `Library/` excluded
-- [ ] Handed off to the monetization/backend skill if applicable
+- [ ] Delegated skills checked before Step 1 (incl. `craft-game-floors`): a missing one offered, or named
+      in the report
+- [ ] Mode decided once; in paved, the manifest printed before the create launches
+- [ ] Brief captured; platforms + monetization recorded
+- [ ] Background create with `--install-editor` + modules, URP template (`--template 3d`/`2d`)
+      unless Built-in was requested; `--bare` only on the user's ask; result reconciled
+- [ ] Source control attached (Step 4), or local git + Unity `.gitignore`
+- [ ] Packages via `package add` (or the C# script pre-open); `manifest.json` verified; no
+      render-pipeline package atop the template
+- [ ] Identity confirmed from the result or wired in Step 6 (stated cost on a failed link)
+- [ ] `craft-game-floors` loaded (or its absence named); `unity-pipeline` read once the Editor was ready
+- [ ] Baseline applied: Volume + camera post on, quality tier, UI stack (no `OnGUI`), URP shaders,
+      capture checked
+- [ ] `.meta` files exist; first commit made; `Library/` excluded
+- [ ] Forward baton appended; handoff done if applicable
 
 ## Common mistakes
 
-- **Blocking on the Editor install** instead of backgrounding it while you ask questions.
-- **Installing the wrong Editor** because the version wasn't confirmed before the background install.
-- **Gathering all questions up front** — platform/monetization answers change the modules and packages.
-- **Hand-editing `manifest.json`** instead of using the package commands or the skill's script (see `unity-package-management`).
+- **Blocking on the create** instead of backgrounding it: with `--install-editor` it waits for the
+  whole Editor install.
+- **Acting before the manifest prints** (paved), or burying an assumption outside it — if it isn't
+  in the manifest, it isn't assumed.
+- **Wiring auth twice** — if create's result shows identity, Step 6's wiring is a skip.
+- **Hand-editing `manifest.json`** instead of the package commands or the skill's script.
 - **Doing a required sub-skill's job from memory** when it isn't loaded, without telling the user
   or offering the install.
 - **Committing `Library/`/`Temp/`/`obj/`/`Build/`**, or scripts without their `.meta` files.
 - **Missing Editor modules** — a mobile target needs `android`/`ios`; WebGL needs `webgl`.
-- **Picking `com.unity.template.2d` / `.3d` because the name matches** — those are the Built-in
-  pipeline templates. Use `universal-2d` / `urp-blank`.
-- **Skipping the visual baseline** and shipping the template's flat defaults, then building the
-  HUD with `OnGUI` and materials with `Shader.Find("Standard")` under URP.
+- **Picking `com.unity.template.2d` / `.3d` by name** — Built-in templates; use `--template 3d`/`2d`.
+- **Skipping the visual baseline** — flat template defaults, `OnGUI` HUDs, and
+  `Shader.Find("Standard")` under URP.

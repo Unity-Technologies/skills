@@ -40,7 +40,7 @@ Determine what the user is asking for:
 - Other namespaces in the project can cause ambiguous type errors
 
 **Verify before modifying:**
-- Always check what currently exists before making changes
+- Always check what exists before making changes
 - Confirm parent objects exist before adding children
 - Verify components are present before modifying properties
 - Never assume hierarchy state — query it first

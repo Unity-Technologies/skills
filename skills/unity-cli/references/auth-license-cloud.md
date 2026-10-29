@@ -4,6 +4,12 @@ Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, 
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
+### Contents
+
+- Auth
+- License — list, activate, return
+- Cloud — Unity Cloud organizations and projects
+
 ---
 
 ### Auth
@@ -46,9 +52,8 @@ The CLI stores more than one signed-in account and keeps one of them *active*. `
 
 ```bash
 # List stored accounts; "*" marks the active one
-unity auth list
-unity auth ls              # alias
-unity auth list --format json
+unity auth accounts
+unity auth accounts --format json
 
 # Make a stored account active (by email or id) — no browser round-trip
 unity auth switch user@example.com
@@ -60,7 +65,7 @@ unity auth default
 unity auth default user@example.com
 
 # Target a project other than the current directory
-unity auth default user@example.com --project ./MyGame
+unity auth default user@example.com --project-path ./MyGame
 
 # Remove the pin; the project follows the active account again
 unity auth default --clear
@@ -72,7 +77,24 @@ Three behaviors worth knowing before scripting these:
 - **Service-account credentials outrank both.** When `UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET` are set (or a service account is signed in), they take precedence over every stored account and `auth switch` says so instead of appearing to work. Unset them, or `unity auth logout`, before switching.
 - **`auth switch` is ambiguity-aware.** Given a string matching several stored accounts it fails rather than guessing, and under `--format json` carries the candidates in `data.candidates` so a script can disambiguate. Pass the full email or the account id.
 
-`unity auth default` resolves the project from the current directory unless `--project` is given, and errors if that path isn't a Unity project. Passing both an account and `--clear` is rejected.
+`unity auth default` resolves the project from `--project-path`, then `UNITY_PROJECT_PATH`, then the current directory, and errors if that path isn't a Unity project. Passing both an account and `--clear` is rejected.
+
+#### Access tokens for scripts and other tools
+
+`unity auth token` prints an access token from the CLI's sign-in, so a script, `curl` or another Unity tool can call Unity services as the signed-in user or service account without running its own sign-in. In the text formats stdout holds the token and nothing else (`--quiet` keeps it), so capture it directly.
+
+```bash
+TOKEN=$(unity auth token)
+curl -H "Authorization: Bearer $TOKEN" ...
+
+# The token, its expiry (ISO 8601) and the auth mode, in the envelope
+unity auth token --json
+```
+
+- **OAuth sign-in:** an expired access token is refreshed before it prints. When the session can't be refreshed, nothing prints and the command exits `3` with `NOT_SIGNED_IN` or `SESSION_EXPIRED`.
+- **Service account** (`UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET`, or `unity auth login --client-id`): prints the bearer Unity's token exchange mints for those credentials. Rejected credentials exit `3` (`AUTH_TOKEN_SERVICE_ACCOUNT_REJECTED`); any other mint failure exits `6`.
+- **`--audience` and `--scope` are refused** (exit `2`, `AUTH_TOKEN_NARROWING_UNSUPPORTED`) until Unity's token service can mint a narrowed token, rather than handing out a broader one than asked for.
+- The token is short-lived: fetch it again rather than storing it. The CLI never writes it to its logs; keep it out of yours.
 
 #### Consumers — see who's used your sign-in, and mark one revoked
 
@@ -96,13 +118,15 @@ The stored token itself is sealed to the machine that wrote it (TPM-backed on Wi
 
 **Separate sign-in from Hub.** As of `0.1.0-beta.8`, the CLI and the GUI Hub store their sign-in credentials **separately** — signing in to one no longer signs you out of (or overwrites the account of) the other, so each can stay signed in as a different account. (In earlier betas they shared a single keyring session.)
 
-The two still share one account list. So an account you signed in to in the Hub shows up in `unity auth list` even though the CLI is not signed in to it, and `unity auth status` can report "not signed in" while `auth list` shows that account. To use it from the CLI, try `unity auth switch <account>` first: when that account's sign-in is readable on this machine, it becomes the CLI's active account with no browser round trip. When it has no usable sign-in, run `unity auth login` and sign in as that account in the browser; `auth switch` cannot sign an account in.
+The two still share one account list. So an account you signed in to in the Hub shows up in `unity auth accounts` even though the CLI is not signed in to it, and `unity auth status` can report "not signed in" while `auth accounts` shows that account. To use it from the CLI, try `unity auth switch <account>` first: when that account's sign-in is readable on this machine, it becomes the CLI's active account with no browser round trip. When it has no usable sign-in, run `unity auth login` and sign in as that account in the browser; `auth switch` cannot sign an account in.
 
-**Using the Hub's sign-in needs a yes.** When the CLI is signed out and the Hub is signed in, `unity auth` and `unity auth login` on a terminal ask "Use <email>, signed in to Unity Hub? (y/N)". The default is no. Yes makes that account the CLI's active account, exactly as `unity auth switch` does, and changes nothing in the Hub; no carries on as before (the browser sign-in, or the `auth` help). The CLI never takes the Hub's sign-in on its own. Runs that can't ask (`--json`, `--non-interactive`, no terminal) never prompt and never switch: `unity auth status --json` reports `adoptable: true`, the account and `adoptCommand`, and `unity auth login` prints the `unity auth switch <account>` command to run (as an `adoptable=` progress frame under `--json`). An agent should show the user that command rather than run it unasked. Once switched, signing out of the Hub doesn't sign the CLI out. If you only want the CLI in order to activate a perpetual or legacy serial license, you do not need to sign in at all: see [Headless / fleet license activation](#headless--fleet-license-activation).
+**Using the Hub's sign-in is your explicit choice.** When the CLI is signed out and the Hub is signed in, `unity auth login` shows the Hub's account and the `unity auth switch <account>` command that makes it the CLI's active account with no browser sign-in, then carries on with the browser sign-in. It asks nothing, and bare `unity auth` prints its group help. Running that `switch` command makes the Hub's account the CLI's active account, exactly as `unity auth switch` always does, and changes nothing in the Hub. The CLI never takes the Hub's sign-in on its own. `unity auth status --json` reports `adoptable: true`, the account and `adoptCommand`, and under `--json` `unity auth login` writes that `unity auth switch` command (not the account) as an `adoptable=` progress frame on stderr. An agent should show the user that command rather than run it unasked. Once switched, signing out of the Hub doesn't sign the CLI out. If you only want the CLI in order to activate a perpetual or legacy serial license, you do not need to sign in at all: see [Headless / fleet license activation](#headless--fleet-license-activation).
 
 **Service-account credentials via env vars** (`UNITY_SERVICE_ACCOUNT_ID` + `UNITY_SERVICE_ACCOUNT_SECRET`) mint bearer tokens automatically for the duration of the process — no browser round-trip, no keyring write. If only one of the two is set, the CLI prints a warning on stderr instead of silently falling back to the keyring/OAuth identity.
 
 The interactive `unity auth login` flow prints the sign-in URL to the terminal **before** attempting to launch the browser, which unblocks remote/headless sessions (SSH, containers, dev VMs) where `xdg-open` / `open` has no graphical session to attach to. With `--format json`, an `auth_url=…` progress frame is written to stderr so machine consumers can capture the URL without parsing human text, and stdout stays the result envelope alone.
+
+A login that stores a session (the browser sign-in, or a service account without `--no-store`) ends with the machine-state summary: the account, organization, license, Editors, network when unreachable, the skills to load and the next command. In the human format it prints after the success line, and `--quiet` drops it. Under `--json` and `--format ndjson`, each thing that blocks creating a project is a `notifications` entry with its `code` and fix (`ENGINE_NOT_INSTALLED` or `NETWORK_UNREACHABLE`, for example), and the array is left out when nothing blocks. `--format ndjson` ends every successful login with the same `result` frame the json envelope carries (`loggedIn`, `user` or `mode`, `clientId`, `stored`). A failed login, `--no-store` and `--help` print no summary.
 
 `unity auth status` reflects real session state (including an explicit "session expired" message), not optimistic local assumptions. `unity doctor` and `unity cloud status` report the same real session state.
 
@@ -113,7 +137,7 @@ The interactive `unity auth login` flow prints the sign-in URL to the terminal *
 ```bash
 # List the Unity licenses active on this machine
 unity license
-unity license list             # explicit form, identical output
+unity licenses             # explicit form, identical output
 unity license --format json    # machine-readable
 
 # Summary: active license(s) + sign-in state
@@ -122,6 +146,7 @@ unity license status
 # Activate a license — choose exactly one mode (default = signed-in subscription)
 unity license activate                              # signed-in user's subscription (entitlement) licenses
 unity license activate --serial SC-…                # serial-based (ULF) activation, no sign-in needed
+#   or export UNITY_LICENSE_SERIAL and run `unity license activate` bare: the serial stays off argv
 unity license activate --personal --accept-eula     # free Unity Personal license (must accept the EULA)
 unity license activate --floating                   # lease a seat from the configured floating server
 unity license activate --file ./Unity_lic.ulf       # offline activation from a .ulf / .xml file
@@ -132,11 +157,14 @@ unity license return
 unity license return --yes
 
 # Floating (network) license server
-unity license server list      # the configured floating license server(s)
+unity license servers      # the configured floating license server(s)
 unity license server status    # reachability + available seats
+unity license server health    # the server's own health report (GET /v1/status)
 ```
 
 `list` columns: product, license type (`Floating` / `Assigned` / `ULF`), organization, and expiry. `status` prints a one-glance summary — the active license(s) and whether you're signed in — and exits non-zero (`4`) when no license is active, so it works as a scriptable health check. The first licensing command downloads the Unity licensing client on demand; as of `0.1.0-beta.8`, if the client is unavailable `list` reports a clear error and exits non-zero (matching `status`), rather than printing an empty list.
+
+On a floating-only machine the licensing client holds no license until the Editor leases a seat at startup. When no license is held and the configured floating server answers as healthy, `unity license status` exits `0`, says the Editor leases a seat when it starts, and reports `floatingServerHealthy: true` (`false`, with exit `4`, when the server is not healthy). `active` stays `false`, since no seat is held yet.
 
 `unity license status` also reports `floatingServer` (the licensing server this machine is configured against) and `machineId` (the identity the licensing client reports to it) — the two values to match against a lease record when a floating seat looks stuck. Both are always present in `--format json` / `ndjson`; human and `tsv` output shows them only when a floating server is configured.
 
@@ -178,10 +206,12 @@ unity license return --yes --non-interactive
   ```powershell
   unity license status; if ($LASTEXITCODE -notin 0, 4) { exit $LASTEXITCODE }
   ```
-- **`--floating`** needs a floating license server configured on the machine first (exit `4` otherwise). `unity license server list` shows which one is configured.
+- **`--floating`** needs a floating license server configured on the machine first (exit `4` otherwise). `unity license servers` shows which one is configured.
 - **`license return`** returns serial-activated licenses as well as assigned ones. Run it before you reimage or retire a machine, or that activation keeps counting against the serial's limit. It needs `--yes` when nothing can answer a prompt. A license imported offline with `--file` cannot be returned this way: `license return` reports it as activated manually and leaves it in place.
 
-`unity license server list` shows the configured floating license server (from the `licensingServiceBaseUrl` machine setting; a pure settings read, no client download). `unity license server status` contacts that server and reports reachability plus available seats — exit `4` when no server is configured, `6` when configured but unreachable.
+`unity license servers` shows the configured floating license server (from the `licensingServiceBaseUrl` machine setting; a pure settings read, no client download). `unity license server status` contacts that server and reports reachability plus available seats — exit `4` when no server is configured, `6` when configured but unreachable. When the licensing client cannot read the seats (it can't with nobody signed in) but the server answers its `/v1/status` as healthy, `server status` still reports it reachable and exits `0`, says seat usage is not available, and adds `seatsUnavailable: true` to the JSON.
+
+`unity license server health` asks the configured server directly for its health on its anonymous `/v1/status` endpoint, through the CLI's own proxy settings; it does not need the licensing client or a sign-in. It reports the server's `status` (`Healthy`, `Degraded` or `Unhealthy`) and `version`, plus `reachable`, `healthy` and `httpStatus` in `--format json` / `ndjson`. Exit `0` when the server is Healthy or Degraded, `4` when no server is configured, and `6` when it is unreachable, Unhealthy, or answers without a status (for example a proxy error page). A non-zero run writes `success: false` and keeps the report in `data`, with `LICENSE_SERVER_NOT_CONFIGURED`, `LICENSE_SERVER_UNREACHABLE` or `LICENSE_SERVER_UNHEALTHY`.
 
 ---
 
@@ -194,7 +224,7 @@ Requires being signed in (`unity auth login`).
 unity cloud status --format json
 
 # Organizations
-unity cloud org list --format json
+unity cloud orgs --format json
 unity cloud org current                       # print the active default org (named when signed in)
 unity cloud org set-default <id-or-name>      # set active default org
 unity cloud org clear-default                 # revert to "All Organizations"
@@ -204,7 +234,8 @@ unity cloud org create "<name>" --first-name Ada --last-name Lovelace --country 
 unity cloud org create "<name>" --company-name "Nebula Games Inc." --country US --region CA --set-default
 
 # Projects in the active organization
-unity cloud project list --format json               # * marks the active default project
+unity cloud projects --format json               # * marks the active default project
+unity cloud projects --search "<text>" --limit 20 --offset 40 --format json   # one page, by name
 
 # To link a local folder to a cloud project, use `unity projects link cloud <path>` (see projects-templates.md);
 # `unity cloud project --help` and `unity projects link cloud --help` point at each other
@@ -215,7 +246,7 @@ unity cloud project set-default <id-or-name>         # project UUID, Genesis id,
 unity cloud project clear-default                     # drop this organization's default
 
 # Override the active organization for a single call
-unity cloud project list --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
+unity cloud projects --cloud-org <id-or-name>   # also via UNITY_CLOUD_ORG env var
 ```
 
 **Creating an organization takes a name and a company profile**, the same fields the Unity

@@ -4,6 +4,31 @@ Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, 
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+### Contents
+
+- Logs — application logs
+- Logs --console: the running Editor's console
+- Doctor — system diagnostics
+- CI init — scaffold a working CI workflow
+- Doctor --ci — preflight before a long pipeline step
+- Diagnose update — why this install is or is not updating
+- Diagnose proxy — proxy diagnostic report
+- Diagnose accelerator — Unity Accelerator diagnostic report
+- Environment
+- Version — machine-readable version object
+- Cache
+- Cache key — deterministic key for CI cache steps
+- Analytics — usage/telemetry consent
+- Changelog
+- Docs — version-matched Unity documentation
+- Language
+- Completion — shell tab completion
+- Bug — report a bug
+- Self-update — update the CLI itself
+- Self-uninstall — remove the CLI
+
 ---
 
 ### Logs — application logs
@@ -114,7 +139,7 @@ What it derives from the project: the editor version (rejected unless it parses 
 
 Secrets are referenced by name only. The command never reads a credential and the generated file never contains one — it expects `UNITY_SERVICE_ACCOUNT_ID`, `UNITY_SERVICE_ACCOUNT_SECRET`, and `UNITY_LICENSE_SERIAL` to exist as repository secrets, and reports which ones to add after it writes.
 
-Two things about licensing that the workflow states in comments, because they surprise people: service-account auth covers Unity *services*, not the editor licence, and `unity license activate --personal` is rejected outright for a service account. The generated step therefore activates from a serial, and ships the floating-server and offline-`.ulf` alternatives as commented blocks beside it.
+Two things about licensing that the workflow states in comments, because they surprise people: service-account auth covers Unity *services*, not the editor licence, and `unity license activate --personal` is rejected outright for a service account. The generated step therefore activates from a serial (a bare `unity license activate` with `UNITY_LICENSE_SERIAL` in the step environment, so the serial never reaches argv), and ships the floating-server and offline-`.ulf` alternatives as commented blocks beside it.
 
 The project rides `--project-path`, like `list`, `status`, `mcp configure`, `pipeline install` and `collaboration` — not a positional operand as on `build` / `test` / `cache key`. It takes a path, not a registry project name, and defaults to the current directory, so the common case is a bare `unity ci init` from the project root.
 
@@ -161,6 +186,14 @@ Exit codes distinguish the two kinds of bad news, so a workflow can retry only w
 | `7` | The preflight could not reach a verdict because a required service was unreachable. Worth a retry. |
 
 A `6` outranks a `7` when both occur, so a real blocker is never reported as retryable.
+
+On a machine licensed by a floating license server, the licensing client holds no license until the Editor leases a seat at startup. When no license is held and the configured server answers its `/v1/status` as healthy, the license row passes as `LICENSE_FLOATING` instead of failing as `LICENSE_NONE`. A runner that gets its license some other way can drop the row entirely:
+
+```bash
+unity doctor --ci --skip-license
+```
+
+`--skip-license` reports the license row as `info` (`LICENSE_SKIPPED`) and never starts the licensing client. It only has an effect with `--ci`.
 
 `--ci` also probes the configured Unity Accelerator, so a CI agent learns the cache server is down in seconds instead of discovering it as an unexplained twenty-minute import. **This check never blocks, in any arm** — an Accelerator is an accelerator, so an unreachable one is a `warn` (`ACCELERATOR_UNREACHABLE`, classified retryable) and a machine with none configured is an `info` row (`ACCELERATOR_NOT_CONFIGURED`). A project that does not use an Accelerator can never have its preflight failed by it. The probe targets the endpoint the CLI would hand to the Editor (the resolver's answer), not the project's own pinned endpoint.
 
@@ -331,7 +364,13 @@ Consent is stored in the shared Hub privacy preferences, so opting out in the CL
 
 Separately from analytics, the CLI reports **anonymous crashes and errors** via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id so crash-free-user rates can be computed; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable crash reporting entirely.
 
-Separately again, every run — including one that never sees the consent prompt (CI, an agent, a machine `--format`) — sends one anonymous `cli telemetry` usage ping, so total CLI usage can be counted regardless of the analytics opt-in state. It is not a measure of who opted in and carries no user, machine, or session identifier (a fresh random id per invocation, never persisted) and no consent state — just which Unity tool sent it, the CLI version, and whether the run looks like CI. Set `UNITY_NO_CLI_INVOKED_TELEMETRY=1` to disable it. `unity analytics status` discloses it alongside the opt-in state.
+Separately again, every run — including one that never sees the consent prompt (CI, an agent, a machine `--format`) — sends one anonymous `cli telemetry` usage ping, so total CLI usage can be counted even when nobody answered the consent prompt. It is not a measure of who opted in and carries no user, machine, or session identifier (a fresh random id per invocation, never persisted) and no consent state — just which Unity tool sent it, the CLI version, and whether the run looks like CI. Any one of these stops it:
+
+- explicitly turning analytics off (`unity analytics opt-out`, answering `n` at the prompt, or turning it off in the Hub while signed in to the Hub; a Hub opt-out made while signed out is not visible to the CLI and does not stop it);
+- `DO_NOT_TRACK` set to any value but empty, `0` or `false` ([consoledonottrack.com](https://consoledonottrack.com));
+- `UNITY_NO_CLI_INVOKED_TELEMETRY` set to any value.
+
+Never answering the prompt does not stop it. `DO_NOT_TRACK` also stops the upload of opt-in usage data, even when you opted in. Usage data never holds a command for long: on a slow or unreachable network the CLI gives up on it after half a second. `unity analytics status` reports whether the ping is on, and why it is off. None of these settings stop the licensing records `unity license activate` files.
 
 ---
 
@@ -450,7 +489,8 @@ fallback rule the Editor sections use.
 `unity docs <topic> --content` prints the page's Markdown to stdout instead of
 opening a browser, which an agent reads far better than HTML. With
 `--format json` the Markdown is wrapped with `url`, `markdownUrl`, `version`
-and `source` (`online`, or `local` for a package). It cannot be combined with
+and `source` (`online`, `cache` for a page read from the offline cache, or
+`local` for a package). It cannot be combined with
 `--url`. A topic that only resolves to a search, and `--manual`, have no page
 to print and fail. A package topic (`com.unity.*`) has no Markdown online yet:
 it prints the package's local `Documentation~` Markdown from the project's
@@ -482,6 +522,44 @@ The index is downloaded once a day, then read from a local cache. No
 connection is `NETWORK_UNREACHABLE` (exit 7); a server error is
 `DOCS_TOC_FETCH_FAILED`, and an index that can't be read is `DOCS_TOC_INVALID`.
 `--cli`, `--hub` and `--cloud` publish no index, so `toc` doesn't take them.
+
+#### Offline docs: `docs cache`
+
+`unity docs cache add` downloads a version's documentation as Markdown so it can
+be read with no connection. It stores the manual by default; `--api` adds the
+scripting API reference too (about 96,000 pages, so it takes a while). The
+version is `--editor-version`, then the project's, then the newest hosted one,
+as for `docs toc`.
+
+```bash
+unity docs cache add                                     # the manual, this project's version
+unity docs cache add --api --editor-version 6000.0       # the manual and the scripting API
+unity docs cache --format json                      # what is cached
+unity docs cache clear --editor-version 6000.0 --yes     # delete one version
+unity docs cache clear --yes                             # delete every version
+```
+
+Once a version is cached, `docs --content` reads its pages from the cache
+before going online (`source: cache` in json), and `docs toc` and topic
+resolution use its page listing when docs.unity.com can't be reached. Opening a
+page in the browser still needs the network. Every page `docs --content`
+fetches online is cached too.
+
+Each page is a file, `<version>/<section>/<path>.md`, under the `docs` folder of
+the download cache that `unity cache info` reports, so an agent can also read
+the files directly; `add` prints the folder. `unity cache clean` deletes it
+with everything else.
+
+`add` is resumable: a run that loses pages fails with `DOCS_CACHE_INCOMPLETE`,
+and running the same command again downloads only the rest, leaving any
+section that already finished alone. Once every section it covers has
+finished, running it again downloads them afresh. Listed pages with no Markdown are skipped
+and counted as `missing`. With no connection to the index it is
+`NETWORK_UNREACHABLE` (exit 7). `list` reports `version`, `sections`, `pages`,
+`sizeBytes` and `fetchedAt` per version. `clear` asks first; with no terminal
+or under `--non-interactive` it needs `--yes` (`DOCS_CACHE_CLEAR_REQUIRES_YES`,
+exit 2). The lowercase word `cache` is the subcommand, so for the `Cache` class
+write `unity docs Cache` or `unity docs UnityEngine.Cache`.
 
 ---
 
@@ -542,7 +620,7 @@ Prompts for title, description, email, reproducibility level, and which area the
 
 The report can also be supplied entirely through flags — `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, and `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask; a non-interactive run submits without prompting. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add.
 
-Use `--area <cli|pipeline-package|editor|licensing|not-sure>` to say which part of Unity the issue is in: the CLI itself, the connection to the Editor or the Pipeline package (`com.unity.pipeline`), the Editor or your project, or licensing and signing in. Pass it whenever you know, because a failure that surfaces in CLI output is otherwise easy to misroute as a CLI bug when the Editor or the Pipeline package is at fault. It's optional and never blocks a report: pass `not-sure` when you don't know, or leave it out. On a terminal without `--area`, the reporter asks, with "Not sure" preselected; a non-interactive run without it submits with no area, the same report it sent before the flag existed. An unknown value is a usage error (exit 2). The answer is sent with the report as an `Issue area:` line in the report text, which is what triage sees.
+Use `--area <cli|pipeline-package|editor|licensing|ugs|plastic|ai|transform|not-sure>` to say which part of Unity the issue is in: the CLI itself, the connection to the Editor or the Pipeline package (`com.unity.pipeline`), the Editor or your project, licensing and signing in, or one of the plugins (`ugs`, `plastic`, `ai`, `transform`). Pass it whenever you know, because a failure that surfaces in CLI output is otherwise easy to misroute as a CLI bug when the Editor or the Pipeline package is at fault. It's optional and never blocks a report: pass `not-sure` when you don't know, or leave it out. On a terminal without `--area`, the reporter asks, with "Not sure" preselected; a non-interactive run without it submits with no area, the same report it sent before the flag existed. An unknown value is a usage error (exit 2). The answer is sent with the report as an `Issue area:` line in the report text, which is what triage sees. On a terminal, a plugin is offered as an area only while it is installed. A plugin area names the plugin and its installed version, and attaches the newest `.log` and `.txt` files from the log directories the plugin registry lists for it, redacted and size-capped like the other logs. Every report also lists the plugins installed on the machine, with their versions, as an `Installed plugins:` line.
 
 Use `--attachments <paths...>` (repeatable) to attach extra files — for example a crash log or a zipped copy of a subset of assets. Each path must be an existing, readable file; a folder is rejected (zip it yourself first), and a missing or unreadable path fails fast with a usage error (exit 2) naming the offending path.
 
@@ -589,9 +667,14 @@ unity self-update --channel beta
 # Dry-run: show what would change
 unity self-update --dry-run
 
-# Rollback to previous version
+# Roll back to the most recent previous version
 unity self-update --rollback
+
+# Roll back to a specific kept version
+unity self-update --rollback 0.1.0
 ```
+
+Each update keeps the binary it replaces, so `--rollback` has something to go back to. The last 3 versions are kept (the oldest is dropped), and `--rollback` with no value restores the most recent one. Pass a version to restore a specific kept one; if it isn't kept, the error lists the versions that are. On macOS and Linux a rollback uses up the backup it restores, so running `--rollback` again goes one version further back; on Windows the swap finishes after the command exits, so every backup stays. Set `UNITY_CLI_ROLLBACK_KEEP` (1 to 10) to keep more or fewer.
 
 `unity self-update` detects how the CLI was installed and updates accordingly (`unity upgrade` is still accepted as an alias):
 

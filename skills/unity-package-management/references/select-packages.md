@@ -1,7 +1,7 @@
 # Selecting packages
 
 Turn a game concept — genre, look, target platforms, monetization — into a concrete package
-list, then install it with the `package add` command (see the main `SKILL.md`; its C# script is the fallback).
+list, then install it with the `package add` command, or the skill's C# script as the fallback.
 
 **Principle:** install what the concept actually needs, not everything. A hyper-casual 2D
 prototype needs far less than a 3D multiplayer RPG. Prefer packages already provided by the
@@ -14,6 +14,16 @@ The tables below are a starting point, not the whole registry. **Search the regi
 discover packages beyond this list, confirm an id exists, or check available versions before
 installing — see [Discovering and verifying packages](#discovering-and-verifying-packages).
 
+## Contents
+
+- Discovering and verifying packages
+- Foundation (almost every project)
+- Render pipeline (set by the template — do not add or swap it here)
+- By dimension & look
+- By genre (starting points, combine with the above)
+- By target platform
+- By monetization — install now, integrate via the dedicated skill
+
 ## Discovering and verifying packages
 
 Two ways to search, depending on whether the Editor is involved:
@@ -22,7 +32,7 @@ Two ways to search, depending on whether the Editor is involved:
 package available in the project's configured registries (the Unity registry plus any scoped
 registries), each with all its versions and metadata — this is what the Package Manager
 window's search filters over. `Client.Search("<id>")` inspects a single package. Use the
-ready-to-run `PackageSearch` script in the main `SKILL.md` to discover candidates and verify
+skill's ready-to-run `PackageSearch` script to discover candidates and verify
 ids/versions before building the install list.
 
 **Terminal — query the npm-compatible registry directly** (no Editor needed) to confirm a
