@@ -1,6 +1,6 @@
 ---
 name: unity-pipeline
-description: Drives a Unity Editor or dev Player via the unity-pipeline package. Compile, run tests, run C# scripts, method-reload code, check Editor status, enter Play Mode, capture screenshots. Use when an agent must control a running Unity instance.
+description: Control a Unity Editor or Player via the unity-pipeline package. Compile, run tests, eval, method-reload code, enter Play Mode, capture screenshots.
 ---
 
 # Unity Pipeline (agent control)
