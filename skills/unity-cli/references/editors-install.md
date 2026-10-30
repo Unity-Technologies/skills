@@ -4,14 +4,23 @@ Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, 
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
+### Contents
+
+- Editors — list, install, uninstall
+- Software Terms — `unity terms`
+- Install
+- Uninstall
+- Modules — add/list per editor
+- install-modules
+
 ---
 
 ### Editors — list, install, uninstall
 
 ```bash
 # List all editors (installed + available releases)
-# Short alias: unity e. The bare `unity editors` is shorthand for the explicit `unity editors list` (matches projects/templates/modules)
-unity editors list --format json
+# Short alias: unity e. The bare `unity editors` is shorthand for the explicit `unity editors` (matches projects/templates/modules)
+unity editors --format json
 
 # List only installed editors
 # As of 0.1.0-beta.8 the --installed table includes an "Upgrade to" column flagging editors with a newer patch in their line
@@ -23,7 +32,7 @@ unity editors --releases --format json
 # Filter by architecture
 unity editors --installed --architecture arm64 --format json
 
-# Show detailed module info (the old spelling, --verbose, still works and warns)
+# Show detailed module info
 unity editors --long
 
 # Watch mode — live-updates as editors are installed or removed
@@ -149,7 +158,7 @@ unity editors prune --remove --yes
 unity editors prune --format json
 ```
 
-The report lists version, architecture, path, size, and status, then the total reclaimable size. With `--remove` in a non-interactive shell and no `-y, --yes`, it refuses rather than deleting unprompted. "Unused" is judged against the **project registry** (`unity projects list`), so an editor used only by a project you never registered counts as unused — register it first, or verify with `unity editors prune` before adding `--remove`.
+The report lists version, architecture, path, size, and status, then the total reclaimable size. With `--remove` in a non-interactive shell and no `-y, --yes`, it refuses rather than deleting unprompted. "Unused" is judged against the **project registry** (`unity projects`), so an editor used only by a project you never registered counts as unused — register it first, or verify with `unity editors prune` before adding `--remove`.
 
 **`--remove-missing` is a separate, safer candidate class:** editors registered with `unity editors add` (typically internal branch builds) whose recorded install path no longer resolves on disk at all.
 
@@ -186,8 +195,8 @@ Module management is exposed under **both** `editors module` and the `editor` (s
 
 ```bash
 # List modules for an installed editor
-unity editors module list 6000.0.47f1 --format json
-unity editor module list 6000.0.47f1 --architecture arm64 --format json
+unity editors modules 6000.0.47f1 --format json
+unity editor modules 6000.0.47f1 --architecture arm64 --format json
 
 # Add modules to an installed editor
 unity editors module add 6000.0.47f1 --module android --module ios
@@ -269,6 +278,9 @@ unity install 6000.0.47f1 --yes --accept-eula
 # Force reinstall even if already present
 unity install 6000.0.47f1 --force
 
+# Install the latest release and make it the default editor, in one command
+unity install latest --set-default
+
 # Resume an interrupted download — editor installer or module — (also recovers orphaned partials left by a crash or kill)
 unity install 6000.0.47f1 --resume
 
@@ -276,8 +288,7 @@ unity install 6000.0.47f1 --resume
 unity install 6000.0.47f1 --dry-run --format json
 
 # List the editor's available modules and exit without installing
-# (a drop-in alias for `unity modules list <version>`; the old --list-components spelling
-# still works but is deprecated and prints a warning, so write --list-modules)
+# (a drop-in alias for `unity modules <version>`)
 unity install 6000.0.47f1 --list-modules --format json
 
 # Space-separated module values after a single -m are equivalent to repeating -m
@@ -298,7 +309,7 @@ A transient editor or module download failure (a dropped connection, a truncated
 
 On an interactive terminal, `unity install` also reports progress to the terminal application itself via the `OSC 9;4` escape sequence — on Windows Terminal the taskbar icon fills with download/install progress and spinners show as indeterminate, so you don't need to keep the window focused. It's emitted only on a TTY (never in piped or machine-consumed output), always cleared on exit, and ignored by terminals that don't support it.
 
-Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules list --json`. In the `--json` and `--format ndjson` rows of `unity modules list`, `unity editors module list` and `unity install-modules --list`, read `downloadBytes`, `installedBytes` (integers) and `isInstalled` (boolean): `status`, `download` and `installed` are display text, and `status` is translated. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
+Module installers honor the per-module install command from the release manifest (e.g. Visual Studio on Windows uses `--passive`, not `/S`); the resolved command is surfaced in `unity modules --json`. In the `--json` and `--format ndjson` rows of `unity modules`, `unity editors modules` and `unity install-modules --list`, read `downloadBytes`, `installedBytes` (integers) and `isInstalled` (boolean): `status`, `download` and `installed` are display text, and `status` is translated. `unity install` self-heals a corrupted partial download by discarding the bad partial and re-downloading; a cross-process install lock prevents two concurrent installs of the same version from corrupting the unpack.
 
 **Waiting on another install.** The Hub and the CLI share one install lock, so while the Hub (or another CLI) is installing, `unity install`, `unity install-modules` and `unity projects require` print `Waiting for another install to finish before continuing…` on stderr and carry on once it finishes. That wait has no limit by default. In a script or CI job, bound it:
 
@@ -307,12 +318,22 @@ Module installers honor the per-module install command from the release manifest
 unity install 6000.0.47f1 --yes --no-wait
 
 # Wait up to 10 minutes in total, then fail the same way
-unity install-modules -e 6000.0.47f1 -m android --timeout 600
+unity install-modules --editor-version 6000.0.47f1 -m android --timeout 600
 ```
 
-`--timeout <seconds>` takes a whole number of seconds greater than 0 (digits only: `5m` and `1.5` are rejected) and is one budget for the whole command, not per module; `--no-wait` wins if both are given. CLI releases before it was renamed spell it `--wait-timeout`, which still works but prints a deprecation warning. Either way the command exits **9** with error code `INSTALL_LOCK_BUSY` (in the json envelope's `errors[].code`, and in the ndjson `result` frame), distinct from a failed install's exit 6, so a script can retry later. The error says another install is in progress and to run the command again once it finishes; the "Waiting for another install" line on stderr only appears while a wait is running, the default one or a bounded one, and never under `--no-wait`.
+`--timeout <seconds>` takes a whole number of seconds greater than 0 (digits only: `5m` and `1.5` are rejected) and is one budget for the whole command, not per module; `--no-wait` wins if both are given. When the wait runs out, or `--no-wait` finds the lock held, the command exits **9** with error code `INSTALL_LOCK_BUSY` (in the json envelope's `errors[].code`, and in the ndjson `result` frame), distinct from a failed install's exit 6, so a script can retry later. The error says another install is in progress and to run the command again once it finishes; the "Waiting for another install" line on stderr only appears while a wait is running, the default one or a bounded one, and never under `--no-wait`.
 
-The lock is taken per item, so exit 9 does not mean nothing changed. `--no-wait` refuses an item before its download only when the lock is already held; if the Hub takes it while the item downloads, the item fails after the download. And `unity install <version> -m android --no-wait` can install the editor, then stop at the module: check `data.completedUids` in the ndjson `result` frame, and finish with `unity install-modules -e <version> -m android` rather than re-running `unity install`, which now fails because the editor is already installed. A second `unity install` of the **same** version fails at once with exit 6 ("Another install of … is already in progress") before it reaches this lock, whatever the flags.
+The lock is taken per item, so exit 9 does not mean nothing changed. `--no-wait` refuses an item before its download only when the lock is already held; if the Hub takes it while the item downloads, the item fails after the download. And `unity install <version> -m android --no-wait` can install the editor, then stop at the module: check `data.completedUids` in the ndjson `result` frame, and finish with `unity install-modules --editor-version <version> -m android` rather than re-running `unity install`, which now fails because the editor is already installed. A second `unity install` of the **same** version fails at once with exit 6 ("Another install of … is already in progress") before it reaches this lock, whatever the flags.
+
+#### Make the installed Editor the default (`--set-default`)
+
+`--set-default` stores the installed version as the default Editor, as `unity editors default <version>` does, once the install succeeds. It works with a version, `latest` or `lts`, and is one command on every shell, Windows PowerShell 5.1 included.
+
+- Nothing is stored when the install fails. That includes an Editor that's already installed (exit 6, which `unity install` refuses without `--force`; run `unity editors default <version>` instead) and a `--no-wait` or `--timeout` that gives up on another install (exit 9). `--dry-run` stores nothing either.
+- The json envelope and the ndjson `result` frame carry the stored version as `data.defaultVersion`. A human run ends with "Default editor version set to …".
+- If the install succeeds but the default can't be stored, the command fails with exit 6 and `SET_DEFAULT_FAILED`. The Editor stays installed (`data.completedUids` lists it), and the message names `unity editors default <version>` to try again.
+- It can't be combined with `--resume` or `--download-directory` (a usage error, exit 2), since neither installs one Editor the Hub finds by its version.
+- Under `sudo` it is refused up front (exit 2), before anything downloads, because the setting would be written as root and the Hub couldn't change the default afterwards. Run the install without `sudo`, or leave `--set-default` out and run `unity editors default <version>` as yourself afterwards.
 
 #### Another operating system's Editor (`--operating-system`)
 
@@ -328,7 +349,18 @@ unity install 6000.0.47f1 --dry-run --operating-system windows -m il2cpp --forma
 
 Another OS's listing asks for the builds that OS ships and prefers its usual one: arm64 on macOS, x86_64 on Windows and Linux. Pass `--architecture arm64` to `install` for a Windows arm64 build. Its `installed` column is always false, because this machine can't hold another OS's Editor. The dry run's `data.editor` gains `"operatingSystem": "windows"` and `alreadyInstalled` is always false; the human plan adds an `Operating system: Windows` line. Naming the host's own OS changes nothing.
 
-The CLI never runs another OS's installer. Without `--dry-run`, or with `--changeset` or `--resume`, it stops with exit 2 and `CROSS_OS_INSTALL_UNSUPPORTED`, naming the dry run and `unity releases`. An unknown value is exit 2 with `INVALID_OPERATING_SYSTEM`. `--list-modules` lists an installed Editor's modules, so it can't be combined with `--operating-system` (exit 2); `unity modules list` and `unity editors --releases` stay on the host's OS.
+The CLI never runs another OS's installer. Without `--dry-run` or `--download-only`, or with `--changeset` or `--resume`, it stops with exit 2 and `CROSS_OS_INSTALL_UNSUPPORTED`, naming the download, the dry run and `unity releases`. To fetch another OS's Editor without installing it, see `--download-only` below. An unknown value is exit 2 with `INVALID_OPERATING_SYSTEM`. `--list-modules` lists an installed Editor's modules, so it can't be combined with `--operating-system` (exit 2); `unity modules` and `unity editors --releases` stay on the host's OS.
+
+#### Download without installing (`--download-only`)
+
+`unity install <version> --download-only` fetches the Editor and its modules into the Hub's download folder (`<app data>/downloads`, or the Hub's secondary download location when one is set) and stops. Nothing is installed or registered, no installer runs, and no install destination is needed. It takes the same download-file claims as an install, so it never reuses or resumes a payload another install or the Hub is writing. It works for the host's OS and, with `--operating-system <windows|macos|linux>`, for another one, so a build machine's payloads can be staged from any host.
+
+```bash
+# Stage the Windows Editor and its il2cpp module from a Mac
+unity install 6000.0.47f1 --download-only --operating-system windows -m il2cpp --accept-eula
+```
+
+Each payload is checked against its published size and checksum before the run reports success, and a payload that fails is removed. Only the modules you name with `-m` are fetched, and the license gate is unchanged: a non-interactive run needs `--accept-eula`. The envelope's items end as `downloaded` (listed in `data.completedUids`) and `data.path` is the download folder; the human summary says where the files are and that nothing was installed. `-d/--download-directory` still means a portable install and cannot be combined with it, nor can `--resume`, `--set-default` or `--list-modules` (exit 2). `--changeset` with another OS's `--operating-system` is still refused.
 
 #### Linux arm64: experimental x86_64 Editor under FEX-Emu
 
@@ -338,7 +370,7 @@ This is **experimental and unsupported**: C# script compilation is known to cras
 
 #### Portable install into a folder (`--download-directory`)
 
-`-d, --download-directory <dir>` (the old `--install-dir` spelling still works, but it is deprecated and prints a warning) installs a self-contained Editor into a folder you name, for an ephemeral CI workspace or a side-by-side copy. The Editor lands in `<dir>/<version>` (or `<dir>/<version>-<arch>` when that slot is taken), with its own `modules.json` and `metadata.hub.json`. Nothing else changes: the global install path (`unity install-path`), the Hub's Editor list and the Linux desktop entry are left alone, so `unity editors` doesn't list it. A folder outside the Hub's install folder doesn't touch the shared install-state database either. A relative path resolves against the working directory.
+`-d, --download-directory <dir>` installs a self-contained Editor into a folder you name, for an ephemeral CI workspace or a side-by-side copy. The Editor lands in `<dir>/<version>` (or `<dir>/<version>-<arch>` when that slot is taken), with its own `modules.json` and `metadata.hub.json`. Nothing else changes: the global install path (`unity install-path`), the Hub's Editor list and the Linux desktop entry are left alone, so `unity editors` doesn't list it. A folder outside the Hub's install folder doesn't touch the shared install-state database either. A relative path resolves against the working directory.
 
 ```bash
 # CI: install into the workspace, no prompts, machine-readable result
@@ -348,7 +380,7 @@ unity install 6000.0.47f1 -d ./.unity -m android --non-interactive --yes --accep
 unity install 6000.0.47f1 -d ./.unity --dry-run --format json
 
 # Add a module later: point install-modules at the same folder
-unity install-modules -e 6000.0.47f1 -d ./.unity -m ios --yes
+unity install-modules --editor-version 6000.0.47f1 -d ./.unity -m ios --yes
 
 # Register it with the Hub afterwards, if you want it listed (Linux path shown;
 # a human install run prints the exact command for your platform)
@@ -378,13 +410,13 @@ unity uninstall 6000.0.47f1 --architecture arm64 --yes
 
 ```bash
 # List modules for an installed editor
-unity modules list 6000.0.47f1 --format json
+unity modules 6000.0.47f1 --format json
 
 # Filter by architecture
-unity modules list 6000.0.47f1 --architecture arm64 --format json
+unity modules 6000.0.47f1 --architecture arm64 --format json
 ```
 
-`unity modules list` honors `--format ndjson` (empty results emit a clean, empty NDJSON stream). The last column is `Aliases` — the alternate module names `-m`/`--module` accepts for that row; under `--format json` it's the `aliases` field (renamed from the old `downloaderName`).
+`unity modules` honors `--format ndjson` (empty results emit a clean, empty NDJSON stream). The last column is `Aliases` — the alternate module names `-m`/`--module` accepts for that row; under `--format json` it's the `aliases` field (renamed from the old `downloaderName`).
 
 ### install-modules
 

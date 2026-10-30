@@ -15,6 +15,25 @@ that switching branches with the Editor running invites a reimport storm, that a
 silently breaks every prefab pointing at it. When a verb below looks like a git command with a
 Unity coat of paint, the Unity part is the point.
 
+**Picking the project.** A verb that acts on a project takes it as its path argument, as
+`--project-path <path>`, or from `UNITY_PROJECT_PATH`, and falls back to the current directory. Give
+the argument or the flag, not both: both is a usage error (exit `2`). Verbs whose argument is a file
+(`diff`, `blame`, `explain`, `resolve`) or a worktree (`git worktree remove`) don't take the flag.
+
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+## Contents
+
+- Map
+- Getting set up
+- Day to day
+- Reading a change
+- Conflicts
+- Git-only verbs
+- UVCS
+- Machine output
+- Common traps
+
 ---
 
 ## Map
@@ -106,8 +125,8 @@ host's capability tier. It deliberately does **not** report how a repository wou
 that depends on whether a token resolves, and resolving one can prompt — a read-only report must
 not ask for a credential.
 
-The tools table also lists `cm`, the Unity Version Control client, taken from `unity plugin list`'s
-own registry lookup, so the two always agree on its path, version, and state (`resolved`,
+The tools table also lists `cm`, the Unity Version Control client, taken from the registry lookup
+`unity plugins` makes, so the two always agree on its path, version, and state (`resolved`,
 `not-installed`, or `unsupported-platform` on linux-arm64). It never downloads `cm`. Inside a UVCS
 workspace with no `cm` installed, it suggests `unity plugin install uvcs`. The offline VCS section of
 `unity doctor` omits `cm`, which doctor already lists under external components.
@@ -123,7 +142,10 @@ unity vcs merge-setup                          # set it up, using the editor the
 unity vcs merge-setup --check                  # report only; exits 4 when work remains
 unity vcs merge-setup --editor-version 6000.0.30f1
 unity vcs merge-setup --skip-verify            # skip the proving test merge
+unity vcs merge-setup -e /path/to/Unity        # use this editor installation (--editor-path)
 ```
+
+`--editor-version` falls back to `UNITY_EDITOR_VERSION` on both `vcs merge-setup` and `vcs resolve`.
 
 `--check` **exits 4 when work remains**, which is what makes it usable as a CI gate.
 
@@ -421,7 +443,7 @@ unity vcs git worktree remove ../lighting --discard-changes --force
 either way.
 
 `--no-register` leaves the new worktree out of the Hub project registry, so it does not show up in
-`unity projects list` or in the Hub. Use it for a short-lived checkout you do not want to keep
+`unity projects` or in the Hub. Use it for a short-lived checkout you do not want to keep
 track of.
 
 `--format json` and `--format ndjson` carry the real `worktree`, `project`, `repository` and
@@ -443,7 +465,7 @@ unity vcs uvcs locks                          # who holds a lock, AND which lock
 unity vcs uvcs changesets --limit 50          # recent changesets in a stable envelope (default 25, max 1000)
 
 # Code review
-unity vcs uvcs review list --status pending
+unity vcs uvcs reviews --status pending
 unity vcs uvcs review comments --review 42
 unity vcs uvcs review comments --branch /main/feature --all-activity
 unity vcs uvcs review reply --review 42 --comment 7 --body "Fixed in cs:118"

@@ -43,7 +43,9 @@ schema accepts several ids. Pin a version the way the schema describes when a mi
 `package remove` to drop a package. Treat a non-zero exit as a failure and read its message.
 
 If `unity command package` reports no such group, the project's Pipeline package predates it:
-run `unity pipeline upgrade`, or use the fallback below.
+run `unity pipeline upgrade`, or use the fallback below. The fallback starts its own Editor, so it
+can't run while this one has the project open: ask the user to save and close it first (see the
+fallback's first rule).
 
 ## When to use
 
@@ -66,6 +68,18 @@ list of package ids** and read it back to the user before installing.
 Use this section only when `package add` can't run: no Editor is open and you don't want one
 open, the project has no Pipeline package, or the command group is missing and an upgrade isn't
 wanted. It installs through `Client.AddAndRemove` from a script the Editor runs in batch mode.
+
+**The project must be closed first.** The script runs in a second, batch-mode Editor, and an Editor
+that already has the project open holds its lock, so the batch run fails before the script starts.
+`unity editors running --format json` lists every open Editor, with or without the Pipeline package
+(`unity status` lists only Pipeline projects, so an empty result there does not mean closed). Compare each
+`data.instances[].projectPath` with the target project. Also check whether `<project-path>/Temp/UnityLockfile`
+exists, and ask the user whether the project is open in an Editor. If an Editor has the project open, or you can't tell, ask the user to save their work and close it,
+and wait until they say it is closed. If the batch run still fails on a lock, treat the project as open and
+ask the user to close it; don't retry or remove the lock file. Never close or kill
+the user's Editor yourself: it may hold unsaved scenes or a Play Mode session. If the user wants to
+keep it open, don't run the fallback: tell them the install waits until the project is closed or the
+Pipeline package is upgraded (`unity pipeline upgrade`, then `package add`).
 
 ## The `-quit` problem — why NOT `unity run` for installs
 
@@ -246,8 +260,9 @@ Editor (a **known** id, not free-text search), query the registry directly — s
 
 ## Run it headless (direct Editor invocation, no `-quit`)
 
-Resolve the Editor binary from the version, then run it in batch mode. The script owns quitting
-via `EditorApplication.Exit`, so do **not** pass `-quit`:
+Resolve the Editor binary from the version, then run it in batch mode. Run it only once no Editor
+has the project open (see the fallback's first rule). The script owns quitting via
+`EditorApplication.Exit`, so do **not** pass `-quit`:
 
 ```bash
 VERSION="<version>"          # e.g. 6000.0.47f1 (or an installed version)

@@ -4,16 +4,28 @@ Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, 
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+### Contents
+
+- Projects — list, open, create, register, clone, link
+- Assets: inspect or export a `.unitypackage`
+- Assets — export a `.unitypackage`
+- Assets — import a `.unitypackage` into a project
+- Assets — export project assets to a `.unitypackage`
+- Releases — browse Unity versions
+- Templates
+
 ---
 
 ### Projects — list, open, create, register, clone, link
 
 ```bash
 # List registered projects
-unity projects list --format json
+unity projects --format json
 
 # Opt extra columns into the listing (repeatable, human/TSV output)
-unity projects list --editor-version --modified --pipeline --cloud --vcs
+unity projects --editor-version --modified --pipeline --cloud --vcs
 
 # Register an existing project
 unity projects add /path/to/MyProject
@@ -83,7 +95,7 @@ Dialogs are matched by their English titles, so an Editor in another UI language
 
 **`open` never moves a project onto Unity 6.7 or later.** When the Editor that `unity open` or `unity projects open` would use is 6.7 or later and the project was saved with an older version, the command exits `2` with `PROJECT_UPGRADE_REQUIRED` before it installs or launches anything. That covers `--editor-version` (a partial version such as `6.7` included), the `unity <version> <project>` shorthand, and an Editor picked at the missing-Editor prompt. Use `unity projects upgrade <project> --to <version>` instead, which asks for the Unity Cloud link choice and, when the project ends up linked, turns on build profile diagnostics (see the upgrade section below). Under `--format json` or `ndjson` the refusal carries one `notifications` entry, `OPEN_UPGRADE_WITH_PROJECTS_UPGRADE`, whose `remediation.command` is that `projects upgrade` command with `requiresUserApproval: true`, so ask the user before running it. Opening a project already on 6.7 or later, with the same version, or with an Editor below 6.7 is unchanged.
 
-**Extra listing columns are opt-in.** `projects list` shows a compact set by default; `--editor-version`, `-m` / `--modified` (last modified), `--cloud` (Unity Cloud project id), `--pipeline` (render pipeline), and `--vcs` (provider and repository) each add one to the human table. Piped TSV always prints all of them, as `name path version modified cloudProjectId pipeline vcs`, with empty cells for the columns you did not ask for, so a column's position never depends on the flags. They affect the human and TSV tables only — `--format json` and `ndjson` always carry the full record.
+**Extra listing columns are opt-in.** `projects` shows a compact set by default; `--editor-version`, `--modified` (last modified), `--cloud` (Unity Cloud project id), `--pipeline` (render pipeline), and `--vcs` (provider and repository) each add one to the human table. Piped TSV always prints all of them, as `name path version modified cloudProjectId pipeline vcs`, with empty cells for the columns you did not ask for, so a column's position never depends on the flags. They affect the human and TSV tables only — `--format json` and `ndjson` always carry the full record.
 
 **Is Developer Data diagnostics on?** `projects info` answers from the project on disk, and `projects create` includes the same answer for the project it just created. New projects ship with diagnostics on, and turning it off disables all other Developer Data collection. In JSON, `data.diagnostics` has three parts:
 
@@ -97,9 +109,9 @@ Dialogs are matched by their English titles, so an Editor in another UI language
 
 This reports only what’s on disk. It can’t tell you whether Unity’s servers accept or receive the data.
 
-**`unity close <project>` exits the editor WITHOUT saving.** It waits up to `--timeout <seconds>` (default 30) for a graceful exit. `--force` terminates the process (SIGTERM, then SIGKILL) when the editor offers no graceful channel, or once the wait runs out. Unsaved work is lost either way, so ask the user before running it. `unity projects close <project>` is the same command under the `projects` umbrella; pick whichever mount reads better in context.
+**`unity close <project>` exits the editor WITHOUT saving.** It waits up to `--timeout <seconds>` (default 30) for a graceful exit. `--force` terminates the process (SIGTERM, then SIGKILL) when the editor offers no graceful channel, or once the wait runs out. Unsaved work is lost either way, so ask the user before running it. `unity projects close <project>` is the same command under the `projects` umbrella; pick whichever mount reads better in context. A windowed Editor that `unity open` started on a project without the Pipeline package has no graceful channel either: `close` leaves it running and exits 6 with `PROJECTS_CLOSE_PIPELINE_MISSING` (`reason: pipeline_missing` under `--format json`, an `Error:` line on stderr under the human and `tsv` formats). Run `unity pipeline install` before opening the project, or use `--force`; once the Editor has exited, the project is free for `unity build`.
 
-**`--wait` — a real exit code from an interactive open.** By default `unity open`, `unity projects open` and `unity projects upgrade` return once the hand-off to the Editor completes, watching it only briefly for an instant failure. `--wait` blocks for as long as the Editor runs and exits `0` when it exits cleanly or `6` (`OPEN_EDITOR_EXITED`, or the licensing diagnosis for a 198) when it fails. The Editor runs in its own process group: Ctrl-C is absorbed, the wait always runs to completion, and the Editor is never touched. macOS and Linux only for now — Windows refuses `--wait` with exit `2` rather than falling back to the bounded watch. Without `--wait`, the CLI watches the Editor for only about 150 ms after launch, so an Editor killed by a signal is reported as a failure only when that happens inside the startup window; once the command has returned, nothing further can be reported. `--wait` is what covers the Editor’s whole lifetime, and it reports a signal death as a failure too. `projects create --open` / `projects new --open` do not take `--wait`.
+**`--wait` — a real exit code from an interactive open.** By default `unity open`, `unity projects open` and `unity projects upgrade` return once the hand-off to the Editor completes, watching it only briefly for an instant failure. `--wait` blocks for as long as the Editor runs and exits `0` when it exits cleanly or `6` (`OPEN_EDITOR_EXITED`, or the licensing diagnosis for a 198) when it fails. The Editor runs in its own process group: Ctrl-C is absorbed, the wait always runs to completion, and the Editor is never touched. macOS and Linux only for now — Windows refuses `--wait` with exit `2` rather than falling back to the bounded watch. Without `--wait`, the CLI watches the Editor for only about 150 ms after launch, so an Editor killed by a signal is reported as a failure only when that happens inside the startup window; once the command has returned, nothing further can be reported. `--wait` is what covers the Editor’s whole lifetime, and it reports a signal death as a failure too. `projects create --open` does not take `--wait`.
 
 **`--accept-upgrades` — answer yes to the Editor's upgrade dialogs.** `unity open` and `unity projects open` take it to pass `-skipUpgradeDialogs` to the Editor, which clears the "Project Upgrade Required" dialog and the API Updater's "Script Updating Consent" dialog that would otherwise leave an unattended open hanging. It says yes to both: the project is upgraded to the Editor's version and Unity rewrites scripts that use obsolete APIs, with no backup prompt. That changes the project's files, so it is never a default: pass it only when the user or the task has chosen it, and prefer a version-control checkpoint first. To upgrade as a deliberate step, use `unity projects upgrade` instead (`--to <version>`). `--accept-upgrades` does not move a project onto Unity 6.7 or later: opening a project saved with an older version in a 6.7+ Editor still exits `2` with `PROJECT_UPGRADE_REQUIRED`, because that move needs the Unity Cloud link choice that `unity projects upgrade` asks for. `unity projects upgrade`, `unity run` and `unity test` do not take the flag. It does not clear every dialog: on Windows an upgraded project can still show an "Auto Graphics API Notice". `unity status` reports it as `STATUS_BLOCKED_BY_DIALOG_GRAPHICS_API`; ask the user to choose Confirm in the Editor, since no launch flag answers it.
 
@@ -115,7 +127,7 @@ All three spellings Unity accepts are rejected (`-useHub`, `--useHub`, `-useHub=
 
 #### projects create
 
-Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template) and then asks whether to link the project to a Unity Cloud project. That last question defaults to **Yes**, so pressing Enter links the project. Pass `--no-cloud` to decline without being asked, or answer `No` at the prompt to create an unlinked project instead. Piping stdin (a non-interactive terminal) suppresses every prompt and falls back to stored defaults, including the cloud default, so an unattended run still links unless `--no-cloud` (or `UNITY_NO_CLOUD`) says otherwise. On a real TTY, `--non-interactive` alone suppresses only the cloud question; the parent-directory, editor-version, and template prompts still fire (see below for the fully unattended recipe, or use `projects new`, which never prompts at all). The first positional argument is the project **name**; `--path` sets the parent directory:
+Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template) and then asks whether to link the project to a Unity Cloud project. That last question defaults to **Yes**, so pressing Enter links the project. Pass `--no-cloud` to decline without being asked, or answer `No` at the prompt to create an unlinked project instead. Piping stdin (a non-interactive terminal) suppresses every prompt and falls back to stored defaults, including the cloud default, so an unattended run still links unless `--no-cloud` (or `UNITY_NO_CLOUD`) says otherwise. On a real TTY, `--non-interactive` alone suppresses only the cloud question; the parent-directory, editor-version, and template prompts still fire (see below for the fully unattended recipe). The first positional argument is the project **name**; `--path` sets the parent directory:
 
 ```bash
 unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.urp-blank
@@ -130,6 +142,18 @@ unity projects create MyGame --template /path/to/template.tgz
 **The project folder must be new or empty.** `create` and `new` make `<path>/<name>`, or use it when it is an empty folder. A folder that holds anything (hidden files and `.git` included), a file at that path, or a folder that can't be read fails with `Project path already exists`, exit `6`, and nothing is written.
 
 **Default template: URP.** Without `--template`, create uses the Editor version's own blank URP template, `com.unity.template.urp-blank`. `--template 3d` names the same template and `--template 2d` names `com.unity.template.universal-2d`. URP is the render pipeline going forward, so create never falls back to a Built-in Render Pipeline template. When the version doesn't offer the URP template, create fails with exit `6` and code `TEMPLATE_NOT_FOUND`, and `data.offered` lists the template ids it does offer; pass one of them with `--template`.
+
+**Which Editor version create uses.** `--editor-version` wins; `latest` and `lts` there mean the newest official or LTS release in Unity's release list, not the newest installed Editor, and offline they fall back to the release list bundled with the CLI. Without it, create uses the default set with `unity editors default` (or the Hub's "set as default"), else the newest installed Editor, else, when no Editor is installed, the latest release. A version with no installed Editor fails with exit `6` and code `ENGINE_NOT_INSTALLED`, and `data.engineVersion` names it. Under `--format json` or `ndjson` the envelope's `notifications` then carries an `ENGINE_NOT_INSTALLED` entry whose `remediation.command` is the same `projects create` command with `--install-editor` added (a `--git-token` value shows as `<pat>`), with `requiresUserApproval: true`.
+
+**Prerequisites, checked first.** Before create asks anything, downloads a template or starts the Editor, it checks the machine. An active Unity license is always required: with none, create fails with code `LICENSE_CHOICE_REQUIRED`, exit `4`. While the project links to Unity Cloud (the default, `--bare` included), create also needs you signed in (it fails with `NOT_SIGNED_IN`, exit `3`), the Unity services reachable (`NETWORK_UNREACHABLE`, exit `7`), and, when you belong to several organizations with no default, a chosen one (`ORGANIZATION_CHOICE_REQUIRED`, exit `4`; pass `--cloud-org`). `--no-cloud` removes the Unity Cloud prerequisites. Under `--format json` or `ndjson`, each unmet prerequisite is a `notifications` entry (`AUTH_REQUIRED`, `LICENSE_CHOICE_REQUIRED`, `ORGANIZATION_CHOICE_REQUIRED`, `NETWORK_UNREACHABLE`) whose `remediation.command` fixes it, with `requiresUserApproval: true`, so read them all before retrying. A state the CLI can't read (no licensing client running, for example) never blocks.
+
+**Install a missing Editor with `--install-editor`.** When the version create resolved isn't installed, `--install-editor` installs it, waits for the install to finish, then creates the project. `--module <id...>` adds modules to that install and `--accept-eula` accepts their license agreements, as on `unity install`. They apply only when the run installs the Editor: for an Editor that's already installed, add modules with `unity install-modules`; either one without `--install-editor` is a usage error, exit `2`. Name, location, Unity Cloud and source-control checks still run before the install, so a bad flag fails in seconds, not after the download. A failed install creates no project and fails as `unity install` would. The envelope's `data.editorInstalled` says whether this run installed the Editor. The install takes minutes, so an agent runs the command in the background and keeps working:
+
+```bash
+unity projects create MyGame --install-editor --module android --accept-eula --no-cloud --format json
+```
+
+**Newer release notice.** When create picked the version from the default or the newest installed Editor and a newer official release exists, the json or ndjson envelope carries an `ENGINE_UPDATE_AVAILABLE` notification: `data.engineVersion` is the version used, `data.latestVersion` the newer one, and `data.resolvedFrom` is `default` or `installed`. Its `remediation.command` is `unity install latest`, or `unity install latest --set-default` when the stored default held the run back. When the stored default held it back but the latest release is already installed, the message says so and the remediation is `unity editors default latest` alone. Both remediations have `requiresUserApproval: true`, so ask the user before running one. The check is best effort: with the release list unreachable there's no notice, and create carries on. There's none when `--editor-version` was passed.
 
 **Cloud linking during creation:**
 
@@ -150,7 +174,7 @@ unity projects create MyGame --no-cloud
 
 That makes authentication a **precondition** of `projects create`, not a capability it discovers late: without `--no-cloud`, a signed-out run fails with `NOT_SIGNED_IN` and a service-account run with `CLOUD_PROJECT_REQUIRES_OAUTH`, both exit `3`, before any scaffolding happens. So in CI, pass `--no-cloud` unless you have an interactive (OAuth) session and actually want the link.
 
-Unlike the other three questions, the cloud one can fire even when every option was supplied on the command line, so `--non-interactive` is what keeps a fully-specified scripted run from stopping on it. Be aware that the global currently gates **only** this question: the parent-directory, editor-version, and template questions still gate on terminal interactivity alone, so `--non-interactive` on a TTY does not make them fall back to stored defaults. For a fully unattended run on a terminal, pass `--path`, `--editor-version`, and `--template` as well — or use `projects new`, which never prompts at all.
+Unlike the other three questions, the cloud one can fire even when every option was supplied on the command line, so `--non-interactive` is what keeps a fully-specified scripted run from stopping on it. Be aware that the global currently gates **only** this question: the parent-directory, editor-version, and template questions still gate on terminal interactivity alone, so `--non-interactive` on a TTY does not make them fall back to stored defaults. For a fully unattended run on a terminal, pass `--path`, `--editor-version`, and `--template` as well.
 
 Once the command is past that precondition, a link that then fails never costs you the project: if it cannot be set up (expired session, no resolvable organization), the project is still created unlinked and the reason is reported as a warning, exit 0. `--cloud` behaves differently and still fails outright — an explicit flag is a contract, not a suggestion.
 
@@ -158,11 +182,19 @@ When a project is created without a cloud link, human output ends with a line po
 
 For machine consumers, cloud state is reported by the presence of the `cloudLinked`, `cloudProject`, and `cloudOrgSource` fields on the result payload — they are emitted **only when a cloud link was requested**. Their absence is itself the signal that the project is unlinked; do not read `cloudLinked` expecting a `false`.
 
-**The Pipeline package is part of every create.** `unity projects create MyGame` adds `com.unity.pipeline` (latest from the Unity registry) to the new project's `Packages/manifest.json` right after scaffolding, before any `--vcs` initial commit and before `--open`, so the Editor resolves it on first open and `unity command` works without a separate `unity pipeline install`. `--bare` is the only way to leave it out. A template that already ships the package is left as it is. It never fails the create: an unreachable registry or a manifest it cannot write leaves the project created without the package, prints a warning (stderr in every format but json), and exits 0, and `unity pipeline install --project-path <path>` retries. An engine version older than Unity 6, which the package does not support, is not attempted: nothing is added or printed. The result payload carries `pipeline`: `{ "requested": true, "installed": true, "packageId": "com.unity.pipeline", "version": "<v>", "alreadyInstalled": false }` on success (`alreadyInstalled: true` when the template already shipped it), `installed: false` with `error` set to `PIPELINE_INSTALL_FAILED` on a failure, or `installed: false` with `skipped: "UNSUPPORTED_VERSION"` on an older engine. `--with-pipeline`, which used to opt in, is still accepted and does nothing.
+**The Pipeline package is part of every create.** `unity projects create MyGame` adds `com.unity.pipeline` (latest from the Unity registry) to the new project's `Packages/manifest.json` right after scaffolding, before any `--vcs` initial commit and before `--open`, so the Editor resolves it on first open and `unity command` works without a separate `unity pipeline install`. `--bare` is the only way to leave it out. A template that already ships the package is left as it is. It never fails the create: an unreachable registry or a manifest it cannot write leaves the project created without the package, prints a warning (stderr in every format but json), and exits 0, and `unity pipeline install --project-path <path>` retries. An engine version older than Unity 6, which the package does not support, is not attempted: nothing is added or printed. Unity 6000.5.0 to 6000.5.2 is not attempted either: the package can't start its server on those Editors, so create leaves it out (the `pipeline` block carries `skipped: "UNSUPPORTED_VERSION"`) and says to update the Editor to 6000.5.3f1 or later, open the project in it, and run `unity pipeline install --project-path <path>`. In json and ndjson that is a `PIPELINE_EDITOR_UNSUPPORTED` notification with `data.engineVersion`, `data.fixedIn` and the remediation `unity install latest`; in the other formats it is a warning on stderr. A template that already ships the package keeps it, and the notice is raised all the same. The result payload carries `pipeline`: `{ "requested": true, "installed": true, "packageId": "com.unity.pipeline", "version": "<v>", "alreadyInstalled": false }` on success (`alreadyInstalled: true` when the template already shipped it), `installed: false` with `error` set to `PIPELINE_INSTALL_FAILED` on a failure, or `installed: false` with `skipped: "UNSUPPORTED_VERSION"` on an older engine. `--with-pipeline`, which used to opt in, is still accepted and does nothing.
 
-**A project without the default scaffolding (`--bare`).** `unity projects create MyGame --bare` creates the project from the template without the default project scaffolding; today that is the Pipeline package. The Unity Cloud link and source control are not scaffolding: they behave as without the flag, so the cloud link (and its sign-in) still happens unless you pass `--no-cloud`, and `--vcs`, `--cloud`, `--cloud-org`, `--cloud-project` and `--coppa` all work beside `--bare`. Only `--with-pipeline` is refused beside it, with exit `2` and `BARE_ARGS_CONFLICT`. `--bare --no-cloud` creates a project from the template alone, offline. To drive a bare project from an agent, run `unity pipeline install --project-path <path>` afterwards.
+**Anonymous player sign-in is part of every linked create.** When the cloud link succeeds, create adds `com.unity.services.authentication` (the newest release that supports the project's engine version) to `Packages/manifest.json` and writes `Assets/PlayerAuthentication/` (`PlayerAuthentication.cs` and its own assembly definition), which signs the player in anonymously before the first scene loads, so cloud save, telemetry and other services have a player ID. Await `PlayerAuthentication.SignedIn` before calling another Unity Gaming Service: it is `true` once the player is signed in and `false` when sign-in failed. Code in an assembly definition adds `PlayerAuthentication` to that asmdef's `references` first; code in the default `Assembly-CSharp` sees it as is. Nothing is configured server-side: anonymous sign-in works for any linked cloud project. A template that already pins the package and has a runtime script (not in an `Editor` folder) whose code calls `SignInAnonymouslyAsync` is left as it is. With `--no-cloud`, or when the link failed, nothing is added. Like the Pipeline package it never fails the create: a failure prints a warning and the payload's `playerAuth` block carries `error: "PLAYER_AUTH_SETUP_FAILED"`. `--bare` leaves it out.
 
-**What create did (`steps`).** The result payload carries `steps`, each setup step create ran in order: the scaffolding steps and the links (`cloudLink`, `vcs`). Each has an `id` and a `status`: `done`, `present` (the template already had it, so nothing was changed), `skipped` with a `reason` (`BARE` for scaffolding under `--bare`, `UNSUPPORTED_VERSION` for an engine version a step does not support, `NOT_REQUESTED`, `NO_CLOUD` for the cloud link, or `CLOUD_LINK_FAILED` for a UVCS repository the failed cloud link kept from being created), or `failed` with an `error` code: the step block's own code where it has one (`PIPELINE_INSTALL_FAILED`, a `cloudLinkError` code, or a `uvcsError` code other than `UVCS_SKIPPED_CLOUD_FAILED`), otherwise `CLOUD_LINK_FAILED`, `VCS_LINK_FAILED` or `UVCS_LINK_FAILED`. A failed step does not fail the create: the command still exits `0`, as it does today, and the project is left usable. Read `steps` rather than the individual blocks to tell what was set up; the list of steps grows as more of the scaffolding moves into create.
+**Cinemachine is part of every 3D create.** Create adds `com.unity.cinemachine` (the newest release that supports the project's engine version) to `Packages/manifest.json`, so the camera rigs are there on first open. A 2D project does not get it: create reads the mode from `m_DefaultBehaviorMode` in `ProjectSettings/EditorSettings.asset`, or from a `2d` word in the template name when the file has no such key, and the step is skipped with `NOT_APPLICABLE`. A template that already ships the package, 2D or not, is left as it is. With no release for the engine version it is skipped with `UNSUPPORTED_VERSION`. The payload's `cinemachine` block has the same shape as `playerAuth`, and a failure carries `error: "CINEMACHINE_SETUP_FAILED"`.
+
+**Play mode keeps running in the background.** Create sets `runInBackground: 1` in `ProjectSettings/ProjectSettings.asset`, so Play mode keeps ticking while the Editor is not focused, as when an agent drives it from a terminal. Only that one value changes; the rest of the file stays byte for byte as the Editor wrote it. A file that cannot be read, or that does not have exactly one `runInBackground` line set to `0` or `1`, is left as it is with a warning. The payload's `runInBackground` block is `{ "enabled": true, "alreadySet": false }` when create turned it on (`alreadySet: true` when the template already had it), or `{ "enabled": false, "error": "RUN_IN_BACKGROUND_FAILED" }`.
+
+None of the scaffolding steps writes a cloud project id, an organization id or a project name. A cloud-linked create does write them (`cloudProjectId`, `organizationId`, `projectName`) to `ProjectSettings/ProjectSettings.asset`, and `unity templates create --keep-project-settings` preserves that file as is, so a template saved from a cloud-linked project that way carries the cloud linkage. Without the flag, or from a project created with `--no-cloud`, the template carries no account.
+
+**A project without the default scaffolding (`--bare`).** `unity projects create MyGame --bare` creates the project from the template without the default project scaffolding; today that is the Pipeline package, Cinemachine, Run In Background and anonymous player sign-in. The Unity Cloud link and source control are not scaffolding: they behave as without the flag, so the cloud link (and its sign-in) still happens unless you pass `--no-cloud`, and `--vcs`, `--cloud`, `--cloud-org`, `--cloud-project` and `--coppa` all work beside `--bare`. Only `--with-pipeline` is refused beside it, with exit `2` and `BARE_ARGS_CONFLICT`. `--bare --no-cloud` creates a project from the template alone, offline. To drive a bare project from an agent, run `unity pipeline install --project-path <path>` afterwards.
+
+**What create did (`steps`).** The result payload carries `steps`, each setup step create ran in order: the scaffolding steps and the links (`cloudLink`, `vcs`). Each has an `id` and a `status`: `done`, `present` (the template already had it, so nothing was changed), `skipped` with a `reason` (`BARE` for scaffolding under `--bare`, `UNSUPPORTED_VERSION` for an engine version a step does not support, `NOT_APPLICABLE` for a step that has no place in the project, such as Cinemachine in a 2D one, `NOT_REQUESTED`, `NO_CLOUD` for the cloud link and player sign-in, or `CLOUD_LINK_FAILED` for player sign-in or a UVCS repository the failed cloud link kept from being created), or `failed` with an `error` code: the step block's own code where it has one (`PIPELINE_INSTALL_FAILED`, `CINEMACHINE_SETUP_FAILED`, `RUN_IN_BACKGROUND_FAILED`, `PLAYER_AUTH_SETUP_FAILED`, a `cloudLinkError` code, or a `uvcsError` code other than `UVCS_SKIPPED_CLOUD_FAILED`), otherwise `CLOUD_LINK_FAILED`, `VCS_LINK_FAILED` or `UVCS_LINK_FAILED`. A failed step does not fail the create: the command still exits `0`, as it does today, and the project is left usable. Read `steps` rather than the individual blocks to tell what was set up; the list of steps grows as more of the scaffolding moves into create.
 
 When a link was requested, `cloudLinked: false` next to a `cloudProject` means the Unity Cloud project exists but the link could not be saved to the project's `ProjectSettings/ProjectSettings.asset`, so the Editor sees no link. `cloudLinkError.code` says why (`PROJECT_SETTINGS_MISSING`, `PROJECT_SETTINGS_LINK_FIELDS_MISSING` when the file has no `cloudProjectId`/`organizationId` entries, `PROJECT_NOT_TRACKED`, `CLOUD_PROJECT_ID_INVALID`, or `LOCAL_WRITE_FAILED`), and a warning names the fix: `unity projects link cloud <path> --cloud-project <id>`, which saves the link to that project rather than creating another one. `unity projects link cloud` itself fails with `PROJECTS_LINK_CLOUD_LOCAL_WRITE_FAILED` (exit `1`) in the same situation.
 
@@ -202,23 +234,6 @@ Per-project identity instead lives in the repository's own config (`credential.u
 
 Per-organization scoping needs the organization to be known before the credential is looked up. `projects clone` always requires `--vcs-namespace`, so it is always scoped. `projects create` and `projects link vcs` take `--git-namespace`, and when it is omitted the lookup stays host-scoped, because the namespace cannot be resolved until you are authenticated and you cannot authenticate without a credential. Pass `--git-namespace` to target a specific organization's credential.
 
-#### projects new
-
-Create a project without any interactive prompts — resolves missing options from stored defaults, never asks the user. The first positional argument is the project **name**; `--path` sets the parent directory:
-
-```bash
-# All omitted options resolve from stored defaults
-unity projects new MyGame
-
-# Override stored defaults with explicit values
-unity projects new MyGame --path /path/to/projects --editor-version 6000.0.47f1 --template com.unity.template.urp-blank
-
-# Open the project immediately after creation
-unity projects new MyGame --open
-```
-
-`new` never links to Unity Cloud and never asks. Its human output ends with the same pointer at `unity projects link cloud`; machine output is unchanged. To link during creation, use `projects create --cloud`, or link afterwards with `projects link cloud`. `new` does not add the Pipeline package either: an agent that will drive the Editor should create with `projects create <name> --no-cloud`, which adds it, or run `unity pipeline install --project-path <path>` after `new`.
-
 #### projects clone
 
 Clone a remote repository and register the Unity project it contains. Works across providers:
@@ -235,7 +250,7 @@ unity projects clone --vcs gitlab --vcs-namespace my-org --vcs-repo my-game --gi
 
 # Project lives in a subdirectory of the repo
 unity projects clone --vcs github --vcs-namespace my-org --vcs-repo monorepo \
-  --path ./repo --project-path packages/MyGame
+  --path ./repo --subpath packages/MyGame
 
 # Clone an arbitrary git URL instead (HTTPS, or SSH via the standard
 # git user@host:path shorthand) — no --vcs/--vcs-namespace/--vcs-repo needed
@@ -243,9 +258,9 @@ unity projects clone https://github.com/my-org/my-game.git
 unity projects clone --ref develop <ssh-clone-url-for-your-host>
 ```
 
-Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name>`, `--ref <branch|sha|changeset>` (an all-digit ref is treated as a Unity Version Control changeset, anything else as a branch), `--path <dest>` (clone destination), `--project-path <subpath>` (project subdirectory), `--git-token <pat>` / `--git-token-from-stdin`, `--json`. Git LFS assets are fetched as pointer files only.
+Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name>`, `--ref <branch|sha|changeset>` (an all-digit ref is treated as a Unity Version Control changeset, anything else as a branch), `--path <dest>` (clone destination), `--subpath <subpath>` (the project's folder, when the repository holds more than one), `--git-token <pat>` / `--git-token-from-stdin`, `--json`. Git LFS assets are fetched as pointer files only.
 
-**The `[url]` form is an alternative to `--vcs`/`--vcs-namespace`/`--vcs-repo`, not an addition to them** — passing a URL alongside any of those three flags is a bad-arguments error. `--ref`, `--path`, `--project-path`, `--no-lfs` always apply. `--git-token`/`--git-token-from-stdin` only apply when the URL is an **explicit HTTPS** URL whose host is github.com or gitlab.com — passing a token for any other host (an SSH-form or SCP-style URL, or a host that isn't github.com/gitlab.com) is a bad-arguments error, since there's nowhere for that credential to go. No token is required: with none supplied, the clone runs with whatever git auth is already set up on the machine (SSH agent, a configured credential helper, `.netrc`, or userinfo embedded in the URL itself) — this includes every SSH-form clone, even against github.com/gitlab.com, since the provider credential helper is HTTPS-only. Unity-project detection is **always** a post-clone scan of the downloaded tree for the URL form (never a provider API call, regardless of host or token) — only Git LFS credentials differ by tier: an HTTPS URL to github.com/gitlab.com with a token uses the provider-scoped LFS credential helper, everything else uses the machine's own git auth for the LFS pull too. A malformed URL, an unreachable host, a rejected/unknown SSH host key, and an authentication failure are reported as distinct errors (exit 2, 7, 3, and 3 respectively).
+**The `[url]` form is an alternative to `--vcs`/`--vcs-namespace`/`--vcs-repo`, not an addition to them** — passing a URL alongside any of those three flags is a bad-arguments error. `--ref`, `--path`, `--subpath`, `--no-lfs` always apply. `--git-token`/`--git-token-from-stdin` only apply when the URL is an **explicit HTTPS** URL whose host is github.com or gitlab.com — passing a token for any other host (an SSH-form or SCP-style URL, or a host that isn't github.com/gitlab.com) is a bad-arguments error, since there's nowhere for that credential to go. No token is required: with none supplied, the clone runs with whatever git auth is already set up on the machine (SSH agent, a configured credential helper, `.netrc`, or userinfo embedded in the URL itself) — this includes every SSH-form clone, even against github.com/gitlab.com, since the provider credential helper is HTTPS-only. Unity-project detection is **always** a post-clone scan of the downloaded tree for the URL form (never a provider API call, regardless of host or token) — only Git LFS credentials differ by tier: an HTTPS URL to github.com/gitlab.com with a token uses the provider-scoped LFS credential helper, everything else uses the machine's own git auth for the LFS pull too. A malformed URL, an unreachable host, a rejected/unknown SSH host key, and an authentication failure are reported as distinct errors (exit 2, 7, 3, and 3 respectively).
 
 **SSH transport policy.** No SSH URL is ever rewritten to HTTPS, and no key handling happens in the CLI — a key held by a running ssh-agent is used automatically, and a repository-local `core.sshCommand` or an `~/.ssh/config` host alias behaves identically to plain `git`, because the CLI only supplies its own SSH defaults when none of those (nor `GIT_SSH_COMMAND`/`GIT_SSH`) are already set — and it supplies none of them at all on an interactive terminal, deferring entirely to ssh's own prompts (a real fingerprint prompt for an unfamiliar host, a real passphrase prompt for a protected key with no agent), since a person at the terminal can answer them. Only in a non-interactive invocation (no TTY, or `--non-interactive`/`UNITY_NON_INTERACTIVE`), where no prompt could ever be answered, does the CLI supply its own defaults: an unknown host is trusted on first connect and pinned (so a *later* change to that host's key still fails loudly — this is not silenced), and a passphrase-protected key with no agent fails fast with an actionable error instead of hanging.
 
@@ -294,7 +309,7 @@ invisible to anything outside the GUI, and a human has to restate every comment 
 
 ```bash
 # Find a review. Any of --changeset, --branch or --status narrows it server-side.
-unity vcs uvcs review list --branch /main --format json
+unity vcs uvcs reviews --branch /main --format json
 
 # Read its comments, with the file and line each one is anchored to.
 unity vcs uvcs review comments --review 42 --format json
@@ -549,6 +564,30 @@ unity projects upgrade ./MyGame --to 6000.7.0f1 --yes --cloud
 unity projects upgrade ./MyGame --to 6000.7.0f1 --yes --no-cloud --json
 ```
 
+#### projects audit
+
+`unity projects audit` gets Project Auditor ready in the project's running Editor and opens its window on one workflow's page, so the user can run the analysis from there. It never runs the analysis itself. The project must be open in a Unity 6 or later Editor with `com.unity.pipeline` installed.
+
+<!-- unity-example: skip (Rust-only) -->
+```bash
+# Open Project Auditor on the Upgrade page (the default)
+unity projects audit
+
+# Open it on another workflow's page: upgrade, optimization, urp or coreclr
+unity projects audit --workflow urp
+
+# Open a saved report on that page
+unity projects audit --report ./Library/projectauditor-report-autosave.projectauditor
+
+# The Editor that has a given project open, with a longer wait for the install
+unity projects audit --project-path ./MyGame --timeout 3600 --json
+```
+
+- **Packages first.** In Unity 6.0 to 6.3 Project Auditor is the `com.unity.project-auditor` package; in later Editors it is built in. The command adds or updates that package (when needed) and `com.unity.project-auditor-rules` to the newest versions the Editor supports, then waits for the Editor to reload. A package that is embedded, local or from git is left alone. When the registry can't be read it warns and lets the Package Manager pick a version.
+- **The window.** It opens and focuses the Project Auditor window on the workflow's page. When the page can't be reached without a report, the window still opens and the result carries a `note` saying why: `{code, detail}` with code `pageUnavailable`, `viewUnavailable` or `failed` (`detail` holds the Editor's message).
+- **Exit codes.** `0` once the window is open. `2` for a bad option or a `--report` file that doesn't exist (`PROJECTS_AUDIT_REPORT_NOT_FOUND`). `10` when Project Auditor did not load within `--timeout` seconds (default 1800, `PROJECTS_AUDIT_TIMED_OUT`). `6` for an Editor older than Unity 6 (`PROJECTS_AUDIT_EDITOR_TOO_OLD`), a failed install (`PROJECTS_AUDIT_INSTALL_FAILED`), scripts that don't compile (`PROJECTS_AUDIT_COMPILE_FAILED`), Project Auditor not loading (`PROJECTS_AUDIT_NOT_LOADED`) or a step the Editor could not run (`PROJECTS_AUDIT_SCRIPT_FAILED`). No running Editor gives the same error as the other commands that drive the Editor through Pipeline.
+- **`--json` data:** `unityVersion`, `projectPath`, `projectAuditor` (`builtIn`, `assembly`, `packageVersion`, `rulesVersion`), `packagesAdded`, `workflow`, `reportPath` (`null` without `--report`) and `window` (`windowAssembly`, `reportLoaded` (`null` when Project Auditor can't tell), `reportIssue`, `navigated`, `note`). A report the window would refuse is not handed to it, so no dialog opens: `reportIssue` says why (`incompatible` for another Project Auditor version or an unreadable file, `empty`, `otherProject`) and `warnings` carries the same sentence the human output prints.
+
 #### projects export / import
 
 ```bash
@@ -615,7 +654,7 @@ unity projects link cloud /path/to/MyProject --cloud-org <id-or-name>
 unity projects link cloud /path/to/MyProject --cloud-project <id-or-name>
 # Switch an already linked project to another Unity Cloud project, in one step (no unlink first)
 unity projects link cloud /path/to/MyProject --cloud-project <id> --replace
-# Disconnect from its Unity Cloud project
+# Disconnect from its Unity Cloud project (always name the path: UNITY_PROJECT_PATH is not read here)
 unity projects unlink cloud /path/to/MyProject
 # Also remove the Unity Version Control workspace bound to this project
 unity projects unlink cloud /path/to/MyProject --cascade-vcs
@@ -670,12 +709,14 @@ unity assets inspect ./MyPackage.unitypackage --format json
 
 Works offline, with no Editor installed and no open project. The archive is streamed rather than read into memory, so a multi-gigabyte package is inspected in constant memory. `--format json` / `tsv` / `ndjson` carry the raw byte size and a boolean preview flag for scripts; the human table shows readable sizes and ends with a summary of entry count and total size. A missing file fails with `ASSET_PACKAGE_NOT_FOUND` (exit 6).
 
+`--format json` / `ndjson` also carry `signed`: `true` when the package holds a signature (its first archive entry is the attestation a signed export writes), and the human output ends with a `Signed:` line. The CLI only checks that a signature is there; it does not verify it, so `signed: true` does not prove who published the package or that it was not changed. `--format tsv` is unchanged.
+
 ### Assets — export a `.unitypackage`
 
 ```bash
 # Export one or more asset/folder paths, plus everything they depend on, to a .unitypackage
 unity assets export Assets/Art --output Art.unitypackage
-unity assets export Assets/Art Assets/Prefabs/Player.prefab -o Player.unitypackage --project /path/to/MyProject
+unity assets export Assets/Art Assets/Prefabs/Player.prefab -o Player.unitypackage --project-path /path/to/MyProject
 # Leave dependencies out: export only the named paths
 unity assets export Assets/Art --output Art.unitypackage --no-dependencies
 # Unity 6.6+: sign for a specific organization, or skip signing
@@ -683,7 +724,7 @@ unity assets export Assets/Art --output Art.unitypackage --cloud-org my-studio
 unity assets export Assets/Art --output Art.unitypackage --no-sign
 ```
 
-`export` is the write-side companion to `inspect`, and needs an Editor: it runs `UnityEditor.AssetPackage.Package.Export` (Unity 6.6+) or `AssetDatabase.ExportPackage` (earlier) in a batchmode Editor (`--project` defaults to the current directory, resolved through the Hub registry), so expect the same startup cost as `unity build`/`unity test` and, in CI, a license seat. Dependencies are included by default, matching the Editor's own Export Package dialog; `--no-dependencies` opts out. Every asset path is validated **before** the Editor starts, so a typo never buys a batchmode boot: a missing path (`ASSET_PATH_NOT_FOUND`), a path outside the project, or a path outside the two AssetDatabase-addressable roots (`Assets/`, `Packages/`, both reported as `ASSET_PATH_OUTSIDE_PROJECT`) all fail immediately with exit `6`. `--format json` / `ndjson` carry `output` (the written file's path), `size` (its raw byte count), `count`, `includeDependencies`, and the resolved `assets` array, plus `signed` and `signingOrganizationId`; `--format tsv` prints the output path, count, and size as three columns.
+`export` is the write-side companion to `inspect`, and needs an Editor: it runs `UnityEditor.AssetPackage.Package.Export` (Unity 6.6+) or `AssetDatabase.ExportPackage` (earlier) in a batchmode Editor (`--project-path`, else `UNITY_PROJECT_PATH`, defaults to the current directory, resolved through the Hub registry), so expect the same startup cost as `unity build`/`unity test` and, in CI, a license seat. Dependencies are included by default, matching the Editor's own Export Package dialog; `--no-dependencies` opts out. Every asset path is validated **before** the Editor starts, so a typo never buys a batchmode boot: a missing path (`ASSET_PATH_NOT_FOUND`), a path outside the project, or a path outside the two AssetDatabase-addressable roots (`Assets/`, `Packages/`, both reported as `ASSET_PATH_OUTSIDE_PROJECT`) all fail immediately with exit `6`. `--format json` / `ndjson` carry `output` (the written file's path), `size` (its raw byte count), `count`, `includeDependencies`, and the resolved `assets` array, plus `signed` and `signingOrganizationId`; `--format tsv` prints the output path, count, and size as three columns.
 
 On Unity 6.6 and later the package is **signed by default** for an organization, resolved like `projects create`: `--cloud-org <id-or-name>`, then `UNITY_CLOUD_ORG`, then the stored default (`unity cloud org set-default`). Signing needs a signed-in session. A numeric organization id is used as given; a service account must pass one, since it can't look up an organization by name (`CLOUD_ORG_NAME_NEEDS_OAUTH`, exit `2`). When the CLI can't sign (signed out, or no organization), it fails before the Editor starts: exit `3` (`NOT_SIGNED_IN`) or `4` (`CLOUD_NEEDS_ACTIVE_ORG`). Pass `--no-sign` to export unsigned. If the Editor writes the package without a signature, the CLI deletes the file and fails with `ASSETS_EXPORT_SIGNING_FAILED`. If the written package can't be read back to check, the CLI keeps it and fails with `ASSETS_EXPORT_SIGNING_UNVERIFIED`. Editors older than 6.6 can't sign, so their packages are always unsigned.
 
@@ -694,10 +735,20 @@ On Unity 6.6 and later the package is **signed by default** for an organization,
 unity assets import ./MyPackage.unitypackage
 
 # Import into a specific project
-unity assets import ./MyPackage.unitypackage --project /path/to/MyProject
+unity assets import ./MyPackage.unitypackage --project-path /path/to/MyProject
+
+# Import only part of the package (repeat --include to select more)
+unity assets import ./MyPackage.unitypackage --include "Assets/Art/**" --include Assets/Scripts/Player.cs
+
+# Refuse a package that has no signature
+unity assets import ./MyPackage.unitypackage --require-signed
 ```
 
-Wraps the Editor's own `-importPackage` batchmode argument — `--project` defaults to the current directory the same way `run`/`build`/`test` resolve their project, and the project must not already be open in another Editor (it holds the project lock). The package is read locally first, the same streaming pass `assets inspect` uses, so a missing or unreadable archive is rejected in milliseconds rather than after a 30-300s Editor boot; an archive that reads cleanly but declares no importable entry is refused the same way, under its own `ASSET_PACKAGE_EMPTY` code. `--format json`/`ndjson`/`tsv` all emit a result row (project, package, entry count) on success — nothing is silently swallowed on a redirected/piped run.
+Wraps the Editor's own `-importPackage` batchmode argument — `--project-path` (else `UNITY_PROJECT_PATH`) defaults to the current directory the same way `run`/`build`/`test` resolve their project, and the project must not already be open in another Editor (it holds the project lock). The package is read locally first, the same streaming pass `assets inspect` uses, so a missing or unreadable archive is rejected in milliseconds rather than after a 30-300s Editor boot; an archive that reads cleanly but declares no importable entry is refused the same way, under its own `ASSET_PACKAGE_EMPTY` code. `--format json`/`ndjson`/`tsv` all emit a result row (project, package, entry count) on success — nothing is silently swallowed on a redirected/piped run.
+
+`--include <glob>` imports only part of the package. Each pattern is matched against the entry paths `unity assets inspect` lists, one `/`-separated segment at a time and case-sensitively: `*` and `?` stay inside one folder, a `**` segment spans any number of folders, and a plain path selects that asset or that folder. A pattern that matches a folder selects everything under it, and the folders above every selected entry come along so they keep the package's GUIDs. Repeat `--include` for more; the selection is their union. Dependencies are not followed: a selected prefab whose material you leave out imports without it. Every pattern must match at least one entry, or the import stops before the Editor starts with `ASSET_PACKAGE_INCLUDE_NO_MATCH` (exit `6`), naming each pattern that matched nothing. The CLI writes the selected entries to a temporary package, has the Editor import that, and deletes it afterwards, whatever the outcome. With `--include`, `--format json`/`ndjson` add `include` (the patterns), `selectedEntries` (the count) and `selected` (one row per entry, the `path`, `guid`, `size`, `hasPreview` rows `assets inspect` prints) beside `packageEntries`, and `--format tsv` prints one row per selected entry, with the project, package and entry count repeated on each.
+
+An unsigned package still imports (exit 0) with a warning: on stderr in human and tsv (not under `--quiet`), in the envelope's `warnings` under `--format json` / `ndjson`, where `data.signed` is also `false`. `--require-signed` refuses an unsigned package before the Editor starts, with `ASSET_PACKAGE_UNSIGNED` (exit 6). As with `inspect`, the CLI checks only that a signature is present and does not verify it. Packages exported by Editors older than Unity 6.6, or with `--no-sign`, are unsigned.
 
 
 ---
@@ -712,7 +763,7 @@ unity assets export Assets/Art --output ./Art.unitypackage
 unity assets export Assets/Art/Logo.png Assets/Art/Icon.png --output ./Logo.unitypackage --no-dependencies
 
 # Export from a project other than the current directory
-unity assets export Assets/Art --output ./Art.unitypackage --project /path/to/MyProject
+unity assets export Assets/Art --output ./Art.unitypackage --project-path /path/to/MyProject
 
 # Unity 6.6+: choose the signing organization, or opt out of signing
 unity assets export Assets/Art --output ./Art.unitypackage --cloud-org 1234567
@@ -740,8 +791,8 @@ unity releases --lts --format json
 # Filter from a year onward
 unity releases --from-year 2023 --format json
 
-# Paginate
-unity releases --limit 10 --skip 20 --format json
+# Paginate: pass .data.nextPage as the next --offset (null on the last page)
+unity releases --limit 10 --offset 20 --format json
 ```
 
 ---
@@ -751,7 +802,7 @@ unity releases --limit 10 --skip 20 --format json
 **Choosing a core template.** Pick by render pipeline, not just by 2D/3D. Default to the URP
 templates; the Built-in Render Pipeline templates are deprecated from Unity 6.5 and removed in
 6.7, so use them only when the user explicitly asks for Built-in. Verify with
-`templates list --brief --format json` for the target Editor. Ids below are as of Unity 6000.3
+`templates --brief --format json` for the target Editor. Ids below are as of Unity 6000.3
 to 6000.7:
 
 | Brief | Template id | Display name | Pipeline |
@@ -762,14 +813,13 @@ to 6000.7:
 | VR / MR / AR | `com.unity.template.vr` / `.mixed-reality` / `.ar-mobile` | VR, Mixed Reality (MR), AR Mobile | URP |
 | Built-in, only on request | `com.unity.template.3d` / `com.unity.template.2d` | 3D / 2D (Built-In Render Pipeline) | Built-in; absent from 6.7+ |
 
-`--editor` here takes a **concrete** version. Unlike `install` and `projects create`, the
-`templates` commands do not resolve the `lts` / `latest` aliases — the value is passed straight
-through and anything that is not a `6000.x.y` fails with `UnityVersion: version argument is not a
-valid unity version`. Resolve the version first (`editors --installed`, `releases`).
+`--editor-version` picks the Editor whose templates you see, else `UNITY_EDITOR_VERSION`, else the
+default Editor. `lts` and `latest` resolve through the release catalog, as `install` resolves them.
+The old `--editor` and `-e` spellings still work, with a deprecation warning.
 
 ```bash
-# List templates for an editor version (uses default editor if --editor is omitted)
-unity templates list --editor 6000.0.47f1 --format json
+# List templates for an editor version (uses the default editor if --editor-version is omitted)
+unity templates --editor-version 6000.0.47f1 --format json
 
 # --brief: trim the json data to the same name/displayName/type/version/status
 # columns the table shows. Use this when the only thing you need out of the
@@ -777,27 +827,27 @@ unity templates list --editor 6000.0.47f1 --format json
 # untrimmed payload above carries every raw field (icons, package lists,
 # previous versions, …) and can run into the hundreds of KB for the default
 # catalog, most of which a template lookup never uses.
-unity templates list --editor 6000.0.47f1 --brief --format json
+unity templates --editor-version 6000.0.47f1 --brief --format json
 
 # List only locally installed templates
-unity templates list --editor 6000.0.47f1 --installed --format json
+unity templates --editor-version 6000.0.47f1 --installed --format json
 
 # Filter by type (core, learning, sample, custom, new, all) — case-insensitive
-unity templates list --editor 6000.0.47f1 --type core --format json
-unity templates list --editor 6000.0.47f1 --type learning --format json
-unity templates list --editor 6000.0.47f1 --type sample --format json
-unity templates list --editor 6000.0.47f1 --type new --format json
-unity templates list --editor 6000.0.47f1 --type all --format json  # no-op, returns everything
+unity templates --editor-version 6000.0.47f1 --type core --format json
+unity templates --editor-version 6000.0.47f1 --type learning --format json
+unity templates --editor-version 6000.0.47f1 --type sample --format json
+unity templates --editor-version 6000.0.47f1 --type new --format json
+unity templates --editor-version 6000.0.47f1 --type all --format json  # no-op, returns everything
 
 # List only user-generated (custom) templates
-unity templates list --editor 6000.0.47f1 --custom --format json
+unity templates --editor-version 6000.0.47f1 --custom --format json
 # --type custom is an alias for --custom
-unity templates list --editor 6000.0.47f1 --type custom --format json
+unity templates --editor-version 6000.0.47f1 --type custom --format json
 
 # --custom and --type are mutually exclusive — using both is an error (exit 1)
 
 # Show template details
-unity templates info com.unity.template.urp-blank --editor 6000.0.47f1 --format json
+unity templates info com.unity.template.urp-blank --editor-version 6000.0.47f1 --format json
 
 # Create a custom template from an existing Unity project
 # --name and --display-name are REQUIRED
@@ -830,13 +880,14 @@ unity templates create /path/to/MyProject \
 ```
 
 **`templates create` key notes:**
+- The project is the path argument, `--project-path <path>`, or `UNITY_PROJECT_PATH`, in that order (same for `templates pack`, `projects link` and `projects unlink vcs`); giving both the argument and the flag is a usage error. `projects unlink cloud` never reads `UNITY_PROJECT_PATH`: pass its path as the argument or `--project-path`
 - `--name` must be a valid npm package name (e.g. `com.myorg.template.mytemplate`)
 - `--output` overrides the Hub-configured user templates directory
 - `--overwrite` replaces an existing archive of the same name without error
 - On success, prints the path to the created `.tgz` archive
-- Created templates appear in `unity templates list --editor <v> --custom`
+- Created templates appear in `unity templates --editor-version <v> --custom`
 
-**`templates pack` — portable archive, not a registered template.** `create` installs into the Hub-configured user templates directory so the template shows up in `templates list --custom`; `pack` writes a standalone `.tgz` to a file path you choose and registers nothing. Reach for `pack` when the archive is an artifact to check in, attach to a release, or hand to someone else.
+**`templates pack` — portable archive, not a registered template.** `create` installs into the Hub-configured user templates directory so the template shows up in `templates --custom`; `pack` writes a standalone `.tgz` to a file path you choose and registers nothing. Reach for `pack` when the archive is an artifact to check in, attach to a release, or hand to someone else.
 
 ```bash
 # Pack a project into a portable template archive (--output is REQUIRED)
@@ -855,7 +906,7 @@ unity templates pack ./MyProject --output ./my-template.tgz --overwrite --json
 **`templates pack` key notes:**
 - `--output <file>` is a **file path**, not a directory, and is required
 - `--name` and `--display-name` are required; on a TTY they're prompted for when omitted, so pass both in CI
-- `--version` is the template's own version; `--template-version` still works, but it is deprecated and prints a warning naming `--version`
+- `--version` is the template's own version
 - The output path may not be **inside** the project being packed; that's rejected, so the archive can't include itself
 - An existing output file is an error unless `--overwrite` is passed
 - `--keep-embedded-packages` and `--keep-project-settings` retain content that is otherwise stripped
@@ -863,13 +914,13 @@ unity templates pack ./MyProject --output ./my-template.tgz --overwrite --json
 
 ```bash
 # Delete a user-generated custom template (prompts for confirmation)
-unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1
+unity templates delete com.myorg.template.mytemplate --editor-version 6000.0.47f1
 
 # Skip the confirmation prompt (CI-friendly)
-unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1 --yes
+unity templates delete com.myorg.template.mytemplate --editor-version 6000.0.47f1 --yes
 
 # JSON output
-unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1 --yes --json
+unity templates delete com.myorg.template.mytemplate --editor-version 6000.0.47f1 --yes --json
 ```
 
 **`templates delete` key notes:**
@@ -877,7 +928,7 @@ unity templates delete com.myorg.template.mytemplate --editor 6000.0.47f1 --yes 
 - Attempting to delete a built-in Unity template exits with a descriptive error (exit 6)
 - Attempting to delete a template that doesn't exist exits with a descriptive error (exit 6)
 - In interactive mode, prompts for confirmation before deleting; use `--yes` to skip
-- On success, the template no longer appears in `unity templates list --editor <v> --custom`
+- On success, the template no longer appears in `unity templates --editor-version <v> --custom`
 
 ```bash
 # Get/set/reset the default storage path for custom templates
@@ -906,21 +957,21 @@ unity templates location --reset --json
 # Edit a user-generated (custom) template's metadata
 # At least one of --display-name, --description, --version,
 # --preview-image, --remove-preview-image is required
-unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --display-name "My Updated Template"
+unity templates edit com.myorg.template.mytemplate --editor-version 6000.0.47f1 --display-name "My Updated Template"
 
 # Update multiple fields at once
 unity templates edit com.myorg.template.mytemplate \
-  --editor 6000.0.47f1 \
+  --editor-version 6000.0.47f1 \
   --display-name "My Updated Template" \
   --description "A new description for the template" \
   --version 1.1.0
 
 # Replace / remove preview image
-unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --preview-image /path/to/image.png
-unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --remove-preview-image
+unity templates edit com.myorg.template.mytemplate --editor-version 6000.0.47f1 --preview-image /path/to/image.png
+unity templates edit com.myorg.template.mytemplate --editor-version 6000.0.47f1 --remove-preview-image
 
 # JSON / NDJSON output (--yes required because these are non-interactive)
-unity templates edit com.myorg.template.mytemplate --editor 6000.0.47f1 --display-name "Updated" --yes --json
+unity templates edit com.myorg.template.mytemplate --editor-version 6000.0.47f1 --display-name "Updated" --yes --json
 ```
 
 **`templates edit` key notes:**

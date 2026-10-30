@@ -4,6 +4,15 @@ Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, 
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
+Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
+
+### Contents
+
+- Config — persisted CLI configuration
+- config get / set / list / unset — read or write any setting by key
+- Context — named sets of the five defaults
+- Hub — install the Unity Hub application
+
 ---
 
 ### Config — persisted CLI configuration
@@ -113,8 +122,8 @@ A generic key-value interface over the same persisted settings the purpose-built
 
 ```bash
 # Every configuration key and its resolved value
-unity config list
-unity config list --format json
+unity config
+unity config --format json
 
 # Read one key
 unity config get proxy
@@ -137,7 +146,7 @@ Recognized keys, and what they back onto:
 | `update-check` | `unity config update-check on\|off` | Value is `on`/`off`. |
 | `proxyRequestLogging` | `unity --log-proxy`'s persisted setting | Strict boolean `true`/`false`; the third tier of `--log-proxy`'s precedence (flag, then `UNITY_LOG_PROXY`, then this setting). |
 
-An unknown key, a read-only key (none exist yet — the mechanism exists for a future resolved-only value), or an invalid value for a writable key is rejected with exit **2** and a message pointing at `unity config list`. `--format json` returns `{key, value}` for `get`/`set`, `{key, cleared}` for `unset`, and `{entries: [{key, value, writable}, …]}` for `list`.
+An unknown key, a read-only key (none exist yet — the mechanism exists for a future resolved-only value), or an invalid value for a writable key is rejected with exit **2** and a message pointing at `unity config`. `--format json` returns `{key, value}` for `get`/`set`, `{key, cleared}` for `unset`, and `{entries: [{key, value, writable}, …]}` for `list`.
 
 #### config resolve — build/test defaults and the per-project `UnityCliConfig.json`
 
@@ -150,6 +159,8 @@ Precedence, highest first: command-line flag, environment variable (only `build.
 unity config resolve build.target /path/to/MyProject
 unity config resolve test.mode --format json     # {key, value, source}
 ```
+
+The same file can pin the CLI versions the project supports: `{"cli": {"version": "^1.0.0"}}`, an npm-style range. Every command run in the project checks it first. Outside the range a command warns (stderr, or `warnings` in json) and still runs, but in CI it stops before doing anything: exit **1**, error code `CLI_VERSION_OUT_OF_RANGE`, naming the range and the running version. `unity upgrade --target <version>` installs a version in range, and `upgrade`, `doctor`, `config` and `version` always run. A `cli.version` that isn't a range is exit **2**, `PROJECT_CONFIG_INVALID`, for every command. `config get` / `config resolve` don't report it.
 
 ---
 
@@ -165,7 +176,7 @@ unity context save work
 unity context use work
 
 # What exists, and which one is currently in effect
-unity context list
+unity contexts
 unity context current
 
 # Forget one (the settings it named are left as they are)
@@ -180,7 +191,7 @@ Names may use letters, digits, dots, dashes and underscores, up to 64 characters
 
 **Offline and signed-out still work.** When Unity Cloud cannot be reached the stored organization and project are applied as-is and a warning says they were not verified, rather than the switch being refused.
 
-`unity context use` reports every setting with a `*` against the ones that changed. The `setting` values are stable machine tokens — `account`, `organization`, `project`, `editor`, `install-path` — in every format, human included, so a script can key on them. Only `unity context list`'s column *headers* are translated.
+`unity context use` reports every setting with a `*` against the ones that changed. The `setting` values are stable machine tokens — `account`, `organization`, `project`, `editor`, `install-path` — in every format, human included, so a script can key on them. Only `unity contexts`'s column *headers* are translated.
 
 Two name collisions worth knowing: this is unrelated to `unity build --profile`, which names a Unity Build Profile asset; and inside `unity shell`, bare `context` still prints that session's own ephemeral project/org selection, while `context <subcommand>` reaches this group.
 
@@ -210,7 +221,7 @@ unity hub install --architecture x64
 unity hub install --skip-signature-check
 ```
 
-Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--version <version>` (default `latest`, and a leading `v` as in `v3.17.0` is accepted; `--hub-version` still works, but it is deprecated and prints a warning), `--skip-signature-check`.
+Options: `-f` / `--force`, `--headless` (silent installer, Windows only), `-a` / `--architecture x64|arm64` (env `UNITY_ARCHITECTURE`), `--version <version>` (default `latest`, and a leading `v` as in `v3.17.0` is accepted), `--skip-signature-check`.
 
 **Integrity & signature verification** — every download is checked against the SHA-512 from the HTTPS manifest, then the installer's **code signature** is verified before it runs with elevation: on macOS via `codesign` (signer `Developer ID Application: Unity Technologies`), on Windows via Authenticode (signer subject `Unity Technologies`), checked *before* the UAC prompt. Verification is **fail-closed** — if it fails or the verifier is unavailable, the command aborts with exit 6 and does not run the installer. Linux `.AppImage` has no standard verifier, so it is SHA-512-only. Pass `--skip-signature-check` to bypass (prints a warning; not recommended).
 
