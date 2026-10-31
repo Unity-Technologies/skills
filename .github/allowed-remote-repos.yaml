@@ -1,4 +1,6 @@
 # Lets the skills publish workflow open PRs that update this repo's skills/.
 workflows:
 allow-fetch-token:
-    - unity/skills/.github/workflows/publish-to-public.yml@refs/heads/main
+    # A map entry must match the whole workflow ref, so only runs from
+    # unity/skills main qualify (a string entry would also match main-test).
+    - workflow: unity/skills/\.github/workflows/publish-to-public\.yml@refs/heads/main
