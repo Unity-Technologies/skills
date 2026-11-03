@@ -14,6 +14,7 @@ Relative links in this file resolve to the skill directory's `references/` folde
   - Setup — install the Unity plugin into Claude Code
   - Setup — install the Unity plugin into Codex or Grok Build
   - Setup — install the Unity plugin into Antigravity
+  - Setup — Unity skills for VS Code and OpenCode
   - Skill — install this skill into an AI client
   - Plugin — manage optional CLI-adjacent tools
   - Connected Editors — pipeline / command / status
@@ -84,6 +85,8 @@ All four are present only when the installed `com.unity.pipeline` publishes them
 
 ### MCP — Model Context Protocol server (AI agent integration)
 
+**Prefer the CLI when you can run shell commands.** Use `unity command` and the other commands in this skill instead of the Unity MCP server: the CLI exposes more than the server's tools do. MCP is for clients that have no shell, such as Claude Desktop, and `unity setup all` configures it only for those.
+
 New in `0.1.0-beta.8`. `unity mcp` starts a Model Context Protocol server, built into the `unity` binary, that exposes the commands of a connected Unity Editor as MCP tools. AI agent clients connect over stdio, list those tools, and run them. The server starts even when no Editor is running and reports that it isn't connected; commands that a connected Editor adds show up as tools automatically.
 
 ```bash
@@ -146,7 +149,7 @@ unity mcp configure cursor --replace-legacy
 
 ### Setup — install the Unity plugin into Claude Code
 
-`unity setup claude` installs Unity's Claude Code plugin, which carries the Unity skills (this one included), in one step. It runs the two `claude` commands for you — `claude plugin marketplace add anthropics/claude-plugins-official` (Anthropic's official marketplace, which Claude Code usually has already) and then `claude plugin install unity@claude-plugins-official`, both at user scope — and reports what you now have. A plugin installed earlier from Unity's own marketplace (`unity@unity-agent-plugin`) is the same plugin, so it's reported as installed under that id. It changes the user's Claude Code configuration, so run it only when the user asks for the Unity plugin, or after they agree to install it; don't run it on your own initiative.
+`unity setup claude` installs Unity's Claude Code plugin, then the Unity skills (this one included) into `~/.claude/skills`, in one step. The plugin itself is thin: a bootstrap skill and a session hook that keeps the skills current. It runs the two `claude` commands for you — `claude plugin marketplace add anthropics/claude-plugins-official` (Anthropic's official marketplace, which Claude Code usually has already) and then `claude plugin install unity@claude-plugins-official`, both at user scope — and reports what you now have. A plugin installed earlier from Unity's own marketplace (`unity@unity-agent-plugin`) is the same plugin, so it's reported as installed under that id. It changes the user's Claude Code configuration, so run it only when the user asks for the Unity plugin, or after they agree to install it; don't run it on your own initiative.
 
 ```bash
 # Install the plugin (safe to re-run: an existing install is reported, not reinstalled)
@@ -165,7 +168,7 @@ The json `data` carries `pluginId`, `version`, `scope`, `alreadyInstalled`, `tak
 - **A `claude` step fails or times out** — fails with `CLAUDE_PLUGIN_INSTALL_FAILED` (exit 6), quoting the last line `claude` printed. Nothing is retried.
 - It reads `CLAUDE_CONFIG_DIR` when set, the same place `claude` writes.
 
-Because the plugin already carries the `unity-cli` skill, don't also run `unity skill install claude-code` — Claude Code would load two copies. This command never writes a skill copy or an MCP registration of its own.
+The skills come from the same quiet run as `unity skill install claude-code`, after the plugin is installed or found already installed, so don't also run that command. A skill an older plugin still provides stays skipped, so Claude Code never loads two copies. A failed skills step is a warning that names the command to retry, not a failure. In `--format json`, `installedVia` is `"plugin"` and `skillsToLoad` names the skills installed, and `skillsPath` is the skills folder. `--dry-run` adds `unity skill install claude-code` to `commands` and installs nothing. This command never registers an MCP server.
 
 ### Setup — install the Unity plugin into Codex or Grok Build
 
@@ -179,7 +182,7 @@ unity setup codex --dry-run
 unity setup grok --format json
 ```
 
-Both take `--dry-run` and every output format, and report the same json `data` as `setup claude`, except `reloadCommand` is `null`: neither agent has a reload command, so a fresh install loads in the next session (`takesEffect: "nextSession"`). The plugin carries the `unity-cli` skill, so don't also run `unity skill install codex` (or the Grok equivalent).
+Both take `--dry-run` and every output format, and report the same json `data` as `setup claude`, except `reloadCommand` is `null`: neither agent has a reload command, so a fresh install loads in the next session (`takesEffect: "nextSession"`). Like `setup claude`, each then installs the Unity skills for its client (`codex`, `grok`), so don't also run `unity skill install` for them.
 
 ### Setup — install the Unity plugin into Antigravity
 
@@ -193,7 +196,7 @@ Both take `--dry-run` and every output format, and report the same json `data` a
 unity setup antigravity --dry-run
 ```
 
-It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Antigravity session.
+It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Antigravity session. It also installs the Unity skills for the `antigravity` client (`~/.gemini/config/skills`).
 
 ### Setup — install the Unity plugin into GitHub Copilot
 
@@ -208,7 +211,7 @@ It takes `--dry-run` and every output format, reports the same json `data` as `s
 unity setup copilot --dry-run
 ```
 
-It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Copilot session. The plugin carries the `unity-cli` skill, so don't also run `unity skill install` for Copilot CLI.
+It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Copilot session. It also installs the Unity skills for the `vscode` client (`~/.copilot/skills`), so don't also run `unity skill install` for Copilot CLI.
 
 ### Setup — install the Unity plugin into Qwen Code
 
@@ -222,11 +225,23 @@ It takes `--dry-run` and every output format, reports the same json `data` as `s
 unity setup qwen --dry-run
 ```
 
-It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Qwen Code session. The extension carries the `unity-cli` skill, so don't also install the skill into Qwen Code.
+It takes `--dry-run` and every output format, reports the same json `data` as `setup codex`, and a fresh install loads in the next Qwen Code session. It also installs the Unity skills for the `qwen` client (`~/.qwen/skills`), so don't also install them yourself.
+
+### Setup — Unity skills for VS Code and OpenCode
+
+Neither editor has a plugin CLI to drive, so each has its own command. Run one only when the user asks to set up that editor, or after they agree. Both install the Unity skills the way `unity skill install <client>` does, take `--dry-run` and every output format, and fail if the skills can't be installed.
+
+- `unity setup vscode` installs the skills for the `vscode` client (`~/.copilot/skills`) and prints how to add Unity's agent plugin by hand: in VS Code run **Chat: Install Plugin from Source** and enter `https://github.com/Unity-Technologies/unity-agent-plugin` (the Agent Customizations editor works too). VS Code reads the plugin's `.claude-plugin/plugin.json`. It changes no VS Code settings file. The json `data` carries `client`, `dryRun`, `skillsPath`, `skillsToLoad`, `commands` and `pluginSource`.
+- `unity setup opencode` installs the skills for the `opencode` client and writes one OpenCode plugin file, `~/.config/opencode/plugins/unity.js` (under `$XDG_CONFIG_HOME/opencode` when that is set, as OpenCode reads it). On `session.created` it runs `unity skill sync opencode --hook --format json` in the background, ignores any failure, and when a skill changed it shows a toast and adds the change to the session as context without asking the model to reply. The file's first line records a digest of what the CLI wrote. A rerun replaces an unedited copy, reports `unchanged` when nothing differs, and leaves a file the user edited, or wrote themselves, alone with a warning (`pluginFileAction: "skipped-edited"`). `--yes` replaces it anyway: use it only after the user agrees. The json `data` carries `client`, `dryRun`, `skillsPath`, `skillsToLoad`, `commands`, `pluginFile` and `pluginFileAction` (`created`, `updated`, `unchanged`, `skipped-edited` or `would-write`).
+
+```bash
+unity setup vscode --dry-run
+unity setup opencode --format json
+```
 
 ### Setup: install the Unity skills when the plugin can't be installed
 
-`unity setup claude`, `unity setup codex`, `unity setup grok` and `unity setup copilot` fall back to the Unity skills when the agent's CLI isn't on your PATH (`*_NOT_FOUND`) or its plugin install fails (`*_PLUGIN_INSTALL_FAILED`). They install the same skill set as `unity skill install <client>` into that agent's user-global skills folder: `claude-code`, `codex`, `grok`, and `vscode` (which is `~/.copilot/skills`) for Copilot. `unity setup antigravity` has no skills client, so it fails as before.
+`unity setup claude`, `unity setup codex`, `unity setup grok` and `unity setup copilot` install the Unity skills even when the plugin is in place (see above), and fall back to only the skills when the agent's CLI isn't on your PATH (`*_NOT_FOUND`) or its plugin install fails (`*_PLUGIN_INSTALL_FAILED`). They install the same skill set as `unity skill install <client>` into that agent's user-global skills folder: `claude-code`, `codex`, `grok`, and `vscode` (which is `~/.copilot/skills`) for Copilot. `unity setup antigravity` and `unity setup qwen` have no such fallback, so they fail as before.
 
 - **In a terminal**, it prints the plugin error as a warning and asks whether to install the skills instead (default yes). Declining exits with the plugin error.
 - **With `--yes`**, it installs the skills without asking. Run it only after the user agrees.
@@ -236,11 +251,11 @@ It takes `--dry-run` and every output format, reports the same json `data` as `s
 unity setup codex --yes --format json
 ```
 
-The json `data` has the same keys as a plugin install, with `version`, `scope`, `reloadCommand` and `installedAt` set to `null`, plus `installedVia: "skills"` and `skillsToLoad`, the names of the skills it installed. `takesEffect` is `"nextSession"`: the skills load in the next session, so until then read them from `skillsPath`. `warnings` carries the plugin error. A skill an installed plugin already provides is skipped, and if nothing could be installed the run fails with the plugin error. `installedVia` and `skillsToLoad` appear only on this path.
+The json `data` has the same keys as a plugin install, with `version`, `scope`, `reloadCommand` and `installedAt` set to `null`, plus `installedVia: "skills"` and `skillsToLoad`, the names of the skills it installed (`installedVia` is `"plugin"` when the skills went in beside the plugin). `takesEffect` is `"nextSession"`: the skills load in the next session, so until then read them from `skillsPath`. `warnings` carries the plugin error. A skill an installed plugin already provides is skipped, and if nothing could be installed the run fails with the plugin error. `installedVia` and `skillsToLoad` appear only when skills were installed.
 
 ### Setup — set up every coding agent on the machine
 
-`unity setup all` finds each coding agent on the machine and sets each one up in turn, without prompting. Run it only when the user asks to set up their agents, or after they agree. A plugin agent (Claude Code, Codex, GitHub Copilot CLI, Grok Build, Antigravity, Qwen Code) gets the Unity plugin, as `unity setup claude` and its siblings do. A skills-only client (such as Cursor or Cline) gets the Unity skills, as `unity skill install <client>` does (offline, only the two embedded ones), and `unity mcp configure <client>` where that command supports the client. One client failing doesn't stop the rest.
+`unity setup all` finds each coding agent on the machine and sets each one up in turn, without prompting. Run it only when the user asks to set up their agents, or after they agree. A plugin agent (Claude Code, Codex, GitHub Copilot CLI, Grok Build, Antigravity, Qwen Code) gets the Unity plugin and its skills, as `unity setup claude` and its siblings do. A skills-only client (such as Cursor, Cline or OpenCode) gets the Unity skills, as `unity skill install <client>` does (offline, only the two embedded ones). `unity mcp configure` runs only for a client with no shell, never for the others. One client failing doesn't stop the rest.
 
 ```bash
 unity setup all --dry-run
@@ -250,7 +265,7 @@ unity setup all --format json
 It takes `--dry-run` and every output format. The json `data` is `clients`, one object per client with `client`, `displayName`, `kind` (`plugin` or `skills`), `outcome` (`installed`, `already_installed`, `skipped`, `failed` or `dry_run`), `plugin` (`id`, `version`, plugin agents only), `skills` (`name`, `version`, what was installed, module skills included), `warnings` (notes for that client, present only when there are any) and, on failure, `error` (`code`, `message`), plus `skillsToLoad`, the skills to read now. A machine with no agents reports an empty `clients` and exits 0.
 
 - **Edited skill.** A managed skill still matching what the CLI wrote is updated. One you edited is left alone: its outcome is `skipped`, `warnings` names `unity skill install <client> --force` to overwrite it, and the run still exits 0.
-- **MCP.** A skills client's `unity mcp configure <client> --yes` step runs on every non-dry run, so a rerun repairs a failed one. A client that fails there has the error code `MCP_CONFIGURE_FAILED`; retry it with `unity mcp configure <client> --yes`. `vscode` and `vscode-insiders` only have a project target, so they are not configured automatically: `warnings` says to run `unity mcp configure <client>` inside the project.
+- **MCP.** A client that can run shell commands uses the CLI and its skills, so `setup all` registers no MCP server for it. Run `unity mcp configure <client>` yourself if the user wants one. Only a client with no shell is configured automatically, and a failure there has the error code `MCP_CONFIGURE_FAILED`; retry it with `unity mcp configure <client> --yes`.
 - **Copilot and VS Code.** When `setup all` sets up the Copilot CLI plugin and also finds VS Code, it does not copy a second `unity-cli` skill into `~/.copilot/skills` (module skills still install). The `vscode` client reports `already_installed` with a warning saying so; if VS Code doesn't see the Unity skill, run `unity skill install vscode`.
 - **Failures.** The run exits 6 when any client failed (a skip is not a failure); retry a plugin agent with `unity setup <client>` and a skills client with `unity skill install <client>`.
 - **State.** After the clients, a human run prints a block with the account, license, Editors and network state and the next command. With `--format json` or `ndjson`, anything blocking comes as `notifications` entries on the same envelope, each with a `remediation.command`, and `notifications` is absent when nothing blocks.
@@ -267,6 +282,9 @@ unity skill install --list
 
 # Install into a client's user-global skills directory
 unity skill install claude-code
+
+# Install into every agent client found on this machine
+unity skill install --all
 
 # Install into the current project instead of the user-global location
 unity skill install cursor --local
@@ -287,13 +305,15 @@ A default `unity skill install <client>` writes every Unity skill side by side: 
 - **Offline.** When the download fails, the run installs the two embedded skills (`unity-cli` and `new-unity-project`), warns with the names of the pinned skills it couldn't install, and still exits `0`. Run it again once the machine is online.
 - **Records.** Under `--format json`, a record for an embedded or repo skill carries `source` (`embed` for a skill built into the CLI, `repo` for one from the pinned repository) and, for a repo skill, `commit`, the pinned commit it came from. A pinned skill the offline run skipped has `skipped: true` and `skipReason: "offline"`.
 
-Supported clients: `claude-code`, `claude-desktop`, `grok`, `cursor`, `windsurf`, `vscode`, `cline`, `codex`, `opencode`. Each is written in the format that client expects, at its platform-correct location. Not every client supports both scopes — some are user-global only, others project-local only — and `--list` reports which, so check there rather than guessing.
+`unity skill install --all` installs into every agent client found on this machine, the clients `unity setup all` finds. A plugin agent gets the skills client it reads from: Claude Code `claude-code`, Codex `codex`, Grok Build `grok`, GitHub Copilot CLI `vscode`. It leaves out Antigravity and Qwen Code: install their skills with `unity skill install antigravity` or `unity skill install qwen`, or with `unity setup antigravity` or `unity setup qwen`, which also installs the plugin. It never runs an agent's own CLI, installs no plugin and configures no MCP server, so it needs no git; `unity setup` does those. Each client's run is non-interactive: it updates a copy an older CLI wrote that nobody edited, and skips an edited copy or a skill a plugin already provides, unless you pass `--yes`. It prints one line per client (in a terminal, the machine-state block `unity setup all` prints, whose "Load skills" row names only `unity-cli` and `new-unity-project`), and one client failing doesn't stop the rest; the run then exits `6`, with a `SKILL_INSTALL_CLIENT_FAILED` entry per failed client in `errors`. `--format json` `data` holds every client's skill records, each carrying its `client`. With no client found it says so and exits `0`. It can't be combined with a client name or `--list` (exit `2`). The Unity CLI install scripts run `unity skill install --all --non-interactive` after installing the binary.
+
+Supported clients: `claude-code`, `claude-desktop`, `grok`, `cursor`, `windsurf`, `vscode`, `cline`, `codex`, `opencode`, `antigravity`, `qwen`. Each is written in the format that client expects, at its platform-correct location. Not every client supports both scopes — some are user-global only, others project-local only — and `--list` reports which, so check there rather than guessing.
 
 Without `--yes`, a run with no terminal (or with `--non-interactive`) cannot ask, so it skips an outdated copy, and a client whose plugin already provides the skill, and still exits `0`. That skip covers only the `unity-cli` skill, and the bundled `new-unity-project` skill when that plugin ships it too (its record says `plugin-provided` as well). A `new-unity-project` directory this CLI did not write is skipped the same way (`foreign-tree`) unless you name it with `--skill` or pass `--force`. The skills an installed plugin or the project's package ships are still installed beside it. With `--format json`, the run writes one envelope whose `data` holds a record per skill it considered, and each skipped skill's record carries `skipped: true` and a `skipReason` (`outdated`, `plugin-provided` or `foreign-tree`), so a script can tell a skip from an install. Pass `--yes` to overwrite.
 
 A `--local` install also picks up the skill the project's `com.unity.pipeline` package ships (`.claude/skills/unity-pipeline/` inside the package) and mirrors it beside `unity-cli` — e.g. into `.claude/skills/unity-pipeline/` for `claude-code`. A resolved package lives under `Library/PackageCache`, which no client's skill discovery reads, so this mirror is what makes the package's own skill loadable; a project without the package installs only the two embedded skills. `unity skill refresh` re-reads the mirrored copy from the project's package, and reports rather than deletes when the package is gone. The package skill never installs user-globally — it versions with the project's own package.
 
-`opencode` installs into `~/.config/opencode/skills/unity-cli`, or `.opencode/skills/unity-cli` with `--local`, the folders OpenCode reads skills from. OpenCode also reads `~/.claude/skills`, `~/.agents/skills` and their project-local twins, so when one of those already holds the skill, `skill install opencode` warns and skips it the way it skips a plugin-provided copy (`skipReason` `plugin-provided`, with `conflict.source` `shared-directory`). Pass `--yes` to install a second copy anyway.
+`opencode` installs into `~/.config/opencode/skills/unity-cli` (`$XDG_CONFIG_HOME/opencode/skills/unity-cli` when that is set), or `.opencode/skills/unity-cli` with `--local`, the folders OpenCode reads skills from. OpenCode also reads `~/.claude/skills`, `~/.agents/skills` and their project-local twins, so when one of those already holds the skill, `skill install opencode` warns and skips it the way it skips a plugin-provided copy (`skipReason` `plugin-provided`, with `conflict.source` `shared-directory`). Pass `--yes` to install a second copy anyway.
 
 `codex` installs a real skill directory (`~/.agents/skills/unity-cli`, or `.agents/skills/unity-cli` with `--local`), which is where Codex looks for skills. Earlier CLI versions instead merged the whole skill into a shared `AGENTS.md`, which Codex reads at the start of every session, so the entire skill was charged to sessions that had nothing to do with Unity. Installing or refreshing now removes that leftover block and reports the file it cleaned. If it finds more than one such block it leaves the file alone and says so, rather than guessing which block is Unity's.
 
@@ -306,11 +326,30 @@ unity skill refresh --yes
 unity skill refresh --dry-run
 ```
 
-Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity self-update`** — the embedded skill ships with the binary, so an updated CLI leaves previously-installed copies stale until they're refreshed.
+Every install is tracked, so `unity skill refresh` re-renders all of them at once and drops tracking for any whose location has since disappeared. **Run it after `unity self-update`** — the embedded skill ships with the binary, so an updated CLI leaves previously-installed copies stale until they're refreshed. For one client, without prompting, `unity skill sync <client>` does the same and is what the agent plugin runs.
 
 Two safety behaviors: writing through a symlink is refused rather than followed, and `--local` from your home directory warns first, since for most clients that either duplicates the global install or writes somewhere the client never reads.
 
 If you last installed the Codex skill with an older CLI, `unity skill refresh` migrates it: it writes the skill directory, strips the old `AGENTS.md` block, and replaces the tracking entry.
+
+#### skill sync — keep one client's skills current, without prompting
+
+`unity skill sync [client]` installs or updates the Unity skills for one AI client and never asks. It is what Unity's agent plugin runs when a session starts, so the plugin itself ships no skills.
+
+```bash
+unity skill sync                       # the client of the agent running the command
+unity skill sync claude-code           # name the client
+unity skill sync opencode --format json
+unity skill sync --hook                # a session-start hook document; always exits 0
+unity skill sync --dry-run             # which skills would change, nothing written
+```
+
+- **It only touches copies it manages.** A copy you edited, a disabled skill, and a skill a client plugin already ships are left alone, exactly as a non-interactive `unity skill install` leaves them. There is no `--yes` or `--force`.
+- **It is cheap when nothing changed.** After a run that reached the pinned repository, it records this CLI's version and pin for the client. Until either changes, later runs answer from that record with no download. A run after `unity self-update` or a new pin syncs again. An offline run installs what it can and tries again next time.
+- **The client.** With none named, it reads the agent from its environment: Claude Code, GitHub Copilot (the `vscode` client), Codex, Grok, OpenCode, Cursor, Windsurf, Cline, Antigravity and Qwen Code. When it can't tell, it exits `2` asking for a client name (`--hook` prints that as context and exits `0`).
+- **Output.** `--format json` writes `data` with `client`, `changed` (the skill names it installed or updated), `upToDate`, `offline`, `dryRun` and `message`, the one line an agent should read, or `null`. `--hook` prints nothing when nothing changed, else a JSON document with that line under `additionalContext` and `hookSpecificOutput.additionalContext` (`hookEventName` `SessionStart`), the shapes Claude Code, VS Code and the GitHub Copilot CLI read. A failure under `--hook` becomes one line of context, never a failed session start.
+
+When an agent without the plugin's hook runs `unity` and the Unity skills it installed are older than this CLI's pin, the CLI says so once a day, naming `unity skill sync <client>` (an `AGENT_SKILLS_OUTDATED` entry in the envelope's `notifications` under `--format json`, with `remediation.requiresUserApproval: false`, since the sync never overwrites an edited copy). `UNITY_NO_AGENT_HINTS` turns it off with the other agent tips.
 
 #### skill show — read the skill without installing it
 
@@ -585,6 +624,13 @@ unity command script recompile_status --result-only
 
 In the human table, `script recompile`, `script recompile_status`, `test status` and `test run` results render as short readable text in the Result column instead of a JSON blob; `--format json` / `ndjson` output is unchanged.
 
+**A newer Editor formats and streams a named command's output itself.** When the project's `com.unity.pipeline` supports it, `unity command <name>` prints each record as the Editor produces it and exits with the command's own exit code (`1` for a failed command). The default output is a table, or one `name: value` line per field for a single result. Pass `--plain` for one tab-separated line per record with no header, or `--json` for the command's result as JSON, without the CLI's `command`/`parameters`/`target` envelope. Pick fields with `--fields name,path`. `--format tsv` and `--format json` ask for the same two formats. The command runs like a remote process: piped stdin reaches it (`cat paths.txt | unity command <name>`), for a command that reads its input, Ctrl-C asks it to stop and waits for it (a second Ctrl-C stops waiting), and a busy Editor's refusal comes back as its exit code (`102`) rather than being waited out. An empty list prints nothing. `--format ndjson`, `--result-only`, `--detach`, `--quiet` (except with json) and older Editors keep the rendering above.
+
+```bash
+unity command editor status --fields playMode,compiling
+unity command editor status --plain --fields playMode
+```
+
 **`--caller [label]` and `--skill [name]` are analytics labels, not behavior.** `--caller` records what invoked the CLI and `--skill` records the agent skill driving the invocation; neither changes what the command does. A caller the CLI recognizes is recorded as given, anything else as `other`. They exist so an integration can identify itself — an agent running this skill has no reason to set them by hand, and both are inert when analytics are off.
 
 #### Querying the command list
@@ -722,7 +768,22 @@ unity job wait <job-id> --poll-interval 2000
 
 #### Modal dialogs
 
-Requires Unity 6000.7+ and a `com.unity.pipeline` that has the dialog commands. A native modal dialog (`Save changes?`, a build or import prompt, an `EditorUtility.DisplayDialog` call, …) blocks the Editor's main thread — which is exactly why `unity command` and `unity job` can be rejected or time out while one is open. Three ordinary pipeline commands see it and clear it without touching the keyboard or mouse, and they keep working while a dialog is open:
+Needs an Editor that reports its dialogs to the CLI. A native modal dialog (`Save changes?`, a build or import prompt, an `EditorUtility.DisplayDialog` call, …) blocks the Editor's main thread — which is exactly why `unity command` and `unity job` can be rejected or time out while one is open. The Editor answers two commands itself, outside the main thread, so they work while a dialog is open, and in Safe Mode:
+
+```bash
+unity command editor dialog                       # see what's open: id, title, message, buttons
+unity command editor dialog answer <id> <button>  # press a button, by its label in any case
+```
+
+With several Editors open, name one with `--project-path`, `--pid`, `--port` or `--instance`, or run the command from inside its project. `unity pipeline list` also names the open dialog, with the phase the Editor is in. A message box can be answered this way; an Editor window opened with `ShowModal` can only be closed in the Editor, and `unity command editor dialog` says so.
+
+A dialog-blocked failure names the exact dialog id and the command to run: `unity command editor dialog answer` when the Editor reports its dialogs (for an Editor window it says to close it in the Editor instead), else the package's `editor.dialog answer` / `editor.dialog dismiss` (below). What you do **after** answering depends on when the block happened:
+
+1. **The command was rejected before it ever ran** — a pre-flight `blocked_by_dialog` failure, reported at once rather than after a wait. The message says to answer the dialog, then retry: run `unity command editor dialog` to confirm what's open, `unity command editor dialog answer <id> <button>`, then send the exact same command again. Nothing ran the first time, so retrying is correct.
+2. **The command was already dispatched and then timed out with a dialog open** — `unity command`'s own timeout, or `unity job wait` giving up on its `--timeout`. The message says the command is still running in the Editor: answer the dialog the same way, but do **not** run the command again — it may already be executing behind the dialog, and resubmitting it would run it twice. Check its result instead (`unity job wait <job-id>` if it ran as a job — see *job* above).
+3. **Answering a dialog can put another one on top of it** — a save prompt appearing after the first is answered, for example. Run `unity command editor dialog` again after answering, and answer the new one the same way, rather than assuming the Editor is clear. An answer is refused when another dialog covers the one you named; the message names the dialog on top.
+
+Against an Editor that does not report its dialogs, `unity command editor dialog` goes to the `com.unity.pipeline` package like any other command and fails as an unknown command. On Unity 6000.7+ with a `com.unity.pipeline` that has the dialog commands, use the package's instead:
 
 ```bash
 unity command editor.dialog list                 # see what's open: id, title, message, buttons
@@ -730,13 +791,7 @@ unity command editor.dialog answer <id> <button> # click a button, by index or e
 unity command editor.dialog dismiss <id>         # closes an Editor window, or a message box that has a cancel button
 ```
 
-A dialog-blocked failure names the exact dialog id and the `unity command editor.dialog answer` (or `editor.dialog dismiss`) to run, but what you do **after** answering depends on when the block happened:
-
-1. **The command was rejected before it ever ran** — a pre-flight `blocked_by_dialog` failure, reported at once rather than after a wait. The message says to answer the dialog, then retry: run `unity command editor.dialog list` to confirm what's open, `unity command editor.dialog answer <id> <button>`, then send the exact same command again. Nothing ran the first time, so retrying is correct.
-2. **The command was already dispatched and then timed out with a dialog open** — `unity command`'s own timeout, or `unity job wait` giving up on its `--timeout`. The message says the command is still running in the Editor: answer the dialog the same way, but do **not** run the command again — it may already be executing behind the dialog, and resubmitting it would run it twice. Check its result instead (`unity job wait <job-id>` if it ran as a job — see *job* above).
-3. **Answering or dismissing a dialog can put another one on top of it** — a `ShowModal` window's own save prompt appearing over it, for example. `editor.dialog answer` / `editor.dialog dismiss` report this as `pending`, and the new dialog is in the result's `dialogs` array (innermost last); answer that one next, the same way, rather than assuming the original dialog is cleared.
-
-Against an Editor whose `com.unity.pipeline` has no dialog commands (or on Unity older than 6000.7), `unity command editor.dialog list` fails as an unknown command; update the package, or answer the dialog in the Editor.
+`editor.dialog answer` / `editor.dialog dismiss` report a dialog that opened on top as `pending`, with the new dialog in the result's `dialogs` array (innermost last). Without either, answer the dialog in the Editor.
 
 #### command — discover a connected Editor's tools
 
