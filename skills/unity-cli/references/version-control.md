@@ -52,6 +52,7 @@ Relative links in this file resolve to the skill directory's `references/` folde
 | `vcs resolve` | Resolve a conflicted asset, by merge or by taking a side |
 | `vcs diff <path>` | What changed inside a scene or prefab, by object name |
 | `vcs blame <path>` | **Who** last changed each object in a scene or prefab |
+| `vcs guid <guid...>` | Which asset a guid names, at a commit or in your working tree |
 | `vcs summarize` | What did this branch change, ready to paste into a PR |
 | `vcs affected` | Which assets, assemblies and tests does a change affect |
 | `vcs hooks` | Run the Unity integrity checks at commit time |
@@ -231,7 +232,7 @@ running before a switch between branches that differ in assets.
 
 ## Reading a change
 
-These four are read-only and never write the working tree or the index.
+These five are read-only and never write the working tree or the index.
 
 ### vcs diff
 
@@ -244,12 +245,24 @@ lines with nothing naming what they belong to.
 unity vcs diff Assets/Scenes/Level.unity                       # HEAD vs your working tree
 unity vcs diff Assets/Scenes/Level.unity --from main --to HEAD
 unity vcs diff Assets/Prefabs/Player.prefab --json
+unity vcs diff Assets/Scenes/Level.unity --full --json         # every change, every value whole
 ```
 
 `--from` defaults to `HEAD`; `--to` defaults to **your working tree**, which is why it is not
 defaulted to `HEAD` — absent and `HEAD` are different comparisons.
 
 Reads like `Changed Transform on Player at Level/Actors/Player: position {x: 0} → {x: 5}`.
+
+**Output is capped unless you pass `--full`.** By default the human report lists 40 changes and 6
+values per change; in every format, values are rendered for the first 500 changed objects only, each
+value is cut to 160 characters, and rendering stops after about 512K characters per side. The json
+shape says so: `valuesTruncated` on the report and `truncated` on each value. `--full` lifts all of
+these, so `valuesTruncated` is always `false`. The names of the objects a changed value refers to
+are looked up only in objects up to 4 MB; a larger one reports `referencesTruncated: true` and its
+values carry no names, until `--full` lifts that too. One limit stays: a value nested more than 8 levels
+deep still collapses to `[…]` or `{…}`, and under `--full` that value says `truncated: true`, so
+`truncated: false` always means the value is whole. Use it when an agent or a script needs the whole
+diff of a large scene or prefab instead of falling back to `git diff`.
 
 **Identity is reported with a confidence.** Matching is three tiers — `fileID` plus class tag,
 then class plus name plus hierarchy path, then content similarity — and every row carries which
@@ -260,6 +273,28 @@ rename as a delete plus an add is worse than one that admits it is unsure.
 inside `PrefabInstance.m_Modification`, and resolving it means opening the source prefab. So the
 change is reported against the instance with a `prefabInstance` flag and a note that attribution
 stops at this asset — never as "the Player's mass changed".
+
+**References name their asset.** When a changed value points at another asset
+(`{fileID: 4300000, guid: 6a1f..., type: 3}`), the human report adds a `was` and a `now` line
+with the path that guid names, looked up **at that side's commit**: `--from` for the old value,
+`--to` (or your working tree) for the new one. The lookup reads `.meta` files from git, so it
+needs no Editor and no network, and costs one batched git read per commit.
+
+- `(added in this range)` or `(deleted in this range)`: the guid exists only at the other
+  side's commit. A new value naming a deleted asset is a dangling reference.
+- `(built in)`: Unity's built-in resources, by name where known (`Cube (built in)`).
+- `(package)`: an asset of a package in `Library/PackageCache`, which the repository does not
+  carry. It is not missing.
+- `(in this file)`: a `fileID`-only reference, named by the object it points at
+  (`Transform on Player (in this file)`).
+- `(not in this repository)`: no `.meta` at that commit declares the guid.
+
+In `--json`, each value keeps its raw `from` and `to` and adds `fromReferences` and
+`toReferences`: `{fileId, guid, type, status, resolvedPath, name, owner}`, where `status` is one of
+`present`, `added`, `deleted`, `built-in`, `package`, `local`, `not-in-repository`, `none`
+(`fileID: 0`) or `unknown` (the index could not be read). `fileId` is a string, because a
+`fileID` can exceed what a JSON number holds exactly. `owner` names the GameObject that owns a
+same-file component, and is null otherwise.
 
 ### vcs blame
 
@@ -312,6 +347,27 @@ it, the commit, author, date, the identity confidence, and which fields moved.
 
 A binary-serialized or non-Unity asset is reported as such, never as an empty result.
 
+### vcs guid
+
+Which asset each guid names. Logs, errors and raw diffs print guids, and finding the asset
+otherwise means grepping every `.meta` file.
+
+```bash
+unity vcs guid 0123456789abcdef0123456789abcdef               # in your working tree
+unity vcs guid 0123456789abcdef0123456789abcdef --at main     # as of a commit
+unity vcs guid <guid> <guid> --json
+```
+
+One row per guid, in the order given: `guid`, `status`, `resolvedPath`, `name`. `status` is
+`present`, `built-in`, `package` or `not-in-repository`. A guid that names nothing is a row,
+not an error. A malformed guid (not 32 hex digits) is a usage error, exit 2; an `--at` that
+names no commit is `VCS_BAD_REVISION`, exit 4.
+
+A guid is unique within one Unity project, so inside a project only that project's assets and
+package cache count; `vcs diff` resolves against the project that holds the file. A repository
+whose git config could run a program (an `lfs.extension.*` entry, or an odd filter name) is
+refused with `VCS_GIT_CONFIG_UNSAFE`, since the lookup reads blobs without running filters.
+
 ### vcs summarize
 
 What a branch changed, ready to paste into a pull request: counts by Unity category, plus the
@@ -321,12 +377,29 @@ without their `.meta`, binaries that cannot be reviewed as text, and package-man
 ```bash
 unity vcs summarize --since main
 unity vcs summarize --since origin/dev --json
+unity vcs summarize --since main --to feature/login   # a PR or past range, without checking it out
+unity vcs summarize --since main --objects            # plus what changed inside each scene and prefab
 ```
 
 `--since` is **required** and takes a **revision**; the summary is measured from its merge base
-with `HEAD`. This is the one verb in the group that is *not* gated on a Unity project root — the
+with `HEAD`. `--to <ref>` ends the range at another commit instead (matching `vcs diff
+--from/--to`): the summary then runs from the merge base of `--since` and `--to`, to `--to`, reads
+that commit's files (not the working tree), and adds `to` to the JSON. The uncommitted-changes
+warning appears only when the range ends at `HEAD`. An unknown `--to` fails like an unknown
+`--since`: exit 4, `VCS_BAD_REVISION`. This is the one verb in the group that is *not* gated on a Unity project root — the
 range is a git range, so it works from a monorepo's root, one level above the project, which is
 where PR bodies actually get written.
+
+`--objects` adds what changed *inside* each changed scene, prefab, material, animation,
+ProjectSettings file and other asset in the range, object by object, the way `vcs diff` reports one file: the human report adds
+a `vcs diff` section per serialized file, json and ndjson nest that file's `vcs diff` data under
+its row in `changes` as `objects` (null for a script, shader, model or other file with no objects),
+and tsv follows each file row with one `object` row per changed object (a file read only in part
+gets a warning on stderr naming it). Each side is read at its commit, base to end, never from the
+working tree, and a changed reference names the asset its guid points at on that side, as in
+`vcs diff`. The same per-file limits as `vcs diff` apply,
+and the report says when one is reached; `--full` lifts them, as it does on `vcs diff`, and implies
+`--objects`. Without either option the output is unchanged.
 
 ### vcs affected
 
@@ -405,8 +478,11 @@ unity vcs git migrate-lfs --min-size 500KB
 unity vcs git migrate-lfs --after "6 months ago"
 ```
 
-`--after` takes a git date, the way git's own `--after` does. `--since` still works here as a
-deprecated spelling and prints a warning, but `--since` means a revision on `vcs summarize`,
+`--after` takes an ISO date (`2025-01-01`, optionally with a time and zone such as
+`2025-01-01T12:30:00Z`) or a count of seconds, minutes, hours, days, weeks, months or years
+(`"2 weeks ago"`, `3.days`). Anything else is a usage error (exit 2,
+`VCS_MIGRATE_LFS_BAD_AFTER`) before any scan, because git's own date parser reads any text, a
+typo included, as some date. `--since` still works here as a deprecated spelling and prints a warning, but `--since` means a revision on `vcs summarize`,
 `vcs affected` and `test`, so write `--after`.
 
 Two things it deliberately does:

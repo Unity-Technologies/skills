@@ -96,6 +96,22 @@ unity auth token --json
 - **`--audience` and `--scope` are refused** (exit `2`, `AUTH_TOKEN_NARROWING_UNSUPPORTED`) until Unity's token service can mint a narrowed token, rather than handing out a broader one than asked for.
 - The token is short-lived: fetch it again rather than storing it. The CLI never writes it to its logs; keep it out of yours.
 
+#### Start the sign-in service for a plugin
+
+`unity auth broker ensure` makes sure the CLI's sign-in service (the auth broker) is running, starting it when nothing answers. It then connects as a sign-in would, so exit `0` means the CLI would use that service, not only that something answers. A plugin that reads the signed-in session through the broker runs it before it needs a token. It reads no credential and needs no sign-in.
+
+```bash
+unity auth broker ensure
+# {"state": "already-running" | "started" | "disabled" | "unavailable" | "refused", "address": <socket path or null>}
+unity auth broker ensure --json
+```
+
+- `already-running` and `started` exit `0`.
+- `disabled` exits `6` with `AUTH_BROKER_DISABLED`: `UNITY_NO_AUTH_BROKER` is set.
+- `unavailable` exits `6` with `AUTH_BROKER_UNAVAILABLE`: no service answers and none could start.
+- `refused` exits `6` with `AUTH_BROKER_REFUSED`: a service answers, but the CLI will not use it (it could not be verified as genuine Unity software, or is too old). The message names the fix.
+- Every failure's envelope still carries `data`.
+
 #### Consumers — see who's used your sign-in, and mark one revoked
 
 Some products use your Unity sign-in without holding your refresh token themselves, brokering through the CLI's own auth broker instead. `unity auth consumers` lists every application in the broker's audit trail on this machine, plus any in the local revocation list, and `unity auth revoke` records one in that list. Read the Granted and Denied columns before concluding an application used your sign-in: one with only denials never received a token, and a revoked application with no audit history appears with no activity at all.
@@ -277,6 +293,8 @@ saved default, and inside a Unity project folder linked to a cloud project it al
 project. Setting a default never changes which project a folder is linked to (`projects link cloud`
 does that). Under `--format json`, `activeCloudProjectId` still holds the default, with
 `defaultCloudProjectId` and `linkedCloudProjectId` beside it (`null` outside a linked project folder).
+Under `--format tsv`, which is the default when output is piped, it prints the same fields as
+`key<TAB>value` lines after a `key`/`value` header row (an empty value where `json` has `null`).
 
 **What consumes it.** Commands that need a Unity Cloud project but were not given one fall back to
 the stored default. The order is the explicit flag (`--cloud-project`), then `UNITY_CLOUD_PROJECT`,

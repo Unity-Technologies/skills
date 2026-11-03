@@ -160,6 +160,8 @@ unity editors prune --format json
 
 The report lists version, architecture, path, size, and status, then the total reclaimable size. With `--remove` in a non-interactive shell and no `-y, --yes`, it refuses rather than deleting unprompted. "Unused" is judged against the **project registry** (`unity projects`), so an editor used only by a project you never registered counts as unused — register it first, or verify with `unity editors prune` before adding `--remove`.
 
+When an Editor folder holds files this user can't delete (installed with `sudo` or by a package), `prune --remove`, `uninstall` and `editors upgrade --replace` remove it through an administrator password dialog, and only on a terminal: one line says why first. With no terminal on stdin, under `--non-interactive`, in CI, or with `--format json`/`ndjson`/`tsv`, they stop before anything is removed with exit 2 and code `UNINSTALL_ELEVATION_NEEDS_TERMINAL`. Run the command from a terminal or as root; `UNITY_NO_ELEVATE=1` skips the dialog but refuses the removal too.
+
 **`--remove-missing` is a separate, safer candidate class:** editors registered with `unity editors add` (typically internal branch builds) whose recorded install path no longer resolves on disk at all.
 
 ```bash
@@ -263,7 +265,7 @@ unity install 6000.0.47f1
 # Install with specific modules
 unity install 6000.0.47f1 --module windows-mono --module android
 
-# Install a specific changeset by hash
+# Install a specific changeset by hash (a changeset that is not that version's build exits 11, RELEASE_NOT_FOUND)
 unity install 6000.0.47f1 --changeset abc123def456
 
 # Include child modules
@@ -403,6 +405,9 @@ unity uninstall 6000.0.47f1 --yes
 # Uninstall a specific architecture
 unity uninstall 6000.0.47f1 --architecture arm64 --yes
 ```
+
+- The json result (and the one ndjson result frame) carries the removed Editor as `data.version` and `data.architecture`. Under `--format tsv` it is a `key<TAB>value` table of the same two members. A human run prints the completion line.
+- With no version, the stored default Editor is used and announced on stderr (`Using default editor version: ...`), so stdout stays the result alone under every format.
 
 ---
 

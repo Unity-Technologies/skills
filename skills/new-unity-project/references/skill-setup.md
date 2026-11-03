@@ -58,7 +58,9 @@ session.
 | `PIPELINE_MANIFEST_WRITE_FAILED` on `unity pipeline install` | the project is open in an Editor | ask the user to close the Editor, re-run the install |
 | `STATUS_PIPELINE_LOAD_PENDING` right after an install against an open project | the open Editor loads the package when its window regains focus | ask the user to switch to the Editor window |
 | `STATUS_PIPELINE_LOAD_PENDING` that never clears after an open | the Pipeline server can run while its port file never lands (package/editor pairing issues) — focus is not the cause | read `Logs/Editor.log` for `Pipeline:` lines to confirm, then recover below |
+| Pipeline never connects on Unity 6000.5.0 to 6000.5.2 (create reported `PIPELINE_EDITOR_UNSUPPORTED`) | the package can't start its server on those Editors | don't recover below, reopening won't help: ask the user to update to 6000.5.3f1 or later, run `unity pipeline install` with the project closed (create left the package out), then open it with `unity open "<project-path>" --editor-version <updated-version>` (a plain `unity open` uses the saved 6000.5.x Editor); on 6000.7 or later `unity open` refuses the move, so run `unity projects upgrade "<project-path>" --to <updated-version> --yes`, adding `--no-cloud` when the user declined the cloud link at create |
 
-**Stuck-Editor recovery:** ask the user first — unsaved work is lost — then
+**Stuck-Editor recovery** (check the project's Editor version first; never on 6000.5.0 to
+6000.5.2, see the table): ask the user first — unsaved work is lost — then
 `unity close <project> --force`, which terminates by PID and works without Pipeline connectivity,
 and reopen the project.

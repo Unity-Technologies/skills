@@ -14,6 +14,7 @@ and to start, follow, and act on builds and jobs.
 - Read version history and job statistics
 - Filter and sort build targets
 - Request additional pages
+- Set up a build target
 - Read results
 - Handle failures
 
@@ -36,11 +37,18 @@ and to start, follow, and act on builds and jobs.
 | Run a pipeline, or follow a job to its end | `unity pipeline automation pipelines trigger` / `jobs watch` |
 | A job's logs, or one step's as it runs | `unity pipeline automation jobs logs` |
 | Stop a job, or answer a step that's waiting | `unity pipeline automation jobs terminate` / `resume` / `approve` / `reject` |
+| Create or change a build target | `unity pipeline cloud-build targets create` / `update` |
+| What changed in a target's configuration, and who changed it | `unity pipeline cloud-build targets auditlog` |
+| Connect the project to a repository, or list its connections | `unity pipeline cloud-build connections` / `connections create` |
+| Check that Build Automation can reach a repository | `unity pipeline cloud-build scm check-url` |
+| Upload signing credentials | `unity pipeline cloud-build credentials <android\|ios\|osx\|uwp> upload` |
+| Whether the organization has used up its free tier | `unity pipeline cloud-build org free-tier` |
 
 The inventory commands (the first nine rows) are read-only. The rest start,
 cancel, and change remote work: read [Confirm, wait, and
-stop](#confirm-wait-and-stop) before running them for a user. None of them
-change configuration. They don't require a running Editor or
+stop](#confirm-wait-and-stop) before running them for a user. `targets create`
+and `update`, `connections create` and `credentials upload` change the project's
+configuration: read [Set up a build target](#set-up-a-build-target) first. They don't require a running Editor or
 the local Pipeline package. Local `unity pipeline install|upgrade|list|list-versions`
 commands manage the Editor package, not cloud resources.
 
@@ -428,6 +436,101 @@ service answers the same way for a build that had already finished, so the
 result (`data: null`) and the human line say cancellation was requested, not
 that a build was cancelled. It asks first; see below.
 
+## Set up a build target
+
+The order for a project with nothing set up yet:
+
+```sh
+unity vcs setup --vcs uvcs                                  # only when the project has no repository
+unity pipeline cloud-build scm check-url --type git --url "<url>" --user "<user>" --password-from-stdin < pass.txt
+unity pipeline cloud-build connections create --name game --type plastic --url "<org>@cloud" --format json
+unity pipeline cloud-build credentials android upload --label release --keystore release.keystore --alias key0 --keystore-password-from-stdin < store-pass.txt
+unity pipeline cloud-build org free-tier --format json
+unity pipeline cloud-build targets create --name webgl-main --platform webgl --repo "<repo>" --branch main --remote-cache-strategy library --format json
+unity pipeline cloud-build builds start --build-target webgl-main --wait --format ndjson
+```
+
+**Connections.** The project's first connection becomes its default, and
+`targets create` uses the default unless `--connection <id>` names another.
+`--type plastic` (Unity Version Control) takes no secret: the CLI exchanges your
+Unity sign-in for the repository token. A UVCS target also needs `--repo <name>`,
+the repository `vcs setup` created, or the service builds one named `main`. `--type oauth` needs `--git-provider`
+(`github`, `gitlab` or `bitbucket`) and a token. The service checks that it can
+reach the repository before it creates any connection, and refuses one it can't
+(exit `6`, `Repository URL is not reachable`). So `--type git` with an SSH URL
+works only once the organization's SSH key can read the repository; where the
+organization has per-connection keys turned on, `--ssh-key-type` asks for a new
+key, and the response carries its public key. Prefer `oauth` or `plastic` when
+nothing is set up yet. `scm check-url` checks an HTTPS URL with a user and
+password before creating its connection, but the service checks a GitHub HTTPS
+URL over SSH; check an OAuth, SSH or Unity Version Control URL after creating
+its connection, with `--connection <id>`, since those checks use its stored token
+or key. An unreachable URL fails with
+`AUTOMATION_SCM_URL_INACCESSIBLE`, exit `6`, and keeps `isAccessible`,
+`normalizedUrl` and `errorMessages` under `data`.
+
+**Targets.** Each option sets one field, and `targets update` changes only the
+fields given. `--file <path>` reads a whole target as JSON (`-` reads stdin);
+options override its fields. A saved `targets get --format json` result works as
+it is: the CLI reads its `data` and drops the read-only fields, so `get`, edit,
+`create --file` copies a target. The copy has no signing credentials, since
+`get` never shows them: pass `--credential` again. Booleans
+have a `--no-` form. `--scene` repeats, and on `update` replaces the whole list.
+`--editor-version`, `--xcode-version` and `--machine-type` take the values the
+`tooling` lookups list; prefer a machine type with `freeTierEligible: true`, and
+choose a paid one, or `--remote-cache-strategy boostdisk`, only when the user asks.
+Deprecated Unity, Xcode or OS versions come back in `data.notices` (human output
+warns). A setting the service refuses fails with exit `6` and its details.
+
+**Target options.** `targets create` and `targets update` take the same options;
+each sets one field of the target.
+
+| Option | Sets |
+|---|---|
+| `--name`, `--platform`, `--connection` | Name, platform (required on create), source control connection |
+| `--branch`, `--subdirectory`, `--repo` | Branch to build, project folder in the repository, Unity Version Control repository (the service builds `main` without it) |
+| `--editor-version`, `--auto-detect-editor-version` | Editor version, or the one the project uses |
+| `--executable-name`, `--bundle-id`, `--build-profile-path`, `--xcode-version` | Executable, bundle ID, build profile, Xcode version |
+| `--scene` (repeatable), `--pre-export-method`, `--post-export-method` | Scene list in build order, static methods run around the export |
+| `--build-addressables`, `--run-unit-tests`, `--run-edit-mode-tests`, `--run-play-mode-tests` | Addressables content, tests before the build |
+| `--development-build`, `--app-bundle` | Development build, Android App Bundle instead of APK |
+| `--remote-cache-strategy`, `--artifact-compression-level` | Build cache, artifact compression |
+| `--machine-type`, `--builder-os`, `--builder-os-version` | Build machine |
+| `--credential` | Signing credentials |
+| `--auto-build`, `--schedule`, `--schedule-start`, `--schedule-cron`, `--schedule-timezone` | Build on commit, build on a schedule |
+
+Each boolean has a `--no-` form to turn it off on `update`:
+`--no-auto-detect-editor-version`, `--no-build-addressables`, `--no-run-unit-tests`,
+`--no-run-edit-mode-tests`, `--no-run-play-mode-tests`, `--no-development-build`,
+`--no-app-bundle` and `--no-auto-build`.
+
+**Credential options.** Every upload takes `--label`.
+- `credentials android upload`: `--keystore`, `--alias`, `--keystore-password-from-stdin`, `--key-password-from-stdin`.
+- `credentials ios upload`: `--certificate` (.p12), `--provisioning-profile`, `--certificate-password-from-stdin` (optional).
+- `credentials osx upload`: `--certificate`, `--apple-id`, `--apple-id-password-from-stdin`, `--provider-name`, `--entitlements`, `--certificate-password-from-stdin`.
+- `credentials uwp upload`: `--certificate`, `--certificate-password-from-stdin`.
+- `connections create --type oauth` takes its token with `--token-from-stdin`, and `--password-from-stdin` carries a git password.
+
+**Credentials.** Upload once, then pass the returned `credentialid` as
+`--credential`. iOS returns the profile's `bundleId`: compare it with the target's
+`--bundle-id`. Each password comes from its `--…-from-stdin` option or its variable
+(`UNITY_KEYSTORE_PASSWORD`, `UNITY_KEY_PASSWORD`, `UNITY_CERTIFICATE_PASSWORD`,
+`UNITY_APPLE_ID_PASSWORD`, `UNITY_SCM_PASSWORD`, `UNITY_SCM_TOKEN`); never put one in
+an argument. Stdin carries one value, so a second secret, or a `--file -` body,
+takes the variable (`AUTOMATION_STDIN_CONFLICT`, exit `2`, otherwise). Output never
+shows a secret.
+
+**Audit log.** `targets auditlog <target-id>` lists the target's configuration
+changes and its project's, newest first, paged with `--page` and `--limit`. Each
+entry has `updated`, `updatingUserEmail`, `scope` and `lines` of `field`, `from`
+and `to`; the table has one row per changed field. Environment variable changes
+are not recorded, a signing change shows only as `changed`, and secret values
+show as `***`. Compare an entry's `updated` with a build's `created` to see which
+setting changed between a passing and a failing build.
+
+These commands don't ask before they act and take no `--yes`: confirm the
+summary with the user first, since every one changes the real project.
+
 ## Trigger a pipeline and watch a job
 
 ```sh
@@ -505,7 +608,7 @@ They can only ask on an interactive terminal in human format, without
 `--non-interactive`, `--quiet`, or a CI system. Anywhere else they fail with
 `AUTOMATION_CONFIRMATION_REQUIRED`, exit `2`, unless `--yes` (`-y`) is given; a
 declined question is `AUTOMATION_CANCELLED_BY_USER`, exit `1`. No other command
-asks or accepts `--yes`. Pass `--yes` only when the user has asked for that exact
+asks or accepts `--yes`; the target setup commands don't ask either. Pass `--yes` only when the user has asked for that exact
 operation on that exact build or job.
 
 **Local cancellation.** A `SIGINT` (Ctrl-C) or `SIGTERM` during

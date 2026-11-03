@@ -24,7 +24,8 @@ The `config` command group manages settings that persist across invocations.
 View or change the configured HTTP/HTTPS/SOCKS/PAC proxy. The persisted value is read by every CLI command that issues outbound HTTP (releases, install, auth, telemetry, etc.).
 
 ```bash
-# Show the effective proxy configuration (resolution source + auth source)
+# Show the effective proxy configuration (resolution source + auth source).
+# With the global --proxy <url>, it shows that URL with source "flag".
 unity config proxy
 unity config proxy --json
 

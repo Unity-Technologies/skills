@@ -96,6 +96,10 @@ Package manuals live on docs.unity3d.com, not docs.unity.com. The version is the
 with `DOCS_PACKAGE_UNKNOWN`, and a registry that can't be reached with `NETWORK_UNREACHABLE`. `--package`
 takes no topic and can't be combined with another documentation set, `--search` or `--editor-version`.
 
+Without `--url`, a project that has the package's own `Documentation~` page opens that local Markdown
+first, offline, with no registry call; `--online` skips it. JSON then says `resolvedBy: local`,
+`source: local` and gives the file's `path`. `--url` always prints the online manual, so use it for links.
+
 ### 4. Work offline: `docs cache`
 
 ```bash

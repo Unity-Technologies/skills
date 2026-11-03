@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Controls the Unity Editor and projects from the command line, driving a running Editor to edit scenes and assets or run C#. Use when asked to install or manage Editors, licenses, or projects, set up version control, build, test, configure the Unity MCP server, or run any unity command.
+description: Controls the Unity Editor and projects from the command line, driving a running Editor to edit scenes and assets or run C#. Use when asked to install or manage Editors, licenses, or projects, set up version control, build, test, or run any unity command.
 allowed-tools:
   - Bash
 ---
@@ -11,6 +11,8 @@ allowed-tools:
 specific version.** Newer releases regularly add commands and output fields
 these docs describe, so an outdated CLI fails in ways that read like the docs
 being wrong. Check with `unity self-update --check --format json`.
+
+**When you can run shell commands, use `unity command` and the rest of this CLI, not the Unity MCP server.** The CLI reaches more than the server's tools. MCP is for clients that have no shell.
 
 ## Find a command: search, don't grep help
 
@@ -113,7 +115,7 @@ These work on every command:
 | `--no-header` | Leave the header row out of `tsv` tables. The header row is the column names, which are the same keys the `json` rows use (`version`, `upgradeTo`, ...). An empty `tsv` result is the header row alone, so with `--no-header` it is no output at all. |
 | `--no-pager` | Turn off paging. Governs both pagers: the external one over the long listings (`unity command`, `releases`, `editors`, `changelog`, `logs`) and the interactive one in `unity projects`. Also via `UNITY_NO_PAGER` (presence-based — any value, including `0`, disables it). |
 | `--non-interactive` | Disable all interactive prompts — use in CI |
-| `--quiet` | Hide notices, warnings and progress in human and tsv output. Errors and the exit code stay. json output never changes, and ndjson output does not either, except that a few listings still drop their rows (see [Notes](#notes)). |
+| `--quiet` | Hide notices, warnings and progress in human and tsv output. Errors, the exit code and the `tsv` rows stay, so a script that pipes with `--quiet` still gets its data. json output never changes, and ndjson output does not either, except that a few listings still drop their rows (see [Notes](#notes)). |
 | `--verbose` | Print full error details (stack trace + cause chain) on failure. Also via `UNITY_VERBOSE`. |
 | `--proxy <url>` | HTTP/HTTPS/SOCKS/PAC proxy URL for this invocation. Also via `UNITY_PROXY`. Takes precedence over standard `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` env vars and the persisted `proxy.json` setting. |
 | `--proxy-disable` | Disable proxy for this invocation, ignoring all sources (env vars, persisted config, system settings). |
@@ -162,7 +164,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_PROXY` | `--proxy` | HTTP/HTTPS/SOCKS/PAC proxy URL. Takes precedence over `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` and the persisted `proxy.json` setting. |
 | `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
 | `UNITY_CLI_ROLLBACK_KEEP` | — | How many previous CLI versions `unity self-update` keeps for `--rollback`, from 1 to 10 (default 3). |
-| `UNITY_NO_AGENT_HINTS` | — | Stop suggesting Unity's agent plugin or skill when an AI agent runs `unity`: Claude Code's install prompt, the `unity setup codex` / `grok` / `antigravity` / `copilot` tip, and the `unity skill install` tip (an `AGENT_PLUGIN_AVAILABLE` entry in the envelope's `notifications` under `--format json`). Presence-based: any value counts. A tip asks you to get the user's approval before running its command. |
+| `UNITY_NO_AGENT_HINTS` | — | Stop suggesting Unity's agent plugin or skill when an AI agent runs `unity`: Claude Code's install prompt, the `unity setup codex` / `grok` / `antigravity` / `copilot` tip, and the `unity skill install` tip (an `AGENT_PLUGIN_AVAILABLE` entry in the envelope's `notifications` under `--format json`), plus the once-a-day `unity skill sync` notice when installed Unity skills are older than the CLI's pin (`AGENT_SKILLS_OUTDATED`). Presence-based: any value counts. A tip asks you to get the user's approval before running its command. |
 | `UNITY_NO_CONSENT_PROMPT` | — | Suppress the one-time first-run analytics consent prompt *without* recording a choice — for wrapper scripts on an interactive terminal that must never absorb the prompt. Analytics stay off until you run `unity analytics opt-in`. Unlike `UNITY_NON_INTERACTIVE`, it changes nothing else about command behavior. |
 | `UNITY_NO_CRASH_REPORT` | — | Disable anonymous crash/error reporting (Sentry) entirely. |
 | `UNITY_NO_CLI_INVOKED_TELEMETRY` | — | Stop the anonymous once-per-run `cli telemetry` usage ping. Presence-based: any value counts. |
@@ -192,7 +194,12 @@ whether running the same command again, unchanged, can succeed. A command that s
 again, so once its request may have been sent, never re-run it: follow what it started instead.
 `unity commands --json` carries this table as `exitCodes`, with the error codes that pick each
 exit. `6` covers every failure no more specific code names; a missing project, an Editor that
-isn't running, an unknown Editor command and a timeout have their own codes (`11` to `14`).
+isn't running, an unknown Editor command and a timeout have their own codes (`11` to `14`). A
+request that gets no answer (offline, a failed DNS lookup, a refused connection, a dead proxy)
+exits `7`; a timeout is `14`, and a reset connection or an unreadable body is
+`6`. A TLS or certificate failure is `ERR_NETWORK` too, so retrying a `7` does not always help,
+and a request already sent may have reached the server: retry only a command that is safe to
+repeat.
 
 <!-- exit-codes:begin (checked against the CLI's exit-code table) -->
 | Code | Name | Retry | Meaning |
@@ -213,6 +220,8 @@ isn't running, an unknown Editor command and a timeout have their own codes (`11
 | 14 | `TIMEOUT` | yes | An operation ran out of time: an Editor request, an HTTP request, a batch run. |
 | 15 | `RUN_FAILED` | no | A build or job the command waited on finished unsuccessfully. |
 | 16 | `JOB_SUSPENDED` | yes | A job the command watched waits on a person to resume or approve it. |
+| 17 | `UNAVAILABLE` | yes | The target answered but can't do this now: it is busy. |
+| 18 | `AWAITING_INPUT` | yes | The target answered but waits on a person first: a dialog to dismiss, a prompt to answer. |
 | 130 | `INTERRUPTED` | yes | Interrupted by Ctrl-C (SIGINT). |
 | 141 | `OUTPUT_CLOSED` | no | The reader of stdout closed the pipe. |
 | 143 | `TERMINATED` | yes | Terminated by SIGTERM. |
@@ -221,7 +230,9 @@ isn't running, an unknown Editor command and a timeout have their own codes (`11
 `8` is `unity test` only: the tests ran and some failed. A run that never completed exits `6`
 and a timed-out one `14`, so CI can retry those and never blindly re-run a failing test. `9`:
 earlier items of the same install may already be in place (`data.completedUids`). `10` is
-`unity open --until-ready` only; the Editor is still running.
+`unity open --until-ready` only; the Editor is still running. `17` is an Editor that is loading,
+compiling, reloading or in Safe Mode: retry later. `18` is a modal dialog blocking it: list and
+answer it with `unity command editor dialog`, then retry.
 
 ## Commands
 
@@ -233,13 +244,13 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | Commands | Reference file |
 |---|---|
 | `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
-| `pipeline cloud-build` (targets incl. groups / builds incl. steps, failures, artifacts, log, download, start, cancel / project / tooling), `pipeline automation` (apps / pipelines incl. trigger / jobs incl. watch, logs, terminate, resume, approve, reject / automations / bots / profiles / templates, plus `apps versions`, `pipelines versions`, `jobs stats`) | [cloud-automation.md](references/cloud-automation.md) |
+| `pipeline cloud-build` (targets incl. groups, create, update, auditlog / builds incl. steps, failures, artifacts, log, download, start, cancel / credentials upload / connections / scm check-url / org free-tier / project / tooling), `pipeline automation` (apps / pipelines incl. trigger / jobs incl. watch, logs, terminate, resume, approve, reject / automations / bots / profiles / templates, plus `apps versions`, `pipelines versions`, `jobs stats`) | [cloud-automation.md](references/cloud-automation.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules`, `terms` (accept / status) | [editors-install.md](references/editors-install.md) |
 | `projects` (list / create / clone / open / link / require / upgrade / export / import / pin / size / clean / exec; its help reads "Create, open, upgrade, and link local Unity projects (Unity Cloud, GitHub/GitLab)", so linking a folder to Unity Cloud is `projects link cloud`, not `cloud`), `open`, `close`, `releases`, `templates` (list / info / create / pack / delete), `assets` (`inspect` / `export`) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check / accelerator / get / set / list / unset / resolve), `context` (save / use / list / current / delete), `hub install` | [config-hub.md](references/config-hub.md) |
 | `run`, `test`, `build` (+ `build run`), `recompile`, `watch` (`test`) | [build-run-test.md](references/build-run-test.md) |
 | `logs`, `doctor`, `env`, `version`, `cache`, `ci init`, `analytics`, `changelog`, `docs` (+ `toc`), `language`, `completion`, `bug`, `self-update`, `self-uninstall`, `diagnose proxy`, `diagnose accelerator`, `diagnose update` | [diagnostics-maintenance.md](references/diagnostics-maintenance.md). To find, cite and version-match Unity docs: [docs-workflow.md](references/docs-workflow.md) |
-| `mcp` (+ `configure`), `setup claude` / `codex` / `grok` / `antigravity` / `copilot` / `qwen`, `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), answering an open modal dialog (`command editor.dialog list` / `answer` / `dismiss`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
+| `mcp` (+ `configure`), `setup claude` / `codex` / `grok` / `antigravity` / `copilot` / `qwen` / `vscode` / `opencode`, `skill` (install / refresh / show), `plugin` (install / remove / upgrade / list / changelog), local `pipeline` (install / upgrade / list / list-versions), `command` / `commands` / `status` / `list`, `job` (status / wait / cancel), answering an open modal dialog (`command editor dialog` / `editor dialog answer`, or `editor.dialog list` / `answer` / `dismiss`), `shell` | [integration-advanced.md](references/integration-advanced.md) |
 | `vcs` — `setup` / `status` / `sync` / `switch` / `doctor` / `providers` / `merge-setup` / `conflicts` / `explain` / `resolve` / `diff` / `blame` / `summarize` / `affected` / `hooks`, `vcs git` (`migrate-lfs` / `worktree`), `vcs uvcs` (`locks` / `changesets` / `review`) | [version-control.md](references/version-control.md) |
 | `collaboration` (alias `collab`) — `annotations` / `attachments` / `thumbnail` / `reactions` / `read` / `subscribe` / `jira` | [collaboration.md](references/collaboration.md) |
 
@@ -697,6 +708,7 @@ yourself.** Surface the notification and the command, and let the user decide.
 - `--timeout` takes a whole number of seconds written as digits (`--timeout 600`) on every command, and so do `UNITY_BUILD_TIMEOUT`, `UNITY_RUN_TIMEOUT` and `UNITY_TEST_TIMEOUT`. A unit, fraction or exponent (`30s`, `5m`, `1.5`, `1e3`) is a usage error (exit `2`), so convert minutes to seconds yourself.
 - `--format json` always produces machine-readable output; prefer it over parsing human text. Error envelopes are pretty-printed with the same 2-space indent as success envelopes. The envelope's `command` is the full command path (`projects list`, `cloud org list`), the same in json and ndjson and on success and failure; it is `""` when no command matched, such as an unknown one.
 - **`success` is `true` exactly when the exit code is `0`.** A status command whose answer is no (`unity auth status` signed out, `unity license status` with no license, `unity status` with no ready Editor) is a failure: `success: false`, an `errors[0].code` naming the answer, and its report still in `data`. A listing that finds nothing (`unity editors running` with no Editor) succeeds with an empty list.
+- **A streamed named command has no CLI envelope.** When the project's `com.unity.pipeline` formats a named command's output itself (see `references/integration-advanced.md`), `unity command <name> --format json` (or `--json`) prints the command's own result, one JSON value per line, with no `success`, `errors` or `data` wrapper, so its rows are not under `.data.items[]`. Branch on the exit code, which is the command's own, not one from the exit-code table above: `0` means it succeeded and any other code that it did not, such as `1` for a failed command, `102` when the Editor was busy and refused it (retry), or `106` when it was cancelled. A cancel that follows your Ctrl-C or a SIGTERM to the CLI exits `130` or `143` instead. With an older `com.unity.pipeline` the envelope and every rule in this list apply.
 - **Read failures from stdout, not stderr.** A failed command still writes a complete document to stdout: under `--format json` an envelope with `success: false` and a populated `errors` array (`errors[0].code` is the stable token to branch on); under `--format ndjson` the usual terminal `{"type":"result","success":false,…}` frame. **Every ndjson stream ends with exactly one terminal `{"type":"result"}` frame, on success too**, so a stream without one was truncated. Table-shaped listings (`unity editors`, `unity editors upgrade --check`, `unity templates`, `unity releases`, `unity projects`, `unity contexts`, `unity auth accounts`, `unity modules`, `unity command`, `unity skills`, `unity logs`, `unity cloud orgs`, `unity cloud projects` and the like) write one row per line first, each starting with `"type":"row"` so you can tell a row from a `progress` or `result` frame, then a terminal frame whose `data` is `{count, total, nextPage|nextCursor, partial}` (some listings keep older keys there too). A `unity templates` row keeps its own `type` (the template type) with no `"row"` marker. A single-record answer (`unity version`, `unity language`, `unity env`, `unity doctor`, `unity config proxy`, `unity cache info`, `unity context current`, `unity editors default`, `unity install-path`, `unity diagnose update` and the like) is that frame alone, its `data` the same as `--format json`. `--quiet` never changes json output. It never changes ndjson output either, except that `unity editors upgrade`, `unity build --list-targets` and `unity build --list-profiles` still drop their rows under `--quiet` (the terminal frame stays), a known bug; leave `--quiet` off when you need those rows. A warning in either format appears only in `warnings`, never on stderr. A `--watch` or `--follow` stream, which only ends on Ctrl-C, writes its rows and no terminal frame. **Branch on `success`, never on `data`** — `data` is usually `null` on a failure, but not always: a partial `unity editors add` failure carries a row per path, and an ambiguous `unity auth switch` carries `data.candidates` for you to disambiguate with. Check `success` and the exit code — never treat empty stdout as a failure signal, and do not parse stderr, which carries only human diagnostics in these formats. If stdout is empty on a non-zero exit, that is a known bug in that command rather than a shape you should code against.
 - **Never merge stderr into stdout when you parse (`2>&1`, or a tool that captures both as one stream).** Stdout alone is a complete, valid document under `--format json` and `--format ndjson`, but stderr carries human diagnostics and, for some agents, a one-line install hint (Claude Code gets a `<claude-code-hint … />` tag there). Merged in, those lines trail the JSON, and a parser fails with `Extra data` or a decoder needs `raw_decode`. Capture the two streams separately (`unity … --format json 2>err.txt >out.json`) and parse stdout only, or discard stderr with `2>/dev/null` (`2>NUL` on Windows cmd). `UNITY_NO_AGENT_HINTS=1` removes the hint line, but separate streams are the fix.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.

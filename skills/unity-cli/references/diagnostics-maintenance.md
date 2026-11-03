@@ -460,6 +460,14 @@ can't be combined with another documentation set, `--search` or
 `packageVersion` (the full version, `null` for a built-in package outside a
 project) and `resolvedBy`: `project`, `editor` or `registry`.
 
+When the project has the package's own docs (`Packages/<name>/Documentation~`,
+else the cache entry under `Library/PackageCache` at the locked version, else
+the newest one), `docs --package` opens that local Markdown page instead, offline
+and without asking the registry. `--online` skips it, and `--url` always prints
+the online manual. JSON for a local page says `resolvedBy: local`,
+`source: local` and the file's `path`, with `packageVersion` from the package's
+`package.json`.
+
 #### Documentation sets outside the Engine docs
 
 `--cli`, `--hub` and `--cloud` look the topic up in another documentation set

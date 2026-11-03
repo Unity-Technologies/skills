@@ -12,6 +12,24 @@ release's own dated section once the CLI actually ships it.
 
 ## [Unreleased]
 
+## CLI `1.0.0-beta.16` (2026-11-03)
+
+Aligned to the CLI's `1.0.0-beta.16` release. Everything below was documented ahead of the release and ships in it.
+
+### Added
+
+- **`skill install --all`**: `integration-advanced.md` documents installing the Unity skills into every agent client on the machine, which clients it maps each plugin agent to, that it runs no agent CLI and needs no git, its per-client lines, exit codes and json records, and that the install scripts run it.
+- **Administrator prompt needs a terminal**: `editors-install.md` says `uninstall`, `editors prune --remove` and `editors upgrade --replace` open the administrator password dialog for a folder this user can't delete only on a terminal, after one line saying why, and otherwise stop before removing anything with exit 2 and `UNINSTALL_ELEVATION_NEEDS_TERMINAL`.
+- **`projects upgrade` on an open project**: `projects-templates.md` says the upgrade exits `6` with "already open in a running Editor" and launches nothing when an Editor already holds the project, and to ask the user to close it first.
+- **Setting up a Build Automation build target**: `SKILL.md` and `cloud-automation.md` document `pipeline cloud-build targets create`, `update` and `auditlog` (one option per field, or `--file` with a JSON target, `-` for stdin), `connections` and `connections create`, `scm check-url`, `credentials <platform> upload` and `org free-tier`, the order to run them in, and that passwords and tokens come from stdin or an environment variable, never an argument.
+- **Streamed `unity command` output**: `integration-advanced.md` says a newer Editor formats and streams a named command's output, in the format `--plain` or `--json` picks, narrowed by `--fields`, that piped stdin and Ctrl-C reach the command, and that the CLI exits with the command's code.
+- **`unity auth broker ensure`**: `auth-license-cloud.md` documents starting the sign-in service for a plugin, its five states, exit codes and error codes.
+- **Remote Config kill switch and Cloud Save slot in `projects create`**: `projects-templates.md` says a create that links the project to Unity Cloud sets `liveops_enabled` to `true` on the server (add-only, never in a `.rc` file, and only by creating the `settings` config: an existing one is never written and the `notAdded` flag asks for the key to be added in the dashboard), adds `com.unity.remote-config` and `Assets/LiveOps/`, adds `com.unity.services.cloudsave` and `Assets/PlayerSave/` with one save slot, and that `--bare`, `--no-cloud` and a failed link leave both out. The `steps` report gains `remoteConfig` and `cloudSave`.
+
+### Fixed
+
+- **Commit ids in `projects clone --ref`**: `projects-templates.md` says a git `--ref` is a branch, a tag, or a commit id, full or abbreviated, that is checked out after the clone.
+
 ## CLI `1.0.0-beta.15` (2026-10-29)
 
 Aligned to the CLI's `1.0.0-beta.15` release. Everything below was documented ahead of the release and ships in it.
@@ -37,6 +55,10 @@ Aligned to the CLI's `1.0.0-beta.15` release. Everything below was documented ah
 
 ### Changed
 
+- **Local package docs in `docs --package`**: `diagnostics-maintenance.md` and `docs-workflow.md` say `unity docs --package` opens the project's own `Documentation~` page when it has one, offline, that `--online` skips it and `--url` still prints the online manual, and that JSON reports `resolvedBy: local`, `source: local` and `path`. Pending the change shipping in a CLI release.
+- **Busy and dialog-blocked Editors**: `SKILL.md` lists exit `17` (`UNAVAILABLE`) for an Editor that is loading, compiling, reloading or in Safe Mode, and `18` (`AWAITING_INPUT`) for one a modal dialog blocks, with what to do for each. Pending the change shipping in a CLI release.
+- **`plugin install` and `plugin upgrade` install a plugin's skill**: `integration-advanced.md` says they write the skill a plugin ships into every AI client that already has the Unity skill, and leave other clients alone. Pending the change shipping in a CLI release.
+- **`job wait` timeout parameter**: `playmode-verification-loop.md` uses `--timeout` (seconds, default 30, clamped 0 to 600) for `unity command job wait`, the name `com.unity.pipeline` 0.9.1-exp.1 uses in place of `--timeout_s`, and notes that it needs the `--` fence like `script eval`'s `timeout`. Pending the change shipping in a CLI release.
 - **`plugin install` and `plugin upgrade` install a plugin's skill**: `integration-advanced.md` says they write the skill a plugin ships into every AI client that already has the Unity skill, and leave other clients alone.
 - **`job wait` timeout parameter**: `playmode-verification-loop.md` uses `--timeout` (seconds, default 30, clamped 0 to 600) for `unity command job wait`, the name `com.unity.pipeline` 0.9.1-exp.1 uses in place of `--timeout_s`, and notes that it needs the `--` fence like `script eval`'s `timeout`.
 - **Parse stdout alone**: `SKILL.md` says never to merge stderr into stdout (`2>&1`) when parsing `--format json` or `ndjson`, since stderr carries human diagnostics and the Claude Code install hint line, which trail the JSON and break a parser. It says to capture the streams separately or discard stderr.
