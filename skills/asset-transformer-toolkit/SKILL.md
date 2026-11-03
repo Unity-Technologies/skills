@@ -1,9 +1,9 @@
 ---
 name: asset-transformer-toolkit
 description: >-
-  Imports 3D models and point clouds with Asset Transformer Toolkit (formerly Pixyz), and creates,
-  edits, and runs RuleSets, Actions, and LODs. Use for Pixyz or Asset Transformer imports, RuleSets,
-  or ImporterScriptableObjects. Requires toolkit 4.0+.
+  In the Unity Editor, imports 3D models and point clouds with Asset Transformer Toolkit (formerly
+  Pixyz), and creates, edits, and runs RuleSets, Actions, and LODs. Use for Pixyz imports in a Unity
+  project, not for converting files from the shell.
 required_packages:
     com.unity.industry.toolkit: ">=4.0.0"
 ---
@@ -31,9 +31,9 @@ To create a Pixyz/Asset Transformer Toolkit Importer for importing a file, or to
 
 ### RuleSets and Actions
 Read [references/rulesets-and-actions](references/rulesets-and-actions.md)
-Read [api-docs/ruleset-api](api-docs/ruleset-api.md) when the RuleSet API is needed.
-Read [api-docs/rule-api](api-docs/rule-api.md) when the Rule API is needed.
-Read [api-docs/ruleblock-api](api-docs/ruleblock-api.md) when the RuleBlock API is needed, including `ActionBase.Id` for constructing `RuleBlock` instances.
+Read [references/ruleset-api](references/ruleset-api.md) when the RuleSet API is needed.
+Read [references/rule-api](references/rule-api.md) when the Rule API is needed.
+Read [references/ruleblock-api](references/ruleblock-api.md) when the RuleBlock API is needed, including `ActionBase.Id` for constructing `RuleBlock` instances.
 
 ### Levels of Detail
 Read [references/lods](references/lods.md)
