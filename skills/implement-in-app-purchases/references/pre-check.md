@@ -1,5 +1,7 @@
 # Pre-Check: Project Scan and Path Routing
 
+Links to other reference files point to files in this `references/` folder. Any other relative paths resolve to the skill directory.
+
 ## Table of Contents
 
 - [Ambiguous Intent](#ambiguous-intent)
