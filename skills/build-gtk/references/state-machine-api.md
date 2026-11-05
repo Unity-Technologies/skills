@@ -1,10 +1,10 @@
 # State Machine API reference (Unity 6.7 and newer)
 
-All types live in `Unity.GraphToolkit.Editor`. None of this exists on Unity 6000.6 or older: the
-public Script Reference for these types starts at
-`https://docs.unity3d.com/<VERSION>/Documentation/ScriptReference/Unity.GraphToolkit.Editor.StateMachine.html`
-with `<VERSION>` at least `6000.7`.
-There is no manual walkthrough page yet; the Script Reference is the authoritative source and this file is the map of it.
+All types live in `Unity.GraphToolkit.Editor`. None of this exists on Unity 6000.6 or older. There is
+no manual walkthrough yet: this file covers the patterns, and the Script Reference has the members.
+Page names such as `statemachine.md` are under
+`https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unity/graphtoolkit/editor/`, with
+`<VERSION>` at least `6000.7`.
 
 ## Contents
 
@@ -53,22 +53,16 @@ class EnemyBrain : StateMachine
 `DisableAutoInclusionOfStatesFromStateMachineAssembly`. `Default` and `None` are 0. The flag applies
 to states, conditions and self transitions alike.
 
-`StateMachineDatabase` (static): `PromptInProjectBrowserToCreateNewAsset<T>(string defaultName = "New State Machine")`,
-`CreateStateMachine<T>(path)`, `LoadStateMachine<T>(path)`, `LoadStateMachineForImporter<T>(path)`,
-`SaveStateMachine(StateMachine)`, `GetStateMachineAssetGUID`, `GetStateMachineAssetPath`.
+Members of `StateMachine` and `StateMachineDatabase` are in the Script Reference (`statemachine.md`,
+`statemachinedatabase.md`). Behavior the reference does not spell out:
 
-`StateMachine` members:
-
-- `Name`, `StateCount`, `VariableCount`, `Hash128 ID`, `GUID AssetGuid`, `AvailableVariableTypes`
-- `GetStates()`, `GetState(int)`, `AddState(State)`, `RemoveState(IState)`
-- `ITransition Connect(IState from, IState to)`: creates the transition with one rule, or returns the
-  existing transition after adding a rule to it. `Connect(s, s)` creates or extends a self transition.
-- `bool Disconnect(IState from, IState to)`, `IEnumerable<ITransition> GetTransitions(IState from, IState to)`
-- `CreateVariable<T>(...)`, `GetVariables()`, `GetVariable(int)`, `RemoveVariable(...)`
-- `virtual OnEnable()`, `OnDisable()`, `OnStateMachineChanged(StateMachineLogger)`
-- `UndoBeginRecordStateMachine(string actionName[, params Condition[] conditionsToRecord])`,
-  `UndoEndRecordStateMachine()`
-- `protected virtual IEnumerable<Type> BuildAvailableVariableTypes()`
+- `Connect(from, to)` creates a new transition with one empty rule on every call, so calling it twice
+  on the same pair gives two transitions. Add rules to an existing transition instead of reconnecting.
+  `Connect(s, s)` adds a rule to the state's self transition when it already has one.
+- Use `LoadStateMachineForImporter<T>` in importers, `LoadStateMachine<T>` everywhere else, and call
+  `SaveStateMachine` after edits from code.
+- Bracket edits in `UndoBeginRecordStateMachine` / `UndoEndRecordStateMachine`, passing the
+  conditions you edit to the first call.
 
 Mutating in `OnEnable`, `OnDisable` or `OnStateMachineChanged` throws `InvalidOperationException`.
 
@@ -98,7 +92,8 @@ State options appear only in the Graph Inspector, never on the state itself.
 `State` / `IState` members: `StateMachine`, `Hash128 ID`, `Title`, `Subtitle`, `Tooltip`,
 `Color DefaultColor`, `float FillAmount`, `Vector2 Position`, `bool IsConnected`,
 `GetIncomingTransitions()`, `GetOutgoingTransitions()`, `Options`, `OptionCount`, `GetOption(int)`,
-`GetOptionByName(string)`, `RemoveFromStateMachine()`, `OnEnable()`, `OnDisable()`.
+`GetOptionByName(string)`, `RemoveFromStateMachine()`. `OnEnable()` and `OnDisable()` are on the
+`State` class only, not on `IState`.
 
 Discovery: states in the state machine's assembly are listed automatically; elsewhere use
 `[UseWithStateMachine(typeof(EnemyBrain))]`. `[UseWithGraph]` is ignored by state machines.
@@ -108,17 +103,11 @@ Discovery: states in the state machine's assembly are listed automatically; else
 Users create transitions by dragging from a state's edge (Shift + left mouse also starts one). In
 code use `stateMachine.Connect(from, to)`.
 
-`ITransition`: `Hash128 ID`, `IState FromState`, `IState ToState`, `GetRules()`, `int RuleCount`,
-`GetRule(int)`, `ITransitionRule AddRule()`, `AddRule(ITransitionRule)`, `RemoveRule(ITransitionRule)`,
-`Texture2D Icon`, `Color FillColor` (arrow head), `Color LineColor` (line and arrow border),
-`float WidthOverride`, `float Opacity`, `bool IsDashed`.
-A transition always keeps at least one rule; removing the last one is refused.
-
-`ITransitionRule`: `Hash128 ID`, `string Title`, `bool Enabled`, `IGroupCondition RootCondition`,
-`ITransition Transition`, `Texture2D Icon`.
-
-`IGroupCondition : ICondition`: `GroupConditionOperation Operation` (`And`, `Or`), `Count`, `Get()`,
-`Get(int)`, `Add(ICondition)`, `Insert(int, ICondition)`, `Remove(ICondition)`, `Clear()`.
+Members are in `itransition.md`, `itransitionrule.md` and `igroupcondition.md`. A transition always
+keeps at least one rule; removing the last one is refused. Each rule's `RootCondition` is an
+`IGroupCondition` whose `Operation` is `GroupConditionOperation.And` or `GroupConditionOperation.Or`;
+`Get()` enumerates its children, `Count` and `Get(int)` index them. Regular transitions are styled through
+`ITransition` properties, not subclassed.
 
 ## 5. Conditions
 
@@ -138,17 +127,17 @@ class DistanceCondition : Condition<float>
 class TookDamageCondition : Condition { }         // valueless trigger, label-only row
 ```
 
-- `Condition<T>`: `T Value` (serialized), `ConditionComparison Comparison`,
-  `virtual bool DisplayComparisonDropdown` (default false), `virtual IReadOnlyList<ConditionComparison> SupportedComparisons`.
-- `Condition`: `Hash128 ID`, `ITransitionRule Rule`, `StateMachine`, `Texture2D Icon`,
-  `virtual string Title`, `virtual string Tooltip`.
-- `ConditionComparison`: `Equal`, `NotEqual`, `Less`, `LessOrEqual`, `Greater`, `GreaterOrEqual`.
+- Members are in `condition.md` (both `Condition` and `Condition<T>`) and `conditioncomparison.md`.
+  `DisplayComparisonDropdown` defaults to false; override `SupportedComparisons` to limit the operators.
 - Built-in conditions, created in code with `Condition.CreateGroupCondition()` and
-  `Condition.CreateVariableCondition(IVariable variable, object value, ConditionComparison comparison)`.
+  `Condition.CreateVariableCondition(IVariable variable, object defaultValue, ConditionComparison comparison = ConditionComparison.Equal)`.
   Read them through `IGroupCondition` and `IVariableCondition` (`Variable`, `Comparison`, `Value`).
 - Without a `[Condition]` attribute the type name is used as the title. Abstract and open generic
   condition classes are not listed.
 - Same discovery rules as states: same assembly, or `[UseWithStateMachine(...)]`.
+
+`Condition` has no lifecycle callbacks, so an `OnEnable` override on a condition does not compile.
+Only `StateMachine`, `State` and `SelfTransition` expose `OnEnable` / `OnDisable` here.
 
 Editing a condition value from code: `UndoBeginRecordStateMachine("Set distance", condition)`,
 assign `condition.Value`, `UndoEndRecordStateMachine()`, then `SaveStateMachine`.
@@ -194,14 +183,9 @@ public override void OnStateMachineChanged(StateMachineLogger logger)
 }
 ```
 
-`StateMachineLogger`: `LogError`, `LogWarning`, `Log`, each as `(object message, object context = null)`
-or `(message, context, StateMachineLogAction)`. Context may be a state, a transition, or null for
-the whole state machine.
-`StateMachineLogAction(string description, Action<object> action)`.
-`StateMachineChanges`: `ChangedStates`, `ChangedTransitions`, `ChangedVariables`,
-`ChangedSubgraphStates`. Element properties: `ChangedState.State`, `ChangedTransition.Transition`,
-`ChangedVariable.Variable`, `ChangedSubgraphState.SubgraphState`; each also has `Hash128 ID` and
-`ChangeKind ChangeKinds`.
+`StateMachineLogger` and `StateMachineChanges` work like `GraphLogger` and `GraphChanges`
+(`statemachinelogger.md`, `statemachinechanges.md`): pass a state or transition as the context to put
+the marker on it, and attach a `StateMachineLogAction` for a fix button.
 
 ## 9. Context menus
 
@@ -229,10 +213,10 @@ static void AddConditionEntries(ConditionMenuContext context)   // context.State
   `OnViewAttached()`, `OnViewDetached()`, `OnViewLODChanged(float)`, `OnCullingChanged(bool)`.
   Allocate elements in `OnViewBuilt` and re-add them in `OnCullingChanged(false)`; never allocate in
   `OnViewAttached`.
-- `class DistanceView : ConditionView<DistanceCondition>`: `Condition`, `View.Root`, `OnViewBuilt()`,
-  `OnViewAttached()`, `OnViewDetached()`, `OnConditionChanged()`, and the toggles
-  `protected virtual bool DisplayValueField`, `DisplayTitleLabel`. Add to `Root`; do not remove or
-  reparent the built-in row elements. View instances are never serialized.
+- `class DistanceView : ConditionView<DistanceCondition>` (no LOD or culling callbacks): `Condition`,
+  `View.Root`, `OnViewBuilt()`, `OnViewAttached()`, `OnViewDetached()`, `OnConditionChanged()`, and
+  the toggles `protected virtual bool DisplayValueField`, `DisplayTitleLabel`. Add to `Root`; do not
+  remove or reparent the built-in row elements. View instances are never serialized.
 - Exceptions thrown by a view are logged and the built-in UI still renders.
 
 ## 11. Subgraph states

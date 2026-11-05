@@ -1,6 +1,6 @@
-# Skill: Advanced Hexagonal RuleTile Creation
+# Hexagonal RuleTile template
 
-This skill provides a template and logic for creating complex `HexagonalRuleTiles`. Use this to programmatically generate or manually configure new Hexagonal RuleTiles for pointy-top hex grids.
+This file provides a template and logic for creating complex `HexagonalRuleTiles`. Use this to programmatically generate or manually configure new Hexagonal RuleTiles for pointy-top hex grids.
 
 ## Hexagonal Tile Rule Pattern (Pointy Top)
 
@@ -68,4 +68,4 @@ The hexagonal tile set uses **MirrorX** and **Fixed** transforms. **Rotated** is
 | 37      | all 6 surrounding positions: X    | Fixed | Default / No-neighbor |
 
 #### Usage
-When applying this skill to a new texture set, first ensure the texture is sliced into sprites matching these 38 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that HexagonalRuleTile has all 38 TilingRules listed in the template.
+When applying this template to a new texture set, first ensure the texture is sliced into sprites matching these 38 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that HexagonalRuleTile has all 38 TilingRules listed in the template.
