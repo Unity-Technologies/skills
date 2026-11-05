@@ -1,4 +1,4 @@
-#> **Which snippets go where.** The recipes below — movement, patrol, click-to-move, animation
+> **Which snippets go where.** The recipes below — movement, patrol, click-to-move, animation
 > coupling, path inspection — are **written as game scripts**: save them into the project with
 > their `using UnityEngine.AI;` and short type names intact. Only the Editor-side operations
 > (installing the package, querying the live scene) are meant to be passed to `script eval`, and those
@@ -73,7 +73,6 @@ The NavMeshSurface component defines and builds the navigation mesh.
 ```csharp
 var surface = targetGameObject.GetComponent<NavMeshSurface>();
 surface.BuildNavMesh();
-Debug.Log("NavMesh baked at runtime.");
 ```
 
 ### NavMesh Agent (Pathfinding Character)
@@ -372,7 +371,7 @@ this is the equivalent C#:
 ```csharp
 // Fully qualified: this runs through `script eval`, which rejects `using` directives.
 var request = UnityEditor.PackageManager.Client.Add("com.unity.ai.navigation@2");
-UnityEngine.Debug.Log("Requested com.unity.ai.navigation@2. Progress shows in the Package Manager window.");
+return "Requested com.unity.ai.navigation@2. Progress shows in the Package Manager window.";
 ```
 
 
@@ -459,7 +458,7 @@ agent.SetAreaCost(3, 5.0f);
 | `NavMesh.Bake()` | `NavMeshSurface.BuildNavMesh()` (package API) |
 | `NavMeshAgent.navMeshPath` | `NavMeshAgent.path` |
 | `NavMeshPath.waypoints` | `NavMeshPath.corners` |
-| `agent.velocity` for setting | `agent.velocity` is read-only for current velocity; use `agent.speed` for max speed |
+| `agent.velocity` as scalar | Use `agent.speed` for the maximum speed. Set a vector to `agent.velocity` every frame to drive the agent manually. Control the speed of movement through the magnitude of the velocity vector. |
 
 
 ## Core Concepts Reference
@@ -629,9 +628,9 @@ When multiple volumes overlap, the highest-index area type wins. **Not Walkable 
 29 custom area types are available (indices 3–31). Define them in **Window > AI > Navigation > Areas tab**.
 
 ### How Cost Works
-Path cost = `distance × area cost`. Higher cost areas are treated as longer distances by A*. All costs must be > 1.0.
+Path cost = `distance × area cost`. Higher cost areas are treated as longer distances by A*. Custom costs set with `NavMesh.SetAreaCost` must be at least 1.0.
 
-Example: If "Water" has cost 3.0, a 10-unit path through water costs the same as a 30-unit path on "Walkable" (cost 1.0). The pathfinder prefers the 30-unit dry route only if it exists.
+Example: If "Water" has cost 3.0, a 10-unit path through water costs the same as a 30-unit path on "Walkable" (default cost 1.0). The pathfinder prefers the 30-unit dry route only if it exists.
 
 ### Per-Agent Cost Override
 ```csharp

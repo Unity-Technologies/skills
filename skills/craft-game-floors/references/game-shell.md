@@ -42,4 +42,4 @@ Drive the full loop headlessly via `unity-cli` (eval state changes + capture eac
 
 ## Expansion scope
 
-Save slots and persistence, options that persist (audio, quality, language via `localization`), input rebinding UI, accessibility (text size, contrast, screen-shake toggle), controller/focus navigation, credits and legal screens.
+Save slots and persistence, options that persist (audio, quality, language via `localize-unity-project`), input rebinding UI, accessibility (text size, contrast, screen-shake toggle), controller/focus navigation, credits and legal screens.
