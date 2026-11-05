@@ -1,5 +1,7 @@
 # Voice Channels
 
+Relative paths in this file resolve to the skill directory, not the `references/` folder.
+
 ## Channel Types
 
 | Type | Join method | Use for |
@@ -81,7 +83,7 @@ Joining an `AudioOnly` or `TextAndAudio` channel requires microphone access.
 
 - **Android:** request `RECORD_AUDIO` at runtime with `Permission.RequestUserPermission(Permission.Microphone)` before the first audio-capable join. Merge `<uses-permission android:name="android.permission.RECORD_AUDIO"/>` if not present.
 - **iOS:** add `NSMicrophoneUsageDescription` to the Info.plist (Project Settings → Player → iOS → Microphone Usage Description).
-- **Desktop / WebGL:** the browser or OS prompts on first capture attempt; no code change required, but WebGL has additional limitations — see [troubleshooting.md](troubleshooting.md).
+- **Desktop / WebGL:** the browser or OS prompts on first capture attempt; no code change required, but WebGL has additional limitations — see `references/troubleshooting.md`.
 
 ## Muting
 
