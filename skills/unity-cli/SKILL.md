@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Controls the Unity Editor and projects from the command line, driving a running Editor to edit scenes and assets or run C#. Use when asked to install or manage Editors, licenses, or projects, set up version control, build, test, or run any unity command.
+description: Controls Unity Editors and projects from the command line, including a running Editor. Use to install or manage Editors, licenses, or projects, set up version control, build, test, edit scenes, run C#, or run any unity command.
 allowed-tools:
   - Bash
 ---

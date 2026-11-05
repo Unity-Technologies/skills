@@ -1,10 +1,15 @@
-# Skill: Advanced RuleTile Creation
+# RuleTile template
 
-This skill provides a template and logic for creating complex `RuleTiles`. Use this guide to programmatically generate or manually configure new RuleTiles that follow consistent connectivity patterns.
+This file provides a template and logic for creating complex `RuleTiles`. Use this guide to programmatically generate or manually configure new RuleTiles that follow consistent connectivity patterns.
 
 ## Rule Tile Rule Pattern
 
-The following rules define the connectivity for a standard 2D top-down layout. Each rule checks for the presence (.) or absence (X) of a tile in its 3x3 neighborhood. Depending on the Spritesheets used, the Rule Tile can use Fixed Rule Transforms or Rotated Rule Transforms. Use Rotated Rule Transforms to reduce the number of Tiling Rules used.
+The following rules define the connectivity for a standard 2D top-down layout. Each rule checks its 3x3 neighborhood for this RuleTile (`.`) or doesn't check the position at all (`X`).
+
+Pick one template:
+
+- If the sprite sheet has a separate sprite for each orientation of an edge, corner or end piece (for example, four flat-edge sprites), use the [Fixed template](#tiling-rules-template-for-fixed-rule-tiles), because each orientation needs its own rule and sprite.
+- If the sprite sheet has one sprite per shape for the RuleTile to rotate, or the user has no sprites yet and doesn't say, use the [Rotated template](#tiling-rules-template-for-rotated-rule-tiles), because one rotated rule covers all four orientations, so the user has fewer sprites to assign.
 
 ## Legend
 - `.`: **This** (Tile must be present)
@@ -42,7 +47,7 @@ The following rules define the connectivity for a standard 2D top-down layout. E
 | 24      | `X X X` / `. * .` / `X . .`              | Fixed          | L-Shape Inverse, Point Left                             |
 | 25      | `X . .` / `X * .` / `X . X`              | Fixed          | L-Shape Inverse, Point Bottom                           |
 | 26      | `. . X` / `. * .` / `X X X`              | Fixed          | L-Shape Inverse, Point Right                            |
-| 27      | `X . X` / `. * .` / `. . X`              | Fixed          | L-Shape Inverse, Point Top                              |
+| 27      | `X . X` / `. * X` / `. . X`              | Fixed          | L-Shape Inverse, Point Top                              |
 | 28      | `X X X` / `. * .` / `X . X`              | Fixed          | T-Shape, face down                                      |
 | 29      | `X . X` / `. * .` / `X X X`              | Fixed          | T-Shape, face top                                       |
 | 30      | `X . X` / `. * X` / `X . X`              | Fixed          | T-Shape, face left                                      |
@@ -64,7 +69,7 @@ The following rules define the connectivity for a standard 2D top-down layout. E
 | 46      | `X X X` / `X * X` / `X X X`              | Fixed          | Center                                                  |
 
 #### Usage
-When applying this skill to a new texture set, first ensure the texture is sliced into sprites matching these 47 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that RuleTile has all 47 TilingRules listed in the template.
+When applying this template to a new texture set, first ensure the texture is sliced into sprites matching these 47 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that RuleTile has all 47 TilingRules listed in the template.
 
 ### Tiling Rules Template for Rotated Rule Tiles
 
@@ -87,4 +92,4 @@ When applying this skill to a new texture set, first ensure the texture is slice
 | 14      | `X X X` / `X * X` / `X X X`              | Fixed          | Center                        |
 
 #### Usage
-When applying this skill to a new texture set, first ensure the texture is sliced into sprites matching these 15 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that RuleTile has all 15 TilingRules listed in the template.
+When applying this template to a new texture set, first ensure the texture is sliced into sprites matching these 15 logical configurations. Then, run a script using the description to map the sprites to each rule. Ensure that RuleTile has all 15 TilingRules listed in the template.
