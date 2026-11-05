@@ -59,7 +59,7 @@ public static class TilemapRuleTileCreateFromSegment
         "X X X / . * . / X . .",  // L-Shape Inverse, Point Left
         "X . . / X * . / X . X",  // L-Shape Inverse, Point Bottom
         ". . X / . * . / X X X",  // L-Shape Inverse, Point Right
-        "X . X / . * . / . . X",  // L-Shape Inverse, Point Top
+        "X . X / . * X / . . X",  // L-Shape Inverse, Point Top
         "X X X / . * . / X . X",  // T-Shape, face down
         "X . X / . * . / X X X",  // T-Shape, face top
         "X . X / . * X / X . X",  // T-Shape, face left
