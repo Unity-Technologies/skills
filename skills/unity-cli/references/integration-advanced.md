@@ -591,10 +591,10 @@ unity command --detail full
 # Execute a specific command, named by its group and its name (names/params come from the Editor)
 unity command editor.playmode start
 unity command console write "Hello from CLI"
-unity command editor status --includeMemory true
+unity command editor status
 
 # Capture a Scene/Game view screenshot (forwarded to the Editor's capture screenshot command, new in 0.1.0-beta.8)
-unity command capture screenshot --output ./shot.png --width 1920 --height 1080
+unity command capture screenshot --output-path ./shot.png --width 1920 --height 1080
 
 # Target a specific project (the CLI discovers the running Editor itself) or a Player runtime
 unity command editor.playmode start --project-path /path/to/MyProject
@@ -613,8 +613,8 @@ unity command script recompile_status --result-only
 
 | Command | Flag | Notes |
 |---|---|---|
-| `unity command capture screenshot` | `--output <path>` | Absolute, or relative to the project root. Defaults to a timestamped file under `Temp/pipeline-screenshots/`. |
-| `unity command capture game_view`, `unity command capture scene_view` | `--save_path <path>` | **Project-relative**, so it lands inside the project. It is not `--output`. With it the result holds a path, not an inline image. |
+| `unity command capture screenshot` | `--output-path <path>` | Absolute, or relative to the project root. Defaults to a timestamped file under `Temp/pipeline-screenshots/`. |
+| `unity command capture game_view`, `unity command capture scene_view` | `--output-path <path>` | **Project-relative**, so it lands inside the project. With it the result holds a path, not an inline image. |
 | `unity command build run` | `--options '["Development","DetailedBuildReport"]'` | An array parameter takes a **JSON array string**, as does `--scenes '["Assets/Scenes/Main.unity"]'`. Names are `Development`, `AllowDebugging`, `ConnectWithProfiler`, `EnableHeadlessMode`, `SymlinkSources`, `BuildAdditionalStreamedScenes`, `CleanBuildCache`, `DetailedBuildReport` (case-insensitive). Any other name is a validation error. Supplying `--options` drops the default `DetailedBuildReport`, so list it if you want it. |
 | `unity command job wait` | `--condition '{"member":"…","op":"notEquals","value":…}'` | `op` is one of `equals` (the default), `notEquals`, `greaterThan`, `lessThan`, `contains` (string members only) or `changed` (no `value`). It is camelCase and case-sensitive: `not_equals` fails as an unknown op. |
 
@@ -631,7 +631,7 @@ unity command editor status --fields playMode,compiling
 unity command editor status --plain --fields playMode
 ```
 
-**`--caller [label]` and `--skill [name]` are analytics labels, not behavior.** `--caller` records what invoked the CLI and `--skill` records the agent skill driving the invocation; neither changes what the command does. A caller the CLI recognizes is recorded as given, anything else as `other`. They exist so an integration can identify itself — an agent running this skill has no reason to set them by hand, and both are inert when analytics are off.
+**`--caller [label]` and `--skill [name]` are analytics labels, not behavior.** `--caller` records what invoked the CLI and `--skill` records the agent skill driving the invocation; neither changes what the command does. A caller the CLI recognizes is recorded as given, anything else as `other`. They exist so an integration can identify itself — an agent running this skill has no reason to set them by hand. Both are sent to the Editor with the command, for its own analytics, never as arguments.
 
 #### Querying the command list
 
