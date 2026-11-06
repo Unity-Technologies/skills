@@ -1,6 +1,6 @@
 ---
 name: unity-package-management
-description: Adds, removes, upgrades, and discovers Unity (UPM) packages from outside the Editor, with the Pipeline package commands first and a C# script as the fallback. Use for package installs, verifying package IDs and versions, or choosing which packages a game needs.
+description: Adds, removes, upgrades, and finds Unity (UPM) packages from outside the Editor. Use for package installs, checking package IDs and versions, or choosing which packages a game needs.
 allowed-tools:
   - Bash
   - Write

@@ -110,10 +110,10 @@ namespace SpriteGridAnalysis
 // Usage Examples:
 //
 // // Default 50% threshold
-// string pattern1 = SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite);
+// string pattern1 = SpriteGridAnalysis.SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite);
 //
 // // Strict 90% threshold
-// string pattern2 = SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite, matchThreshold: 0.9f);
+// string pattern2 = SpriteGridAnalysis.SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite, matchThreshold: 0.9f);
 //
 // // 75% threshold with tighter color tolerance
-// string pattern3 = SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite, matchThreshold: 0.75f, colorTolerance: 0.02f);
+// string pattern3 = SpriteGridAnalysis.SpriteGridAnalysis.AnalyzeSpriteGrid(mySprite, matchThreshold: 0.75f, colorTolerance: 0.02f);

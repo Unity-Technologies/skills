@@ -5,26 +5,10 @@ description: Control a Unity Editor or Player via the unity-pipeline package. Co
 
 # Unity Pipeline (agent control)
 
-Invoke commands with `unity command <group> <name> [args]`. Run `unity command` with no
-argument to list the command groups an instance exposes, and `unity command <group>` to list
-the commands in one group. Two servers exist: **Editor** (`7800-7849`, auto-starts with
-the editor) and **Runtime** (`7900-7949`, only in a dev Player build). `unity command --query <term>`
-filters the listing by name, description or tag.
-
-## Before you start
-
-- Create a restore point you can roll back to if your changes fail, such as a commit or a stash of
-  the project's working tree.
-- Read the project's Editor version from `ProjectSettings/ProjectVersion.txt` (`m_EditorVersion`),
-  because some commands and parameters below differ by Unity version. Use it to pick the matching
-  steps wherever this skill names a version.
-- Do only what's asked. Don't change unrelated assets or files. Avoid long explanations.
-- Before you go forward with a workflow or diagnosis, open and read the [Topic map](#topic-map)
-  page(s) that cover the commands you intend to run. Name the file(s) you read in your response. This
-  is because your training knowledge about Unity might be out of date, incorrect, or for the wrong
-  Unity version, and Pipeline command names and parameters change between package versions.
-- When a change affects runtime behaviour, add `Debug.Log` lines that you will read back in Play Mode
-  to verify the behaviour (see [Final checks](#final-checks)).
+Invoke commands with `unity command <group> <name> [args]`. `unity command` lists the command
+groups, `unity command <group>` one group's commands, and `--query <term>` filters by name,
+description or tag. Two servers exist: **Editor** (`7800-7849`, auto-starts with the editor) and
+**Runtime** (`7900-7949`, only in a dev Player build).
 
 ## 1. Install & verify
 
@@ -46,7 +30,7 @@ This is the core agent workflow: keep the editor alive, change code, recompile, 
 ```bash
 # 1. Keep the editor ticking even when unfocused/minimized. REQUIRED before headless work —
 #    Unity otherwise throttles or stalls update/compile when it isn't the active app.
-unity command editor set_auto_tick --enable true
+unity command editor set_auto_tick --enabled true
 
 # 2. Edit C# source files on disk normally.
 
@@ -63,13 +47,9 @@ unity command test list --mode editor            # mode: all | editor | playmode
 unity command test run --mode editor --filter MyFixture.MyTest
 ```
 
-`test run` modes: `all` | `editor` | `playmode`. `filter_type`: `testName` | `assembly` |
-`category`. For long runs use `--async_tests true` and poll `unity command test status`
-(abort with `unity command test cancel`).
-
-> **Known caveat:** when any selected test *fails*, `test run` may surface an opaque
-> result instead of the failure details. Re-run a narrower `--filter`, or inspect the
-> editor's Test Runner / logs to get the real failure.
+`filter-type`: `testName` | `assembly` | `category`. For long runs use `--async-tests true` and
+poll `unity command test status` (abort with `test cancel`). When a selected test *fails*, `test run`
+may return an opaque result: re-run a narrower `--filter`, or inspect the Test Runner / logs.
 
 **Reading exit codes.** They separate "rewrite the invocation" from "the Editor failed", which
 is the distinction this loop depends on:
@@ -100,25 +80,14 @@ Edit the method body directly; no separate file, no boilerplate.
    ```bash
    unity command script.methodreload reload --filename Assets/Spinner.cs
    ```
-   Add `--pdb` to make it debuggable — emits a portable PDB mapped to your source so breakpoints in
-   the original file bind (attach the IDE + enable Editor Attaching; compiles unoptimized):
-   ```bash
-   unity command script.methodreload reload --filename Assets/Spinner.cs --pdb
-   ```
+   Add `--pdb` to debug it: it emits a portable PDB mapped to your source so breakpoints bind
+   (attach the IDE + enable Editor Attaching; compiles unoptimized). Without it, no symbols.
 
-Constraints: `void` instance methods only; **public** members only; debugging requires `--pdb`
-(the default emits no symbols).
+Constraints: `void` instance methods only; **public** members only.
 
-`unity command script.methodreload status` shows active overrides. `script.methodreload reload` options:
-`--timeout <seconds>` (default 60), `--assemblyDir <dir>` (persist DLLs instead of in-memory);
-`script.methodreload cleanup --assemblyDir <dir>` clears old DLLs.
-
-The CLI's `--timeout` (seconds) is the command's timeout: the Pipeline writes it into the command's
-own `timeout` parameter, so there is no separate value to pass:
-
-```bash
-unity command script.methodreload reload --filename Assets/Spinner.cs --timeout 120
-```
+`unity command script.methodreload status` shows active overrides. `reload` options: `--timeout
+<seconds>` (default 60; the CLI's `--timeout` is the command's own), `--assembly-dir <dir>` (persist
+DLLs instead of in-memory); `script.methodreload cleanup --assembly-dir <dir>` clears old DLLs.
 
 ## 4. Bulk construction: `script run` (the builder pattern)
 
@@ -133,14 +102,15 @@ a 15–20s recompile.
 # 2. Run it — relative paths resolve against the project root (the parent of Assets/):
 unity command script run --file AgentScripts/Build.cs --entry Build.All
 # 3. Iterate: edit the file, re-run. Useful extras:
-unity command script run --file AgentScripts/Build.cs --dry_run true   # compile-only check: diagnostics, nothing loaded or executed
+unity command script run --file AgentScripts/Build.cs --dry-run true   # compile-only check: diagnostics, nothing loaded or executed
 unity command script run --file AgentScripts/Build.cs --entry Build.All --args '[3, "Green"]'
 ```
 
 Rules of thumb:
 
-- **Code goes in files on disk via `script run`; `script eval` is for genuinely ad-hoc one-liners.**
-  Never ship multi-line escaped C# strings through `script eval` — write the file, run the entry.
+- **Code goes in files on disk.** Never ship multi-line escaped C# strings through `script eval`:
+  write the file, then run it with `script run` (a named entry point, with arguments) or
+  `script eval --file` (a script: `using` lines, declarations, `await`; see §5).
 - Compiles see the project's **active editor defines** (`UNITY_EDITOR`, version/platform symbols);
   `--defines` appends extra symbols on top.
 - Entry points may be `async Task`/`Task<T>` — they are awaited asynchronously (the editor keeps
@@ -149,19 +119,31 @@ Rules of thumb:
 - Runtime exceptions come back with `file:line` mapped to your source (a source-mapped PDB is
   always emitted for executing runs; they compile unoptimized).
 - `--mode hotpatch` instead applies `[MethodReload]` in-place method replacements (delegates to
-  `script.methodreload reload`); `entry`/`args`/`dry_run` are rejected there and `references`/`defines` don't apply.
+  `script.methodreload reload`); `entry`/`args`/`dry-run` are rejected there and `references`/`defines` don't apply.
 
-## 5. Quick C# eval (Editor or dev Player)
+## 5. C# eval (Editor or dev Player)
 
-For genuinely ad-hoc one-liners only — anything longer belongs in a file run via `script run`.
-`script eval` targets the Editor by default; add `--runtime <process name>` to run it in a dev Player.
+`script eval` compiles C# as a script: `using` lines, top-level methods and types, and `await`. The
+value of `return x;` or of a trailing expression is the result. It targets the Editor by default;
+add `--runtime <process name>` to run it in a dev Player. Put anything longer than a line or two in
+a file.
 
 ```bash
 unity command script eval "return 2 + 2;"
 unity command script eval "return UnityEngine.Time.timeScale;" --runtime MyGame
-# Or evaluate a .cs file on disk. Keep it outside Assets/, where Unity would compile it as project source:
-unity command script eval_file AgentScripts/Scratch.cs
+# A .cs file on disk. Keep it outside Assets/, where Unity would compile it as project source:
+unity command script eval --file AgentScripts/Scratch.cs
+unity command script eval --file AgentScripts/Scratch.cs --dry-run          # compile only
+unity command script eval "return EditorSceneManager.GetActiveScene().name;" --auto-import   # adds missing usings
+unity command script eval "return UnityEditor.LogEntries.GetCount();" --internals             # Editor internal APIs
 ```
+
+- `await Wait.Until(() => condition)` waits without blocking the Editor; `Wait.For(asyncOperation)`
+  and `Wait.ForImport(assetPath)` cover operations and imports. Submit a long wait with `--detach`,
+  then `unity job wait <job-id>`.
+- A failed eval exits 6 with an `errorCode`: `COMPILATION_ERROR` (each error with its line and
+  column), `RUNTIME_EXCEPTION` (exception and stack trace), `TIMEOUT` or `INVALID_COMMAND_ARGS`.
+- `script eval_file` is deprecated; use `script eval --file`.
 
 ## 6. Play Mode vs. Multiplayer Play Mode (MPPM) scenarios
 
@@ -175,9 +157,8 @@ unity command editor.playmode pause    # toggle pause
 unity command editor.playmode stop     # exit Play Mode
 ```
 
-`editor.playmode start` just flips the main Editor into Play Mode running the **open scene**. It
-controls **one** instance and does **not** launch MPPM virtual players, even if the project has
-them configured. Use it for single-instance testing and to make runtime code reload live.
+`editor.playmode start` runs the main Editor's **open scene** in Play Mode: **one** instance, never
+MPPM virtual players, even if configured. Use it for single-instance testing and method reload.
 
 ### Multiplayer: Play Mode Scenarios (main Editor + virtual players)
 
@@ -185,8 +166,9 @@ A **Play Mode Scenario** is an asset (an `OrchestratedScenario`, e.g.
 `Assets/Settings/PlayMode/2Players.asset`) describing the main Editor plus one or more virtual
 players. Each virtual player (clone) is a **separate Unity project** at
 `<project>/Library/VP/<vpId>` with its **own Library, port, and Pipeline server** — not a second
-window of the main Editor. `editor.playmode start` does **not** run a scenario; use the scenario commands
-(they drive MPPM's `PlayModeScenarioManager`, which enters Play Mode itself):
+window of the main Editor. Run a scenario with the scenario commands (they drive MPPM's
+`PlayModeScenarioManager`, which enters Play Mode itself), never with `editor.playmode start`,
+which fights MPPM's play-mode guard:
 
 ```bash
 unity command editor.playmode list_scenarios         # discover scenario assets
@@ -202,14 +184,15 @@ Authoring the asset (Edit Mode):
 ```bash
 unity command editor.playmode create_scenario --name MyScenario # auto-adds the Main Editor player
 unity command editor.playmode add_player --path Assets/Settings/PlayMode/MyScenario.asset --type clone --name "Player 2"
-unity command editor.playmode remove_player --id <playerId> --path Assets/Settings/PlayMode/MyScenario.asset --confirm true
+unity command editor.playmode remove_player --id <playerId> --path Assets/Settings/PlayMode/MyScenario.asset --confirm true  # id: GUID on 6000.5+, player name on 6000.3/6000.4
 ```
 
-For `remove_player --id`, check the Editor version you read in [Before you start](#before-you-start):
-on 6000.5 and later pass the player's GUID; on 6000.3 and 6000.4 pass the player's name.
+MPPM has four player slots, and slot 0 (`Player 1`) is always the Main Editor. A scenario therefore
+holds at most **3 clones** (`Player 2`–`Player 4`): a 4-player scenario is the Main Editor plus 3 clones,
+and a fourth clone is refused. For more players, add built players with `--type local`.
 
 The `editor.playmode` scenario commands need **Unity 6000.3+** *and* the `com.unity.multiplayer.playmode`
-package, so check the Editor version and `Packages/manifest.json` first. Without both they are compiled out and calling one fails as an unknown command, so run
+package. Without both they are compiled out and calling one fails as an unknown command, so run
 `unity command editor.playmode` and check that `start_scenario` and the other scenario commands are listed
 before using them. The group itself always exists: `editor.playmode list_instances` needs neither
 and always works. You may only `editor.playmode set_active_scenario` while state is **Idle**.
@@ -237,7 +220,7 @@ unity command editor.playmode list_instances
 # Talk to a clone directly, using the projectPath that listed it
 unity command --project-path <mainProject>/Library/VP/<vpId> editor status
 # Each clone is its own Editor: keep it ticking before running tests on it
-unity command --project-path <mainProject>/Library/VP/<vpId> editor set_auto_tick --enable true
+unity command --project-path <mainProject>/Library/VP/<vpId> editor set_auto_tick --enabled true
 unity command --project-path <mainProject>/Library/VP/<vpId> test run --mode playmode
 ```
 
@@ -245,42 +228,54 @@ unity command --project-path <mainProject>/Library/VP/<vpId> test run --mode pla
 playing. There is no forwarding command — talk to the clone. That way you get its full command
 surface and its own status, and nothing queues behind the main Editor.
 
+### Multiplayer Roles (client / server stripping)
+
+Multiplayer Roles decide what is stripped from a client or a server: the Editor runs as one role in
+Play Mode, and each GameObject or component is kept for some roles and stripped from the others.
+Use the `multiplayer.role` commands rather than reflecting over `EditorMultiplayerRolesManager` in
+`script eval`:
+
+```bash
+unity command settings.multiplayer_roles get                    # enabled? safety checks, server stripping
+unity command settings.multiplayer_roles set --settings '{"enabled":true}' --confirm true  # nothing is stripped until roles are enabled
+unity command multiplayer.role get_active                       # Editor role, and whether roles are enabled
+unity command multiplayer.role set_active --role server         # role the Editor plays as (Edit Mode only)
+unity command multiplayer.role set_game_object --target <go> --role server                       # the GameObject
+unity command multiplayer.role set_component --target <go> --type AudioSource --role client      # one of its components
+unity command multiplayer.role set_component --target <component handle> --role client          # a component by handle
+unity command multiplayer.role set_build --role server          # role the active build profile builds for
+```
+
+`role` is `client`, `server` or `client_and_server`. The group needs **Unity 6000.6+**; on older
+Editors it is compiled out, so run `unity command multiplayer.role` to check it is listed.
+
 ## 7. Screen capture (Editor)
 
 Capture a view to a PNG to check a visual result.
 
 ```bash
-unity command capture screenshot --view game                      # or --view scene; returns the PNG path
-unity command capture game_view --source screen --save_path Screenshots/hud.png   # what the Game window shows, incl. overlay UI
-unity command capture scene_view --max_resolution 512             # inline base64 image, longest edge capped
+unity command capture game_view --output-path Screenshots/hud.png   # what the Game window shows, incl. overlay UI
+unity command capture scene_view --max-resolution 512             # the scene only (camera render), inline, longest edge capped
+unity command capture scene_view --source screen --output-path Screenshots/scene.png   # the Scene window with grid, gizmos, toolbars
+unity command capture editor_window --window Inspector --output-path Screenshots/inspector.png   # any open Editor window
 ```
 
-`capture game_view` and `capture scene_view` return the image inline as base64 unless `--save_path` is
-set; add `--include_inline_image true` to get both. `capture game_view --source camera --camera <name>`
-renders one camera instead and misses Screen Space - Overlay UI. Without `--output`, `capture screenshot`
-writes under `<project>/Temp/pipeline-screenshots/`. If the Editor version is 6000.7 or later,
-`capture editor_element` and `capture runtime_element` capture a single UI Toolkit element by
-`--selector`. On earlier versions these commands don't exist, so capture the whole view instead.
+Without `--output-path` the image comes back inline (base64); `--include-inline-image true` gives
+both. A relative path resolves from the project root (no `.meta` outside `Assets/`). `game_view`
+opens a Game view if none is showing, in batchmode too. `game_view --source camera --camera <name>`
+renders one camera; overlay UI is drawn on URP/HDRP (`--overlay auto|true|false`), not on Built-in.
+`editor_window` and `scene_view --source screen` briefly front a background tab and don't work in
+batchmode. `capture screenshot` is deprecated. On 6000.7+, `capture editor_element` /
+`runtime_element` capture one UI Toolkit element by `--selector`.
 
 ## Gotchas
 
-- **`editor set_auto_tick` first.** Without it, recompile and tests can hang while the editor is
-  unfocused. The package's watchdog relies on the tick loop staying alive.
 - **A stuck command may mean a modal dialog is open**, not a hang — a dialog blocks the main
   thread until dismissed. If a command runs long, check `unity command editor status` (answers
   instantly even when blocked); `status: "blocked_by_dialog"` means stop retrying and tell the
   human what's blocking (its `dialog.title`/`message`/`buttons`) — it can't be clicked over CLI.
-- **Method reload needs the game running.** `script.methodreload reload` applies to a live
-  game — enter Editor Play Mode (`unity command editor.playmode start`) first, or run a dev Player.
-- **`editor.playmode start` ≠ a scenario.** It runs only the main Editor's open scene; it never
-  launches MPPM virtual players. For a multiplayer session set/start a Play Mode Scenario with
-  `editor.playmode set_active_scenario` + `editor.playmode start_scenario` (see §6) — never drive a scenario with
-  `editor.playmode start` (it fights MPPM's play-mode guard) — then drive the clones with `editor.playmode list_instances`
-  and `--project-path`.
 - **Player-only commands need a dev Player.** `console write`, `runtime set_time_scale`, `runtime status`, etc. hit
   the Runtime server, which does not run in the Editor.
-- **Async commands poll.** `script recompile`→`script recompile_status`, `test run --async_tests`→
-  `test status`. Never assume completion from the trigger call's response.
 - **Target a specific instance** when more than one is running: `--project-path <path>` selects an
   Editor, `--runtime <process name>` or `--runtime-path <port file>` selects a dev Player.
 
@@ -299,14 +294,13 @@ writes under `<project>/Temp/pipeline-screenshots/`. If the Editor version is 60
 
 ## Final report
 
-Give the user a short summary:
+End with a short report to the user:
 
-- What you did: the commands you ran, the files you changed, and the test or check results.
-- Side effects you left behind: Play Mode still running, `editor set_auto_tick` still enabled, a
-  scenario left active, files written under `AgentScripts/` or `Screenshots/`, method reload overrides
-  still applied.
-- Follow-ups the user needs to do: anything blocked by a modal dialog, failures you could not fix,
-  and the restore point to roll back to.
+- What you changed, by file, and the commands that verified it (test results, console status).
+- Side effects: auto tick left on, Play Mode or a scenario still running, files written outside
+  `Assets/` (such as `AgentScripts/` or screenshots), method-reload overrides still active.
+- Anything the user must do or decide next, such as a failure you could not fix or a dialog only
+  they can dismiss.
 
 ## Topic map
 
@@ -314,13 +308,9 @@ The Pipeline package ships its documentation in its `Documentation~` folder. For
 that is `<project>/Library/PackageCache/com.unity.pipeline@*/Documentation~/`; the same pages are
 published at `https://docs.unity3d.com/Packages/com.unity.pipeline@<VERSION>/`. Only read what you need.
 
-Prefer the local `Documentation~` copy, because it matches the installed package exactly. If you
-use the live pages, prefer fetching the page directly (for example `WebFetch`) over searching (for
-example `WebSearch`) — faster and lands on the exact reference. Only fetch what you need, and only
-search if you don't have the exact URL. Replace `<VERSION>` with the following before fetching:
-
-- **Package on docs.unity3d.com**: The `com.unity.pipeline` major and minor version from
-  `Packages/packages-lock.json`, eg `@0.9`.
+Prefer the local copy: it matches the installed package. For the live pages, fetch the exact URL
+rather than searching; `<VERSION>` is the major.minor of `com.unity.pipeline` in
+`Packages/packages-lock.json`, e.g. `@0.9`.
 
 | Topic | Page |
 |-------|------|

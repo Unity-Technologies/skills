@@ -1,5 +1,7 @@
 # Convert Native Google Billing to Unity IAP 5
 
+Links to other reference files point to files in this `references/` folder. Any other relative paths resolve to the skill directory.
+
 ## Table of Contents
 
 - [Trigger Phrases](#trigger-phrases)
@@ -225,88 +227,32 @@ If game code calls the old billing API directly (e.g., `GoogleBillingManager.Pur
 
 ### Phase 6 — Test Scaffolding
 
-- Add debug logs at each IAP event.
 - Add editor stubs for sandbox testing.
 - Add the QA checklist from the test plan below to `IapMigrationNotes.md`.
 
 ## Step 7 — Behavior Change Rules
 
-### Acknowledgement and Consumption
+These are the changes that break games or backends after the switch. For the Unity IAP side of each call, read the docs page named in the Full topic map of the parent skill file.
 
-Native billing requires explicit `acknowledgePurchase` or `consumeAsync`. Unity IAP abstracts both through `ConfirmPurchase(pendingOrder)`. Map:
-
-| Native | Unity IAP |
-|---|---|
-| `consumeAsync` (consumable) | `ConfirmPurchase(pendingOrder)` after grant |
-| `acknowledgePurchase` (non-consumable / subscription) | `ConfirmPurchase(pendingOrder)` after grant |
-
-**Never call `ConfirmPurchase` before the entitlement is safely granted.**
-
-### Backend Validation
-
-| Native field sent | Unity IAP equivalent |
-|---|---|
-| `purchaseToken` | `order.Info.Receipt` (contains the Google receipt JSON) |
-| `originalJson` | Embedded in `order.Info.Receipt` |
-| `signature` | Embedded in `order.Info.Receipt` |
-| `packageName` | `Application.identifier` |
-| `productId` | `pendingOrder.CartOrdered.Items().First().Product.definition.id` |
-
-If the backend parses `purchaseToken` or `originalJson` fields directly, document the receipt format change as a required backend update.
-
-### Obfuscated IDs
-
-If native code sets `setObfuscatedAccountId` / `setObfuscatedProfileId` in `BillingFlowParams`, set the equivalent **after** `await store.Connect()`:
-
-```csharp
-store.GooglePlayStoreExtendedService?.SetObfuscatedAccountId("hashed_id");
-store.GooglePlayStoreExtendedService?.SetObfuscatedProfileId("hashed_profile_id");
-```
-
-Retrieve per-order:
-
-```csharp
-string accountId = store.GooglePlayStoreExtendedPurchaseService?.GetObfuscatedAccountId(order);
-```
-
-### Pending Purchases
-
-If native code handles `BillingClient.enablePendingPurchases()` or checks purchase state for `PENDING`:
-
-- Unity IAP surfaces deferred purchases via `store.OnPurchaseDeferred`.
-- On `OnPurchaseDeferred`: show "pending approval" UI. Do not grant.
-- When approved, the store re-delivers via `store.OnPurchasePending`.
-
-### Subscription Upgrade / Downgrade
-
-If native code calls `launchBillingFlow` with a `subscriptionUpdateParams` (prorating an existing subscription):
-
-```csharp
-store.GooglePlayStoreExtendedPurchaseService?.UpgradeDowngradeSubscription(
-    currentOrder,       // Order object of the current subscription
-    newProduct,         // Product to upgrade/downgrade to
-    GooglePlayReplacementMode.ChargeFullPrice  // choose appropriate mode
-);
-```
-
-See [platform-notes.md](platform-notes.md) for all `GooglePlayReplacementMode` values.
+- **One call replaces acknowledge and consume.** `ConfirmPurchase(pendingOrder)` replaces both `acknowledgePurchase` and `consumeAsync`. Call it only after the entitlement is granted and saved, because a confirmed purchase is never re-delivered.
+- **The receipt format changes for the backend.** `purchaseToken`, `originalJson` and `signature` are no longer separate values; they are embedded in `order.Info.Receipt`. If the backend reads them directly, list the receipt format change as a required backend update in `IapMigrationNotes.md`.
+- **Obfuscated IDs move after `Connect()`.** Native code sets them on `BillingFlowParams` per purchase. In Unity IAP, set them once on `GooglePlayStoreExtendedService` after `await store.Connect()`, and read them back per order from `GooglePlayStoreExtendedPurchaseService`. See the Google Play notes in [platform-notes.md](platform-notes.md).
+- **Pending purchases become deferred orders.** Native `PENDING` purchase state maps to `store.OnPurchaseDeferred`. Show a pending state and don't grant; the approved purchase arrives later through `OnPurchasePending`.
+- **Subscription changes take objects, not IDs.** `launchBillingFlow` with `subscriptionUpdateParams` maps to `UpgradeDowngradeSubscription(currentOrder, newProduct, mode)`. Choose the mode as the Google Play notes in [platform-notes.md](platform-notes.md) describe.
 
 ## Step 8 — Native → Unity IAP Concept Mapping
 
+Only the mappings that aren't one-to-one renames, or that agents commonly get wrong:
+
 | Native Google Billing | Unity IAP 5.x |
 |---|---|
-| `ProductDetails` | `Product` (via `store.GetProductById`) |
-| `Purchase` | `PendingOrder` (on `OnPurchasePending`) |
-| `purchaseToken` | `order.Info.Receipt` (contains the token) |
-| `originalJson` | embedded in `order.Info.Receipt` |
-| `signature` | embedded in `order.Info.Receipt` |
-| `acknowledgePurchase` | `store.ConfirmPurchase(pendingOrder)` |
-| `consumeAsync` | `store.ConfirmPurchase(pendingOrder)` |
+| `ProductDetails` | `Product`, from `store.GetProductById` after `OnProductsFetched` |
+| `Purchase` | `PendingOrder`, from `OnPurchasePending` |
 | `queryPurchasesAsync` | `store.FetchPurchases()` → `OnPurchasesFetched` |
 | `BillingResult` / `BillingResponseCode` | `FailedOrder.FailureReason` / `StoreConnectionFailureDescription` |
-| `ProductType.INAPP` | `ProductType.Consumable` or `ProductType.NonConsumable` (distinguish by consume behavior) |
+| `ProductType.INAPP` | `ProductType.Consumable` or `ProductType.NonConsumable`, decided by whether the native code consumes it |
 | `ProductType.SUBS` | `ProductType.Subscription` |
-| `offerToken` / `basePlanId` / `pricingPhases` | **Not directly exposed** — report as blocker |
+| `offerToken` / `basePlanId` / `pricingPhases` | **Not exposed** — report as a blocker (Step 4) |
 
 ## Step 9 — Rollback Plan
 

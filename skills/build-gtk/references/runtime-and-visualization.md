@@ -62,6 +62,13 @@ class DialogueGraphImporter : ScriptedImporter
 - Re-import happens on save. Sub-assets the game needs (textures, meshes) are added with further
   `AddObjectToAsset` calls.
 
+| Symptom | Cause | Fix |
+|---|---|---|
+| The asset shows as a generic Graph Toolkit asset instead of the runtime type | `ctx.SetMainObject(runtime)` missing | Call `SetMainObject` after `AddObjectToAsset` |
+| Importer changes have no effect on existing assets | Import results are cached per importer version | Bump the `ScriptedImporter` version number, or reimport |
+| The importer throws on an empty graph | No entry node to start from | Return early when the entry node is missing; `OnGraphChanged` already reports it |
+| Edits made from code vanish, or the import sees stale data | `LoadGraph` used inside the importer | `LoadGraphForImporter` in importers, `LoadGraph` everywhere else |
+
 ## 3. Walking nodes and ports
 
 ```csharp
@@ -102,7 +109,8 @@ Visual Novel Director sample is the reference layout: `Runtime/` asmdef with the
 
 ## 5. GraphVisualization: live debug view (6.6+)
 
-Namespace `Unity.GraphToolkit.Editor.GraphVisualization`, editor-only.
+The manual covers contexts, node progress, port values, errors and wires from `6000.7`, on the Debug
+graph view pages; the API is the same on 6.6. What it leaves out is the wiring from runtime code:
 
 ```csharp
 #if UNITY_EDITOR
@@ -133,38 +141,25 @@ class DialogueRunner : MonoBehaviour
     {
 #if UNITY_EDITOR
         if (m_Debug is { IsValid: true, IsGraphLoaded: true })
-        {
-            var nodeRef = m_Debug.GetNodeReference(node.Id);
-            m_Debug.Motion.Play(nodeRef, 1f);                              // animate the accent bar
-            m_Debug.GetPortReference(node.TextPortId).SetPreview(node.Text);
-            var wire = m_Debug.GetWireReference(node.OutPortId, node.NextInPortId);
-            wire.WidthOverride = 6f;
-            m_Debug.Motion.Play(wire, 1f);
-        }
+            m_Debug.Motion.Play(m_Debug.GetNodeReference(node.Id), 1f);
 #endif
     }
 }
 ```
 
-`Registry`: `Context CreateVisualizationContext(Hash128 graphID)`, `Context GetActiveContext(Hash128 graphID)`.
+- Every visualization call is keyed by authored `Hash128` IDs, so the importer copies `Graph.ID`,
+  `node.ID` and the port IDs into the runtime asset (section 3).
+- Use one context per run: create it when the run starts and dispose it when the run ends. Call the
+  port reference's `ClearPreview()` when the flow leaves a node, or `ClearAllVisualization()` on the
+  context at run end, so previews do not pile up.
+- Add a `[GraphToolbarElement]` toggle that flips the context's `NodeCustomizationEnabled`,
+  `WireCustomizationEnabled` and `PortPreviewEnabled` (plus the `State`, `Transition` and `Condition`
+  ones on 6.7) so the debug view can be switched off.
 
-`Context` (`IDisposable`): `IsValid`, `IsGraphLoaded`, `GraphMotion Motion`,
-`GetNodeReference(Hash128)`, `GetPortReference(Hash128)`, `GetWireReference(Hash128 outputPortID, Hash128 inputPortID)`,
-`GetStateReference(Hash128)` (6.7), `GetTransitionReference(Hash128)` (6.7), `GetConditionReference(Hash128)` (6.7),
-toggles `NodeCustomizationEnabled`, `PortPreviewEnabled`, `WireCustomizationEnabled`,
-`StateCustomizationEnabled`, `TransitionCustomizationEnabled`, `ConditionCustomizationEnabled`,
-and `ClearAllVisualization()`.
-
-- `NodeReference`: `FillAmount`, `ClearCustomization()`.
-- `PortReference`: `SetPreview(string)`, `TryGetPreview(out string)`, `ClearPreview()`.
-- `WireReference`: `IsDashed`, `WidthOverride`, `Opacity`, `ClearCustomization()`.
-- `GraphMotion`: `Play(ref, float speed = 1f)`, `Stop(ref)`, `Pause(ref)` for node, wire, state and
-  transition references.
-
-Rules of thumb from the samples: create one context per run and dispose it when the run ends; clear
-previews when the flow moves on so they do not pile up; leave traversed wires thicker but stopped to
-show the path taken; add a `[GraphToolbarElement]` toggle that flips the `*Enabled` properties so the
-debug view can be switched off.
+| Symptom | Cause | Fix |
+|---|---|---|
+| Nothing shows on the graph | The context was created with the runtime asset's own ID instead of the authored `Graph.ID`, or the Graph window is not open (`IsGraphLoaded` is false) | Store `Graph.ID` in the runtime asset at import time and pass it to `CreateVisualizationContext` |
+| Visualization code breaks the player build | `GraphVisualization` is editor-only | Wrap the `using` and every call in `#if UNITY_EDITOR` |
 
 ## 6. Building graphs from code
 
