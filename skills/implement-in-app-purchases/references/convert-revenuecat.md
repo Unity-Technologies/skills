@@ -1,5 +1,7 @@
 # RevenueCat — Conversion Assessment and Guidance
 
+Links to other reference files point to files in this `references/` folder. Any other relative paths resolve to the skill directory.
+
 ## Table of Contents
 
 - [Trigger Phrases](#trigger-phrases)

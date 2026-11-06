@@ -1,6 +1,6 @@
 ---
 name: new-unity-project
-description: Guides creating a new Unity project, gathering concept, platforms, and monetization before setting up the project, source control, and packages. Use when the user asks to start a new game or prototype. Runs an opinionated paved path by default; full interview on request.
+description: Guides creating a new Unity project, from concept, platforms, and monetization to source control and packages. Use when the user asks to start a new game or prototype. Runs an opinionated paved path by default.
 allowed-tools:
   - Bash
   - Write
