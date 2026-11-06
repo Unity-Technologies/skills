@@ -344,9 +344,7 @@ Runs without an editor and without network access. Exit 2 on an unknown `--targe
 
 ### Analytics — usage/telemetry consent
 
-The CLI defaults to **opt-out**. On the first interactive run a prompt is shown once before any data is collected; it now requires an explicit `y` or `n` — pressing Enter alone re-asks instead of silently recording the opt-out default, so an accidental keystroke can't lock in an answer. Ctrl-C skips the prompt and keeps the opt-out default. Non-interactive, CI, piped, and `--quiet` contexts silently keep the opt-out default.
-
-Running `unity analytics opt-in` or `opt-out` permanently answers the first-run prompt, so a choice recorded from a script (where the prompt never appears) isn't asked again on the next interactive run. To suppress the prompt *without* recording a choice — for a wrapper script on an interactive terminal that must never absorb it — set `UNITY_NO_CONSENT_PROMPT` (analytics stay off until you explicitly opt in).
+The CLI never asks. On a new install, a user who never chose is **opted in**, and the first run of a release build prints a one-line notice on stderr saying what is collected, with a link that explains how to turn it off. A choice already made is always kept: `unity analytics opt-out`, an answer to an older CLI's first-run prompt, or the Hub's analytics setting. `DO_NOT_TRACK` (any value but empty, `0` or `false`) also keeps a user who never chose opted out, and so does a machine that already had Hub or CLI data before this default (an existing install).
 
 ```bash
 # Show current consent status
@@ -356,21 +354,21 @@ unity analytics status --format json
 # Opt in to anonymous usage data collection
 unity analytics opt-in
 
-# Opt out (the default)
+# Opt out
 unity analytics opt-out
 ```
 
-Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa. When opted **in**, the CLI records which commands run (registered command names only — never your arguments, paths, or project names), editor uninstalls, project open/create (editor version and template id only), CLI self-update/uninstall outcomes, `unity shell` and `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out (the default), no events are sent.
+Consent is stored in the shared Hub privacy preferences, so opting out in the CLI also opts out in Hub, and vice versa. When opted **in**, the CLI records which commands run (registered command names only — never your arguments, paths, or project names), editor uninstalls, project open/create (editor version and template id only), CLI self-update/uninstall outcomes, `unity shell` and `unity mcp` session usage, and `unity doctor` / `unity bug` results. When opted out, no events are sent.
 
-Separately from analytics, the CLI reports **anonymous crashes and errors** via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id so crash-free-user rates can be computed; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable crash reporting entirely.
+Separately from analytics, the CLI reports **anonymous crashes and errors** via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id so crash-free-user rates can be computed; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable crash reporting entirely. Turning off "Send crash reports" in the Unity Hub's settings does the same for the CLI; only an explicit off counts, so a machine without the Hub keeps reporting.
 
-Separately again, every run — including one that never sees the consent prompt (CI, an agent, a machine `--format`) — sends one anonymous `cli telemetry` usage ping, so total CLI usage can be counted even when nobody answered the consent prompt. It is not a measure of who opted in and carries no user, machine, or session identifier (a fresh random id per invocation, never persisted) and no consent state — just which Unity tool sent it, the CLI version, and whether the run looks like CI. Any one of these stops it:
+Separately again, every run (CI, an agent, a machine `--format` included) sends one anonymous `cli telemetry` usage ping, so total CLI usage can be counted. It is not a measure of who opted in and carries no user, machine, or session identifier (a fresh random id per invocation, never persisted) and no consent state — just which Unity tool sent it, the CLI version, and whether the run looks like CI. Any one of these stops it:
 
-- explicitly turning analytics off (`unity analytics opt-out`, answering `n` at the prompt, or turning it off in the Hub while signed in to the Hub; a Hub opt-out made while signed out is not visible to the CLI and does not stop it);
+- explicitly turning analytics off (`unity analytics opt-out`, an opt-out answered at an older CLI's prompt, or turning it off in the Hub while signed in to the Hub; a Hub opt-out made while signed out is not visible to the CLI and does not stop it);
 - `DO_NOT_TRACK` set to any value but empty, `0` or `false` ([consoledonottrack.com](https://consoledonottrack.com));
 - `UNITY_NO_CLI_INVOKED_TELEMETRY` set to any value.
 
-Never answering the prompt does not stop it. `DO_NOT_TRACK` also stops the upload of opt-in usage data, even when you opted in. Usage data never holds a command for long: on a slow or unreachable network the CLI gives up on it after half a second. `unity analytics status` reports whether the ping is on, and why it is off. None of these settings stop the licensing records `unity license activate` files.
+`DO_NOT_TRACK` also stops the upload of opt-in usage data, even when you opted in. Usage data never holds a command for long: on a slow or unreachable network the CLI gives up on it after half a second. `unity analytics status` says what is collected, links the privacy policy, and reports whether the ping is on and why it is off. None of these settings stop the licensing records `unity license activate` files.
 
 ---
 

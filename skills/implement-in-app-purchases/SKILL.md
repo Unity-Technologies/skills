@@ -10,15 +10,71 @@ Package: `com.unity.purchasing`
 
 **Unity IAP has its own initialization path** via `UnityIAPServices.StoreController()` → `store.Connect()`. It does not require `UnityServices.InitializeAsync()`, but they can coexist if your project uses other UGS services. If Analytics is present and `InitializeAsync()` is called, IAP will automatically send transaction events.
 
+## Important
+
+- Use the unity cli (`unity command --format json`) and the `unity-cli` and `unity-pipeline` skills for each step.
+- Before making changes, establish a baseline of the current behavior so you can tell whether a later result is actually caused by your change.
+- Create a restore point you can roll back to if your changes fail.
+- Do only what's asked. Don't change unrelated assets or files.
+- Never leave verification code in the user's script. Never build logging or detection they didn't ask for. See [Final step](#final-step).
+- Avoid long explanations.
+
 ## Before You Start
 
 **Always read [references/pre-check.md](references/pre-check.md) first.** It scans the project for third-party IAP packages, native Google Billing, and existing Unity IAP versions, then routes to the correct path. Do not read any other reference file or make any changes until routing is resolved.
 
+## Full topic map
+
+Before you go forward with a workflow or diagnosis:
+
+1. Open and read the [documentation page(s)](#full-topic-map) that cover the specific subject related to what you intend to do or fix and check if you've missed anything.
+2. Name the file(s) you read in your response.
+
+This is because your training knowledge about Unity might be out of date, incorrect, or for the wrong Unity version.
+
+Prefer `WebFetch` over `WebSearch` — faster and lands on the exact reference. Only fetch what you need.
+
+In docs.unity3d.com URLs, replace `<VERSION>` with the major.minor of `com.unity.purchasing` in `Packages/packages-lock.json` before fetching. The IAP manual pages on docs.unity.com aren't versioned, so use those URLs as written.
+
+- [Unity In-App Purchasing](https://docs.unity.com/en-us/iap.md): overview of the IAP manual and its sections.
+- [Initialize Unity IAP](https://docs.unity.com/en-us/iap/set-up-in-app-purchasing.md): install and initialize, with `StoreController` and D2C (`PaymentProvider.Name`, `RemoteCatalogProvider`) samples.
+- [Create your catalog programmatically](https://docs.unity.com/en-us/iap/code-catalog.md): define products with `CatalogProvider` and store-specific IDs.
+- [Purchases](https://docs.unity.com/en-us/iap/purchases.md): process pending purchases, confirm them, handle failed confirmations, and determine purchase status.
+- [Restore purchases](https://docs.unity.com/en-us/iap/restore-purchases.md): restore behavior on Google Play and Apple platforms.
+- [Receipt validation](https://docs.unity.com/en-us/iap/receipt-validation.md): local and server-side validation, and the receipt structure.
+- [SubscriptionInfo class reference](https://docs.unity.com/en-us/iap/subscriptioninfo-class-reference.md): every `SubscriptionInfo` method and its per-store behavior.
+- [Apple App Store](https://docs.unity.com/en-us/iap/apple-store.md): configure IAP for iOS, macOS and tvOS.
+- [Use Google Play billing extensions](https://docs.unity.com/en-us/iap/use-google-play-billing-extensions.md): obfuscated IDs and deferred subscription changes.
+- [Set up Codeless IAP](https://docs.unity.com/en-us/iap/codeless-iap.md): the IAP Catalog window, IAP buttons and automatic initialization.
+- [Upgrade from IAP v4 to v5](https://docs.unity.com/en-us/iap/upgrade-to-iap-v5.md): the official v4 to v5 API mapping.
+- [Integrate D2C payment providers workflow](https://docs.unity.com/en-us/iap/payment-providers/workflow.md): the D2C setup workflow for Stripe and Coda.
+- [Initiate a purchase](https://docs.unity.com/en-us/iap/payment-providers/initiate-purchase.md): D2C eligibility checks and the Purchase Options UI.
+- [Deep link success URL example](https://docs.unity.com/en-us/iap/payment-providers/success-deep-link.md): redirect players back to the app after D2C checkout.
+- [Test mode for D2C payments](https://docs.unity.com/en-us/iap/payment-providers/test-mode.md): simulate D2C purchases before a provider account is connected.
+- [Comply with Apple and Google external purchase requirements](https://docs.unity.com/en-us/iap/payment-providers/external-purchase-compliance.md): compliance checks, checkout URLs and transaction tokens.
+- [Add a routing rule](https://docs.unity.com/en-us/iap/payment-providers/routing.md): choose which payment providers players see.
+- [Create your Remote Catalog](https://docs.unity.com/en-us/iap/payment-providers/configure-remote-catalog.md): `.ucat` and `.catalog.csv` catalog items and deployment.
+
+### API reference
+
+The API is `UnityEngine.Purchasing`, part of the `com.unity.purchasing` package. It is versioned by package version, not Unity version, so check the project's installed package version before relying on a specific class or method.
+
+1. Use the `unity-cli` skill to check the installed package version.
+2. Fetch and cache `https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/xrefmap.yml`, replacing `<VERSION>` with the installed package's major.minor. This file maps every public API member's fully qualified name to its docs page `href`. Append the `href` to the same base URL, so `href: api/UnityEngine.Purchasing.StoreController.html` becomes `https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.StoreController.html`.
+3. Grep the yml file locally for a class or method instead of refetching per lookup. Don't read the whole file.
+
+Always fetch the version matching the installed package rather than relying on training knowledge, since APIs are frequently marked obsolete between major versions (e.g. the v4 `UnityPurchasing` class is obsolete in v5).
+
+Most-used pages:
+
+- [StoreController API](https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.StoreController.html): every `StoreController` method, event and property, with signatures.
+- [EntitlementStatus API](https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.EntitlementStatus.html): the entitlement status values.
+
 ## Detailed References
 
 - **Project scan and path routing (read first):** See [references/pre-check.md](references/pre-check.md)
-- **API signatures & code examples:** See [references/api-notes.md](references/api-notes.md)
-- **Platform extensions (Apple, Google):** See [references/platform-notes.md](references/platform-notes.md)
+- **Common v5 API mistakes and where to read each API topic:** See [references/api-notes.md](references/api-notes.md)
+- **Platform extension gotchas (Apple, Google):** See [references/platform-notes.md](references/platform-notes.md)
 - **Editing `IAPProductCatalog.json` (schema, decimal serialization, refresh):** See [references/codeless-catalog.md](references/codeless-catalog.md)
 - **v4 → v5 migration:** See [references/migration-v4-to-v5.md](references/migration-v4-to-v5.md)
 - **Convert native Google BillingClient to Unity IAP 5:** See [references/path-convert-native-google-billing.md](references/path-convert-native-google-billing.md)
@@ -30,128 +86,80 @@ Package: `com.unity.purchasing`
 - **Add Unity IAP 5 to a project with no existing IAP:** See [references/path-add-iap-to-new-project.md](references/path-add-iap-to-new-project.md)
 - **Implement IAP D2C Capabilities (third-party payment provider — Stripe/Coda, requires v5.4+):** See [references/path-implement-iap-d2c.md](references/path-implement-iap-d2c.md)
 
-Read reference files on demand — only when you need specific API signatures, platform extension details, or migration mappings.
+Read reference files on demand — only when you need the API gotchas, platform extension details, or migration mappings.
 
-## Initialization Flow
+## Core rules
 
-1. Obtain `StoreController` via `UnityIAPServices.StoreController()` (or individual services via `DefaultStore()`, `DefaultProduct()`, `DefaultPurchase()`)
-2. Subscribe to **all** required events (see Required Event Subscriptions below) **before** calling `Connect()`
-3. `await store.Connect()` to connect to the platform store
-4. On `OnStoreConnected`, call `store.FetchProducts(List<ProductDefinition>)` to load the catalog
-5. On `OnProductsFetched`, products are ready for display and purchase
+Read the linked page for the flow and sample code before writing each part, and reread it if the code fails. The rules below are the mistakes agents make that the pages don't stop them making.
 
-Use `Awake()` for initialization — ensures IAP is ready before other `Start()` methods.
+### Initialization
 
-Product types: `ProductType.Consumable`, `ProductType.NonConsumable`, `ProductType.Subscription`.
+Read [Initialize Unity IAP](https://docs.unity.com/en-us/iap/set-up-in-app-purchasing.md) and [Create your catalog programmatically](https://docs.unity.com/en-us/iap/code-catalog.md).
 
-## Fetching Products
+- Subscribe to every event **before** `await store.Connect()`, because pending purchases from a previous session can fire as soon as the store connects. Initialize in `Awake()` so IAP is ready before other `Start()` methods.
+- Subscribe to the failure event of every call (`OnStoreDisconnected`, `OnProductsFetchFailed`, `OnPurchasesFetchFailed`, `OnPurchaseFailed`) and to `OnPurchaseDeferred`. Missing failure events cause runtime warnings, and a missing `OnPurchaseDeferred` silently drops Ask-to-Buy and Google deferred purchases.
+- `GetProducts()` and `GetPurchases()` return caches. Call `FetchProducts()` / `FetchPurchases()` first; `FetchPurchases()` overwrites the whole cached list.
 
-Define products as `List<ProductDefinition>` and pass to `store.FetchProducts()`. Use `StoreSpecificIds` when product IDs differ across Apple/Google stores. For complex catalogs, use `CatalogProvider` to manage product sets and store-specific IDs.
+### Purchases
 
-| Method | Behavior |
-|---|---|
-| `GetProducts()` | Returns the **cached** product list (synchronous, stale if `FetchProducts` not called) |
-| `FetchProducts()` | Queries the **store** for fresh pricing/availability and updates the cache |
-| `GetProductById(id)` | Returns a single cached product by ID |
+Read [Purchases](https://docs.unity.com/en-us/iap/purchases.md).
 
-These are NOT interchangeable. Always call `FetchProducts()` first before relying on `GetProducts()`.
+- `store.PurchaseProduct(product)` leads to `OnPurchasePending` with a `PendingOrder`. Grant the content, save it, then call `store.ConfirmPurchase(pendingOrder)`, because unconfirmed purchases are re-delivered on the next launch.
+- `OnPurchasePending` can fire more than once for the same purchase (for example, after a restart before confirmation). Check whether the content was already granted before granting it.
+- Confirmed consumables are NOT returned by `FetchPurchases()`. Track consumable grants yourself, for example in Cloud Save or Economy.
+- On `OnPurchaseDeferred`, show a pending state and don't grant. The purchase arrives later through `OnPurchasePending` if approved.
 
-## Two-Step Purchase Flow
+### Restore
 
-IAP v5 uses a mandatory two-step flow: **Pending → Confirm**.
+Read [Restore purchases](https://docs.unity.com/en-us/iap/restore-purchases.md).
 
-1. `store.PurchaseProduct(product)` — initiates the platform purchase dialog
-2. `OnPurchasePending` fires — you receive a `PendingOrder`
-3. Validate the receipt, grant content to the player
-4. `store.ConfirmPurchase(pendingOrder)` — finalizes the transaction
-5. `OnPurchaseConfirmed` fires — receives `Order` base type; pattern-match `ConfirmedOrder` (success) vs `FailedOrder` (confirmation failed)
+- `store.RestoreTransactions(callback)` re-delivers non-consumables and renewable subscriptions, each through `OnPurchasePending`. Add a "Restore Purchases" button on iOS, because Apple's review guidelines require one.
+- Apple non-renewable subscriptions can't be restored through `RestoreTransactions`, so track them server-side.
 
-**You MUST call `ConfirmPurchase(pendingOrder)` after granting content.** Unconfirmed purchases are re-delivered on next app launch to prevent lost purchases.
+### Receipt validation
 
-**De-duplication:** `OnPurchasePending` may fire multiple times for the same purchase (e.g., app restart before confirmation). Always check if content was already granted.
+Read [Receipt validation](https://docs.unity.com/en-us/iap/receipt-validation.md).
 
-**Consumables:** Confirmed consumable purchases are NOT returned by `FetchPurchases`. Track consumable grants yourself (e.g., in Cloud Save or Economy).
+- Google Play: validate locally with `CrossPlatformValidator(GooglePlayTangle.Data(), Application.identifier)`. Generate the tangle with **Services > In-App Purchasing > Receipt Validation Obfuscator**.
+- Apple StoreKit 2: local validation is a no-op. Send `order.Info.Apple?.jwsRepresentation` to a server for validation.
 
-**Deferred purchases:** `OnPurchaseDeferred` fires for Ask-to-Buy (iOS) and Google Play deferred purchases. Do NOT grant content — wait for `OnPurchasePending` when approved.
+### Ownership and subscriptions
 
-## Restore Transactions
+Read the [EntitlementStatus API](https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.EntitlementStatus.html) and the [SubscriptionInfo class reference](https://docs.unity.com/en-us/iap/subscriptioninfo-class-reference.md).
 
-`store.RestoreTransactions(callback)` re-delivers non-consumable and subscription purchases. Each restored purchase triggers `OnPurchasePending`.
+- To check whether the player owns a product, call `store.CheckEntitlement(product)`, handle `store.OnCheckEntitlement`, and compare with `EntitlementStatus.FullyEntitled`. This replaces v4's `product.hasReceipt`.
+- Subscription info is on `order.Info.PurchasedProductInfo`, NOT on `CartItem`. `IsSubscribed()` returns `Result`, not `bool`, so compare with `== Result.True`.
 
-Required on iOS for Apple App Store compliance — add a "Restore Purchases" button.
+### Compile errors
 
-Apple non-renewable subscriptions **cannot be restored** via `RestoreTransactions`. Track these server-side.
+- `ProductFetchFailed` has `.FailureReason` and `.FailedFetchProducts`, not `.Message`, and `StoreConnectionFailureDescription` has `.Message`, not `.reason`. A wrong name causes CS1061. The full table and the other common v5 mistakes are in [api-notes.md](references/api-notes.md).
 
-## Receipt Validation
+## Final step
 
-| Platform | Approach |
-|---|---|
-| **Google Play** | `CrossPlatformValidator` with `GooglePlayTangle.Data()` — local validation supported |
-| **Apple (StoreKit 2)** | Local validation is a **no-op**. Use `order.Info.Apple?.jwsRepresentation` for server-side validation |
+Do the following checks:
 
-Generate tangle data via **Services > In-App Purchasing > Receipt Validation Obfuscator** in the Unity Editor.
+1. Check the project has zero console errors. Use `console_status` for counts.
+2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
+3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `eval` rather than adding logging. Take no screenshots, because they take too much time.
 
-## Entitlement Checking
+If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.
 
-Use when you don't have the `Order` and want to know the status of a specific product (replaces v4's `product.hasReceipt`). If you already have the `Order`, check its type instead: `PendingOrder` maps to `EntitledUntilConsumed` (consumables) or `EntitledButNotFinished` (non-consumables/subscriptions), `ConfirmedOrder` maps to `FullyEntitled`.
+After writing code that uses this package, also read the code back and check it, because IAP code can compile cleanly and still lose or double-grant purchases:
 
-Call `store.CheckEntitlement(product)` and handle `store.OnCheckEntitlement`. Check `entitlement.Status == EntitlementStatus.FullyEntitled`.
+1. Confirm all API calls match the v5 signatures on the [API reference](#api-reference) pages for the installed version — do NOT use v4 legacy patterns (`IStoreListener`, `UnityPurchasing.Initialize`, `ConfigurationBuilder`).
+2. Check the "Anti-Hallucination: Common v5 Mistakes" table in [api-notes.md](references/api-notes.md) — do NOT use `OnStoreConnectionFailed` (use `OnStoreDisconnected`), do NOT pass callbacks to `FetchProducts`/`FetchPurchases` (use events), do NOT use `product.receipt` (use `order.Info.Receipt`).
+3. Check that all required events are subscribed **before** calling `Connect()` (see [Initialization](#initialization)).
+4. Verify the two-step purchase flow: `OnPurchasePending` → grant content → `ConfirmPurchase(pendingOrder)`.
+5. Confirm both success and failure events are subscribed for every async operation (`OnProductsFetched`/`OnProductsFetchFailed`, `OnStoreConnected`/`OnStoreDisconnected`, etc.).
+6. If handling subscriptions, verify `IsSubscribed()` is compared with `== Result.True`, not cast to `bool`.
+7. If updated files coexist with legacy versions in the same project, use a unique namespace (e.g., add `.Updated` suffix) to avoid CS0101/CS0111 compilation errors.
+8. If the project subscribes to `OnAuthAccountChanged` (v5.4+): verify the handler re-fetches products and purchases from scratch — Unity IAP clears both caches before raising this event. Do not read `GetProducts()` or `GetPurchases()` inside the handler.
 
-`EntitlementStatus` values: `FullyEntitled`, `EntitledUntilConsumed`, `EntitledButNotFinished`, `NotEntitled`, `Unknown`.
+## Final report
 
-## Fetch Existing Purchases
+Report the following to the user, in this order:
 
-`store.FetchPurchases()` retrieves all current purchases from the store. Useful at app startup.
-
-| Method | Behavior |
-|---|---|
-| `GetPurchases()` | Returns the **cached** purchase list |
-| `FetchPurchases()` | Queries the **store** for current purchases and **overwrites** the cached list |
-
-`FetchPurchases()` replaces the entire cached list on each call. Only non-consumables and subscriptions are re-fetched — confirmed consumables are not returned (see Two-Step Purchase Flow above).
-
-## Subscription Info
-
-Subscription info is on `IPurchasedProductInfo`, accessed via `order.Info.PurchasedProductInfo` — **NOT on `CartItem`** (`CartItem` only has `Product` and `Quantity`).
-
-`IsSubscribed()` returns `Result` enum (`True`/`False`/`Unsupported`), NOT `bool`. Use `== Result.True` for null-safe comparison.
-
-## Required Event Subscriptions
-
-**Always subscribe to BOTH success and failure events.** Not subscribing to failure events generates runtime warnings.
-
-| Call | Success Event | Failure Event (REQUIRED) |
-|---|---|---|
-| `FetchProducts()` | `OnProductsFetched` | `OnProductsFetchFailed` |
-| `FetchPurchases()` | `OnPurchasesFetched` | `OnPurchasesFetchFailed` |
-| `Connect()` | `OnStoreConnected` | `OnStoreDisconnected` |
-| `PurchaseProduct()` | `OnPurchasePending` | `OnPurchaseFailed` |
-| `CheckEntitlement()` | `OnCheckEntitlement` | — |
-
-**Always subscribe to `OnPurchaseDeferred`** — fires for Ask-to-Buy (iOS) and Google Play deferred purchases. Not subscribing silently drops deferred purchases.
-
-Subscribe to events **BEFORE** calling `Connect()` — pending purchases from a previous session may fire immediately.
-
-## Failure Description Property Names
-
-These property names are NOT interchangeable — using the wrong one causes CS1061:
-
-| Type | Field | Property | NOT |
-|---|---|---|---|
-| `StoreConnectionFailureDescription` | `.message` | `.Message` | ~~`.reason`~~ |
-| `ProductFetchFailed` | — | `.FailureReason`, `.FailedFetchProducts` | ~~`.Message`~~ |
-| `FailedOrder` | — | `.FailureReason`, `.Details` | — |
-| `PurchasesFetchFailureDescription` | `.message`, `.failureReason` | `.Message`, `.FailureReason` | — |
-
-## Validation
-
-After writing code that uses this package:
-1. Verify the project compiles without errors.
-2. Confirm all API calls match the v5 signatures in [api-notes.md](references/api-notes.md) — do NOT use v4 legacy patterns (`IStoreListener`, `UnityPurchasing.Initialize`, `ConfigurationBuilder`).
-3. Check the "Anti-Hallucination: Common v5 Mistakes" table in api-notes.md — do NOT use `OnStoreConnectionFailed` (use `OnStoreDisconnected`), do NOT pass callbacks to `FetchProducts`/`FetchPurchases` (use events), do NOT use `product.receipt` (use `order.Info.Receipt`).
-4. Check that all required events are subscribed **before** calling `Connect()` (see Required Event Subscriptions table above).
-5. Verify the two-step purchase flow: `OnPurchasePending` → grant content → `ConfirmPurchase(pendingOrder)`.
-6. Confirm both success and failure events are subscribed for every async operation (`OnProductsFetched`/`OnProductsFetchFailed`, `OnStoreConnected`/`OnStoreDisconnected`, etc.).
-7. If handling subscriptions, verify `IsSubscribed()` is compared with `== Result.True`, not cast to `bool`.
-8. If updated files coexist with legacy versions in the same project, use a unique namespace (e.g., add `.Updated` suffix) to avoid CS0101/CS0111 compilation errors.
-9. If the project subscribes to `OnAuthAccountChanged` (v5.4+): verify the handler re-fetches products and purchases from scratch — Unity IAP clears both caches before raising this event. Do not read `GetProducts()` or `GetPurchases()` inside the handler.
+1. What changed: each file you changed, with the old and new API calls or values where they apply (for example, `IStoreListener.ProcessPurchase` → `OnPurchasePending`).
+2. How you verified it: the outcome of each Final step check, including the console error count and anything you read through `eval` in Play mode.
+3. Incidental side effects: anything you touched beyond the requested change, such as packages you installed or upgraded, project or Services settings you changed, generated files (for example tangle classes or `IAPProductCatalog.json`), and temporary files you created or removed.
+4. Follow-up the user must do, for example product setup in App Store Connect or the Google Play Console, and sandbox testing on a device. Include the manual steps that the path reference file lists.

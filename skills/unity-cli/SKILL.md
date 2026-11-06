@@ -1,6 +1,6 @@
 ---
 name: unity-cli
-description: Controls the Unity Editor and projects from the command line, driving a running Editor to edit scenes and assets or run C#. Use when asked to install or manage Editors, licenses, or projects, set up version control, build, test, or run any unity command.
+description: Controls Unity Editors and projects from the command line, including a running Editor. Use to install or manage Editors, licenses, or projects, set up version control, build, test, edit scenes, run C#, or run any unity command.
 allowed-tools:
   - Bash
 ---
@@ -25,6 +25,7 @@ unity command --query screenshot              # the same search
 
 `unity commands --grep <pattern>` and `unity command --query <term>` are one search. It covers the CLI's built-in commands, the plugin catalog (installed or not) and the Pipeline commands of the live connected Editor, best match first. Plain words each match in any order; regex characters make it a regular expression. Each row says how to run it (`invoke`): `unity projects link cloud`, `unity command create_gameobject`, `unity <id>` for an installed plugin, or `unity plugin install <id>` for one not yet installed. In `--format json` each row also carries `kind` (`command`, `plugin`, `pipeline`), `path`, `description` and `matchedOn` (`name`, `description` or `option`), so act on `invoke` rather than parsing the table.
 
+- **Search before you work around the CLI or tell the user it can't help.** A request that names a Unity service, store or product feature (finding Asset Store assets, generating a texture, a cloud build) may be served by a catalog plugin that isn't installed yet, and nothing else on the machine will say so. Search with the request's own words (`unity commands --grep "asset store"`). A row whose `invoke` is `unity plugin install <id>` is that plugin: tell the user, and ask before installing it ([Use a catalog plugin](#use-a-catalog-plugin-for-a-task-the-built-in-commands-dont-cover)).
 - Use `unity command --query <term>` to search a specific Editor (`--project-path <project>`) or a Player (`--runtime <pattern>`, e.g. `unity command --query screenshot --runtime MyGame`).
 - `commands --grep` waits at most 3 seconds for the Editor; `command --query` waits for it. When the Editor was not searched, a last line says why (no Editor, no answer in time, several Editors) and what to run. Wait for the Editor first with `unity status --until-ready --project-path <project>`: before it connects, no Pipeline row is not proof nothing exists.
 
@@ -132,9 +133,9 @@ These work on every command:
 
 **`unity projects` is the only command that pages IN-PROCESS.** It shows 10 projects per screen and waits for a keypress between screens, and only when stdout is a terminal. Paging is off for redirected stdout, under every machine format (`json`, `ndjson`, `tsv`, `github`), and under `--all`, `--watch`, or `--no-pager` / `UNITY_NO_PAGER`.
 
-**The long listings page through an external pager, like `git log`.** `unity command` (the bare listing), `unity releases`, `unity editors`, `unity changelog`, and `unity logs` pipe human output through `less -RFX` on a terminal; `-F` quits by itself when the output fits one screen. `$UNITY_PAGER` then `$PAGER` override the choice and run through a shell, so `PAGER="less -S"` works; a blank value is ignored rather than treated as an opt-out. Like `projects`'s pager this one is **`human`-only**, and it never engages for redirected stdout, any machine format (`json`, `tsv`, `ndjson`, `github`), `--quiet`, `TERM=dumb`, the streaming modes (`editors --watch`, `logs --follow`), a named `unity command <name>`, or inside `unity shell`. A broken pager costs the paging, not the output: a `$PAGER` naming something that is not there is resolved before anything spawns, and one that spawns and then dies has its output reprinted to the terminal, decided from the pager's exit status (a clean exit is a normal `q` and discards; a failure status reprints). A pager that exits 0 without reading (`PAGER=true`) is indistinguishable from `q`, so its output is lost. One that merely *waits* is not broken; the CLI waits with it.
+**The long listings page through an external pager, like `git log`.** `unity command` (the bare listing), `unity releases`, `unity editors`, `unity changelog`, and `unity logs` pipe human output through `less -RFX` on a terminal; `-F` quits by itself when the output fits one screen. `$UNITY_PAGER` then `$PAGER` override the choice and run through a shell, so `PAGER="less -S"` works; a blank value is ignored rather than treated as an opt-out. Like `projects`'s pager this one is **`human`-only**, and it never engages for redirected stdout, any machine format (`json`, `tsv`, `ndjson`, `github`), `--quiet`, `TERM=dumb`, the streaming modes (`editors --watch`, `logs --follow`), a named `unity command <name>`, or inside `unity shell`. A broken pager costs the paging, not the output: a `$PAGER` naming something that is not there is resolved before anything spawns (a warning on stderr names it, and on Windows a bare name also finds `.com` programs such as `more`), and one that spawns and then dies has its output reprinted to the terminal, decided from the pager's exit status (a clean exit is a normal `q` and discards; a failure status reprints). A pager that exits 0 without reading (`PAGER=true`) is indistinguishable from `q`, so its output is lost. One that merely *waits* is not broken; the CLI waits with it.
 
-A branded Unity header (logo, wordmark, CLI version) renders on the landing surfaces — bare `unity`, `unity --help` / `-h`, `unity help`, and above the first-run consent prompt. It's shown only on a TTY, prints at most once, and degrades to compact, uncolored text on narrow terminals, without Unicode, or under `NO_COLOR`. Piped output is unaffected. Use `--no-banner` to suppress it in scripts. Bare `unity` prints usage and exits 0.
+A branded Unity header (logo, wordmark, CLI version) renders on the landing surfaces — bare `unity`, `unity --help` / `-h`, and `unity help`. It's shown only on a TTY, prints at most once, and degrades to compact, uncolored text on narrow terminals, without Unicode, or under `NO_COLOR`. Piped output is unaffected. Use `--no-banner` to suppress it in scripts. Bare `unity` prints usage and exits 0.
 
 ## Environment variables
 
@@ -165,8 +166,7 @@ All CLI env vars use the `UNITY_` prefix. A CLI flag always overrides the corres
 | `UNITY_NO_UPDATE_CHECK` | — | Disable the background "update available" check (see `unity config update-check`). |
 | `UNITY_CLI_ROLLBACK_KEEP` | — | How many previous CLI versions `unity self-update` keeps for `--rollback`, from 1 to 10 (default 3). |
 | `UNITY_NO_AGENT_HINTS` | — | Stop suggesting Unity's agent plugin or skill when an AI agent runs `unity`: Claude Code's install prompt, the `unity setup codex` / `grok` / `antigravity` / `copilot` tip, and the `unity skill install` tip (an `AGENT_PLUGIN_AVAILABLE` entry in the envelope's `notifications` under `--format json`), plus the once-a-day `unity skill sync` notice when installed Unity skills are older than the CLI's pin (`AGENT_SKILLS_OUTDATED`). Presence-based: any value counts. A tip asks you to get the user's approval before running its command. |
-| `UNITY_NO_CONSENT_PROMPT` | — | Suppress the one-time first-run analytics consent prompt *without* recording a choice — for wrapper scripts on an interactive terminal that must never absorb the prompt. Analytics stay off until you run `unity analytics opt-in`. Unlike `UNITY_NON_INTERACTIVE`, it changes nothing else about command behavior. |
-| `UNITY_NO_CRASH_REPORT` | — | Disable anonymous crash/error reporting (Sentry) entirely. |
+| `UNITY_NO_CRASH_REPORT` | — | Disable anonymous crash/error reporting (Sentry) entirely. The Hub's "Send crash reports" setting, when off, also disables it. |
 | `UNITY_NO_CLI_INVOKED_TELEMETRY` | — | Stop the anonymous once-per-run `cli telemetry` usage ping. Presence-based: any value counts. |
 | `DO_NOT_TRACK` | — | The cross-tool [Console Do Not Track](https://consoledonottrack.com) setting. Any value but empty, `0` or `false` stops the `cli telemetry` usage ping and the upload of opt-in usage data. Licensing records are not affected. |
 | `UNITY_LOG_PROXY` | `--log-proxy` | Log one redacted entry per outbound request to `proxy-request.json`. Truthy values: `1`, `true`. |
@@ -244,7 +244,7 @@ flags, environment variables, and exit codes above apply throughout. Every comma
 | Commands | Reference file |
 |---|---|
 | `auth` (login / logout / status / list / switch / default / consumers / revoke), `license` (activate / return / server), `cloud` (org / project) | [auth-license-cloud.md](references/auth-license-cloud.md) |
-| `pipeline cloud-build` (targets incl. groups, create, update, auditlog / builds incl. steps, failures, artifacts, log, download, start, cancel / credentials upload / connections / scm check-url / org free-tier / project / tooling), `pipeline automation` (apps / pipelines incl. trigger / jobs incl. watch, logs, terminate, resume, approve, reject / automations / bots / profiles / templates, plus `apps versions`, `pipelines versions`, `jobs stats`) | [cloud-automation.md](references/cloud-automation.md) |
+| `pipeline cloud-build` (targets incl. groups, create, update, auditlog / builds incl. steps, timeline, failures, artifacts, log, download, start, cancel / credentials upload / connections / scm check-url / org free-tier / project / tooling), `pipeline automation` (apps / pipelines incl. trigger / jobs incl. watch, logs, terminate, resume, approve, reject / automations / bots / profiles / templates, plus `apps versions`, `pipelines versions`, `jobs stats`) | [cloud-automation.md](references/cloud-automation.md) |
 | `editors` (list / running / add / default / path / install-path / info / upgrade / prune / verify / module), `install`, `uninstall`, `modules`, `install-modules`, `terms` (accept / status) | [editors-install.md](references/editors-install.md) |
 | `projects` (list / create / clone / open / link / require / upgrade / export / import / pin / size / clean / exec; its help reads "Create, open, upgrade, and link local Unity projects (Unity Cloud, GitHub/GitLab)", so linking a folder to Unity Cloud is `projects link cloud`, not `cloud`), `open`, `close`, `releases`, `templates` (list / info / create / pack / delete), `assets` (`inspect` / `export`) | [projects-templates.md](references/projects-templates.md) |
 | `config` (proxy / update-check / accelerator / get / set / list / unset / resolve), `context` (save / use / list / current / delete), `hub install` | [config-hub.md](references/config-hub.md) |
@@ -302,20 +302,24 @@ Commands are grouped and invoked as `unity command <group> <name>`. Their names 
 
 Only fall back to editing files directly once you've ruled out both of the above — and say so explicitly ("no live Editor detected, editing the file directly").
 
-### Generate an asset, texture, sprite, image, or 3D model: check for the `ai` catalog plugin
+### Use a catalog plugin for a task the built-in commands don't cover
 
-**Before approximating a "generate a texture/sprite/image/3D model for my project" request some
-other way, check whether the Unity AI Generators plugin (`ai`) is installed.** It is Unity's own
-catalog plugin for exactly this class of request, and using it is almost always the better answer.
-The same three-step pattern below (recognize the intent, check the catalog, ask before installing)
-applies to any catalog plugin the CLI ships, not only this one; `unity plugins` always
-reflects the full catalog, installed or not, so it is how you discover what else is available too.
+The CLI ships a catalog of Unity plugins, installed on demand. **Before approximating a request
+some other way, or saying the CLI can't do it, check whether a catalog plugin covers it.** A plugin
+is Unity's own tool for its class of request, and using it is almost always the better answer.
+`unity plugins` always lists the full catalog, installed or not, and the command search
+([Find a command](#find-a-command-search-dont-grep-help)) matches each plugin's name and description.
+The steps below use the Unity AI Generators plugin (`ai`), which covers "generate a
+texture/sprite/image/3D model for my project", as the example. Every catalog plugin works the same
+way.
 
-1. **Check whether it's installed.**
+1. **Find the plugin and check whether it's installed.**
    ```bash
+   unity commands --grep "<the request's own words>" --format json
    unity plugins --format json
    ```
-   Find the entry whose `id` is `"ai"` and read its `installed` field (`true` / `false`).
+   Find the entry whose `id` is the plugin's (`"ai"` here) and read its `installed` field
+   (`true` / `false`).
 
 2. **Not installed? Tell the user, then ask, never install silently.** Say plainly that Unity
    ships an AI Generators plugin that covers this, and wait for a yes before running:
@@ -325,12 +329,24 @@ reflects the full catalog, installed or not, so it is how you discover what else
    A refusal is a normal answer: fall back to whatever you would otherwise have done, and don't
    ask again in the same conversation.
 
+   `unity plugin install <id> --local` writes the plugin's agent skill into the current project
+   (`<project>/.claude/skills/...` and the other project-local client folders) instead of each AI
+   client's user-wide folder. It applies only to clients that already have Unity's skill in that
+   project, and Claude Desktop is skipped because its skills are user-wide only. `unity plugin
+   upgrade` never adds a copy: it updates the plugin's skill only where it is already installed,
+   user-wide or in the current project. Run it from that project to refresh its copy.
+
    `ai` is alpha, and during alpha it's gated to Unity staff on Unity's internal network. An
    ordinary user's `unity plugin install ai` can fail with a **sign-in** message (Unity AI
    Generators is limited to Unity staff, so sign in with a Unity staff account) or, once
    past that, a plain **download failure** if the network it needs isn't reachable from where
    you're running. Neither is a bug in the request: report the message and fall back, the same as
    any other refusal.
+
+   `unity plugin install` and `unity plugin upgrade` install the newest build the catalog offers
+   you, whatever its channel. When that build is a prerelease (`beta`, or `alpha`/`nightly` for
+   Unity staff), a warning says so before the download, in the envelope's `warnings` under
+   `--format json`. Pass it on to the user: a prerelease may change or break between versions.
 
    A plugin whose registry entry carries license terms shows them and waits for an answer
    before anything downloads. `unity plugin install <id>` and `unity plugin upgrade <id>` ask on
@@ -344,6 +360,12 @@ reflects the full catalog, installed or not, so it is how you discover what else
    `declined`); a plugin with no terms has no such field. A `--dry-run` row also carries `dryRun: true` and an `eulaNotice` object (`version`, `url`,
    `label`, `message`, `links`) with the terms to read. `--quiet` never hides the terms. A notice
    the registry carries but the CLI cannot read refuses the install under `PLUGIN_EULA_REQUIRED`.
+
+   A plugin can need other plugins. `unity plugin install <id>` installs the ones it requires
+   first, each with its own license step, and reports each as its own row. If one of them cannot
+   install, the plugin itself is not installed, and its row names the one that stopped it.
+   `unity plugin remove <id>` refuses a plugin another installed plugin requires: remove the
+   other one first. `unity plugin --json` lists each entry's `dependencies` (`id`, `optional`).
 
 3. **Pick up its agent skill in the same session.** A catalog plugin can ship its own agent skill
    inside its payload (`ai` does), and installing the plugin does not, by itself, make that skill
@@ -714,7 +736,7 @@ yourself.** Surface the notification and the command, and let the user decide.
 - `unity <version> [path]` is a shorthand for `unity open [path] --editor-version <version>`. Works with `lts`, `latest`, or a full version string like `6000.0.47f1`.
 - The CLI supports kubectl-style plugins: any `unity-<name>` binary on PATH is callable as `unity <name>`.
 - Terminal output is hardened against control-character / escape-sequence injection from server-provided values (project titles, editor versions, module names) — C0 controls and non-SGR escape sequences are stripped from table/list/tree output, and now also from Commander usage errors, the `unity bug` log-archive warning, and `unity projects add`/`remove` machine (tsv) output, while SGR color/style codes are preserved.
-- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT` to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping even when nobody answered the consent prompt; turning analytics off (in the CLI, or in the Hub while signed in), `DO_NOT_TRACK`, or `UNITY_NO_CLI_INVOKED_TELEMETRY` stops it — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
+- The CLI reports anonymous crashes and errors via Sentry to help fix bugs (no IP address or hostname; home-directory paths and token-like values scrubbed before send), aligned with the Unity Hub. Opting in to analytics additionally attaches an anonymized machine id; opted-out users stay fully anonymous. Set `UNITY_NO_CRASH_REPORT`, or turn off "Send crash reports" in the Hub's settings, to disable reporting entirely. Separately again, every run sends one anonymous `cli telemetry` usage ping even when nobody answered the consent prompt; turning analytics off (in the CLI, or in the Hub while signed in), `DO_NOT_TRACK`, or `UNITY_NO_CLI_INVOKED_TELEMETRY` stops it — see [diagnostics-maintenance.md](references/diagnostics-maintenance.md#analytics--usagetelemetry-consent).
 - `unity --version` prints the version you have. `unity self-update --check --format json` says whether a newer one exists on your installed channel (a beta follows betas). `unity self-update --check --channel stable --format json` checks for a stable release, for example when moving off a beta once GA ships.
 - **Always use the latest version of the Unity CLI unless you are told to use a specific version.** A newer CLI regularly adds commands and output fields these docs describe, so an outdated one fails in ways that read like the docs being wrong.
 - Since `0.1.0-beta.8` the CLI checks in the background for a newer version and prints an unobtrusive "update available" notice (interactive sessions only; never delays a command). Turn it off with `unity config update-check off` or the `UNITY_NO_UPDATE_CHECK` env var.

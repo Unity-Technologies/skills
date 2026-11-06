@@ -15,6 +15,8 @@ and to start, follow, and act on builds and jobs.
 - Filter and sort build targets
 - Request additional pages
 - Set up a build target
+- Create an app
+- Add a version to an app
 - Read results
 - Handle failures
 
@@ -32,12 +34,15 @@ and to start, follow, and act on builds and jobs.
 | An app's or pipeline's version history | `unity pipeline automation apps versions` / `pipelines versions` |
 | How many jobs are running or queued | `unity pipeline automation jobs stats` |
 | A build's steps, failures, artifacts, or log | `unity pipeline cloud-build builds steps` / `failures` / `artifacts` / `log` |
+| How long each phase of a build took (staging only) | `unity pipeline cloud-build builds timeline` |
 | One artifact file on disk | `unity pipeline cloud-build builds download` |
 | Start a build, wait for it, or cancel builds | `unity pipeline cloud-build builds start` / `cancel` |
 | Run a pipeline, or follow a job to its end | `unity pipeline automation pipelines trigger` / `jobs watch` |
 | A job's logs, or one step's as it runs | `unity pipeline automation jobs logs` |
 | Stop a job, or answer a step that's waiting | `unity pipeline automation jobs terminate` / `resume` / `approve` / `reject` |
 | Create or change a build target | `unity pipeline cloud-build targets create` / `update` |
+| Create a Pipeline Automation app | `unity pipeline automation apps create` |
+| Add a version to an app | `unity pipeline automation apps versions create` |
 | What changed in a target's configuration, and who changed it | `unity pipeline cloud-build targets auditlog` |
 | Connect the project to a repository, or list its connections | `unity pipeline cloud-build connections` / `connections create` |
 | Check that Build Automation can reach a repository | `unity pipeline cloud-build scm check-url` |
@@ -48,7 +53,10 @@ The inventory commands (the first nine rows) are read-only. The rest start,
 cancel, and change remote work: read [Confirm, wait, and
 stop](#confirm-wait-and-stop) before running them for a user. `targets create`
 and `update`, `connections create` and `credentials upload` change the project's
-configuration: read [Set up a build target](#set-up-a-build-target) first. They don't require a running Editor or
+configuration: read [Set up a build target](#set-up-a-build-target) first.
+`apps create` adds an app to the organization: read [Create an app](#create-an-app)
+first, and [Add a version to an app](#add-a-version-to-an-app) before
+`apps versions create`. They don't require a running Editor or
 the local Pipeline package. Local `unity pipeline install|upgrade|list|list-versions`
 commands manage the Editor package, not cloud resources.
 
@@ -375,6 +383,22 @@ unity pipeline cloud-build builds log "<build-number>" --build-target "<target-i
 file's signed `href` is masked as `***` in machine output and never appears in a
 table; use `builds download` to fetch a file.
 
+`builds timeline` shows how many seconds each phase of a build took. Only
+staging serves it, so pass `--cloudEnvironment staging`; on production it is
+refused before any request with `AUTOMATION_COMMAND_STAGING_ONLY` (exit `2`).
+
+```sh
+unity --cloudEnvironment staging pipeline cloud-build builds timeline "<build-number>" --build-target "<target-id>" --format json
+```
+
+JSON returns the API response under `data`, one key per phase in the order the
+API sends them (`waiting`, `checkout`, `cacheRestore`, `build`, `cacheSave`,
+`upload`). Each phase is an object with `seconds`, and `waiting` also splits its
+time into `queuedSeconds`, `machineStartupSeconds`, `orgConcurrencyLimitSeconds`
+and `targetConcurrencyLimitSeconds`. A phase with no recorded time is `null`. The
+table has one `phase` and `seconds` row per phase, with empty `seconds` for a
+`null` phase.
+
 `builds log` prints the whole log there is now. `--compact` asks for the short
 log. `--follow` keeps reading every 15 seconds and prints only new lines until
 the build finishes. In NDJSON each line is a `{"type":"log","line":<n>,"text":<string>}`
@@ -530,6 +554,65 @@ setting changed between a passing and a failing build.
 
 These commands don't ask before they act and take no `--yes`: confirm the
 summary with the user first, since every one changes the real project.
+
+## Create an app
+
+```sh
+unity pipeline automation apps create --name notifier --description "Posts build results to Slack channels" --version 1.0.0 --cloud-org "<org-id>" --format json
+unity pipeline automation apps create --name notifier --description "Posts build results to Slack channels" --version 1.0.0 --tag slack --metadata team=build --logo logo.png --cloud-org "<org-id>" --format json
+unity pipeline automation apps create --file app.json --name notifier-copy --version 1.0.0 --cloud-org "<org-id>" --format json
+```
+
+`apps create` creates an app in the organization and its first version, a draft.
+The result is that version, shaped as `apps get` shows one: the new app's ID is
+`data.app.id`, not the version object's `id`. Pass that ID to `apps get` and
+`apps versions`.
+
+| Option | Sets |
+|---|---|
+| `--name`, `--description`, `--version` | Required, from the option or `--file`. Name 2 to 64 characters, description 20 to 256, version like `1.0.0`, `1.0.0-rc.1` or `1.0.0-sha.abc1234` |
+| `--tag` (repeatable), `--url` | Tags and a link to the app's page |
+| `--metadata key=value` (repeatable) | Metadata entries, split on the first `=`, merged over the file's |
+| `--logo <path>` | A 128x128 PNG, JPG, GIF, TIFF or WEBP of at most 1 MB, sent base64 |
+| `--id <uuid>` | The app's ID, instead of a generated one |
+| `--file <path>` | The app as JSON (`-` reads stdin); options override its fields |
+
+A saved `apps get --format json` result works as `--file`: the CLI takes its
+app's name, description, URL, tags, logo and metadata, and its version, and
+leaves the existing app's ID behind. The copy keeps the source app's name, so
+pass a new `--name`, and a `--version` for the new app's first version.
+Lengths, the version, the ID and `--metadata` pairs are checked before any
+request (exit `2`). The service refuses an `--id` already in use, or a logo
+that isn't 128x128, with exit `6` and its details. Creating an
+app needs the Automation Developer role, and the organization must allow it;
+otherwise the service answers `AUTOMATION_FORBIDDEN`, exit `3`.
+
+`apps create` doesn't ask before it acts and takes no `--yes`: confirm the name
+and organization with the user first.
+
+## Add a version to an app
+
+```sh
+unity pipeline automation apps versions create "<app-id>" --version 1.1.0 --cloud-org "<org-id>" --format json
+unity pipeline automation apps versions create "<app-id>" --version 1.1.0 --base-version 1.0.0 --cloud-org "<org-id>" --format json
+```
+
+`apps versions create` adds a new draft version to an existing app. With
+`--base-version`, the new version starts as a copy of that version's actions
+and events; without it, it starts empty. Actions and events can only change
+while a version is a draft, so this is how to keep working on an app whose
+versions are published. The result is the new version, shaped as
+`apps versions get` shows one.
+
+`--version` is required. Both versions take the form `1.0.0`, `1.0.0-rc.1` or
+`1.0.0-sha.abc1234` and are checked before any request (exit `2`). The service
+refuses a version the app already has with exit `6` and its details, and an
+unknown app or base version with `AUTOMATION_RESOURCE_NOT_FOUND`, exit `6`. It
+needs the same role and organization setting as `apps create`; otherwise the
+service answers `AUTOMATION_FORBIDDEN`, exit `3`.
+
+`apps versions create` doesn't ask before it acts and takes no `--yes`: confirm
+the app and version with the user first.
 
 ## Trigger a pipeline and watch a job
 
