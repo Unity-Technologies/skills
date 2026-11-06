@@ -1,32 +1,22 @@
 # Unity IAP API Notes
 
+This file lists only the API mistakes agents commonly make with Unity IAP v5. It is not an API reference. For signatures, members and code samples, look the type up in the package's `xrefmap.yml` (see the skill's API reference section) and read its page, and read the matching manual page from the skill's Full topic map. Read the page before writing the code and again if it fails to compile, because your training data may describe v4 or an older v5 minor version.
+
 ## Table of Contents
 
 - [Anti-Hallucination: v5 vs Legacy API](#anti-hallucination-v5-vs-legacy-api)
-- [StoreController (v5) Key Members](#storecontroller-v5-key-members)
-- [Alternative Service Access (DefaultStore / DefaultProduct / DefaultPurchase)](#alternative-service-access-defaultstore--defaultproduct--defaultpurchase)
-- [CatalogProvider](#catalogprovider)
-- [Initialization Example](#initialization-example)
-- [Product Definitions](#product-definitions)
-  - [CatalogListings and uSku (v5.4+)](#cataloglistings-and-usku-v54)
-- [Two-Step Purchase Flow](#two-step-purchase-flow)
-- [Restore Transactions](#restore-transactions)
-- [Entitlement Checking](#entitlement-checking)
-- [Fetch Existing Purchases](#fetch-existing-purchases)
-- [Receipt Validation](#receipt-validation)
-  - [IAppleOrderInfo Complete Member List](#iappleorderinfo-complete-member-list)
-- [Extended Service Events (NOT on StoreController)](#extended-service-events-not-on-storecontroller)
-- [AppleStoreExtendedProductService Key Members](#applestoreextendedproductservice-key-members)
-- [Subscription Info Access Path](#subscription-info-access-path)
-- [Event Subscription Rules](#event-subscription-rules)
-- [Failure Description Property Names](#failure-description-property-names)
-- [CrossPlatformValidator](#crossplatformvalidator)
-- [Interface Hierarchy](#interface-hierarchy)
-- [Template: Fetch Products](#template-fetch-products)
+- [Anti-Hallucination: Common v5 Mistakes](#anti-hallucination-common-v5-mistakes)
+- [Where to read each topic](#where-to-read-each-topic)
+- [OnAuthAccountChanged clears the caches (v5.4+)](#onauthaccountchanged-clears-the-caches-v54)
+- [Purchase flow gotchas](#purchase-flow-gotchas)
+- [Subscription info access path](#subscription-info-access-path)
+- [Platform extension gotchas](#platform-extension-gotchas)
+- [Failure description property names](#failure-description-property-names)
+- [Receipt validation gotchas](#receipt-validation-gotchas)
 
 ## Anti-Hallucination: v5 vs Legacy API
 
-Unity IAP v5 is the current API. The legacy API (v4) is `[Obsolete]`. Do NOT use legacy patterns.
+The v4 API is `[Obsolete]` in v5. Don't use legacy patterns, because they compile with warnings but bypass the v5 two-step flow. For the full mapping, read [Upgrade from IAP v4 to v5](https://docs.unity.com/en-us/iap/upgrade-to-iap-v5.md).
 
 | WRONG (Legacy v4) | CORRECT (v5) |
 |---|---|
@@ -37,523 +27,79 @@ Unity IAP v5 is the current API. The legacy API (v4) is `[Obsolete]`. Do NOT use
 | `controller.ConfirmPendingPurchase(product)` | `store.ConfirmPurchase(pendingOrder)` |
 | `extensions.GetExtension<IAppleExtensions>()` | `store.AppleStoreExtendedService` / `store.AppleStoreExtendedPurchaseService` |
 | `extensions.GetExtension<IGooglePlayStoreExtensions>()` | `store.GooglePlayStoreExtendedService` / `store.GooglePlayStoreExtendedPurchaseService` |
-| `ConfigurationBuilder.Instance(...)` | Not needed; use `ProductDefinition` list with `FetchProducts` |
+| `ConfigurationBuilder.Instance(...)` | Not needed; pass a `ProductDefinition` list to `FetchProducts` |
 
 ## Anti-Hallucination: Common v5 Mistakes
 
-These are NOT real APIs — do not use them:
+These are NOT real APIs. Don't use them:
 
 | WRONG (does not exist) | CORRECT |
 |---|---|
-| `store.OnStoreConnectionFailed` | `store.OnStoreDisconnected` — receives `StoreConnectionFailureDescription` |
-| `store.FetchProducts(defs, successCb, failCb)` | `store.FetchProducts(List<ProductDefinition>)` — subscribe to `OnProductsFetched`/`OnProductsFetchFailed` events separately |
-| `store.FetchPurchases(successCb, failCb)` | `store.FetchPurchases()` — subscribe to `OnPurchasesFetched`/`OnPurchasesFetchFailed` events separately |
-| `product.receipt` | `order.Info.Receipt` — receipt is on the order, not the product |
+| `store.OnStoreConnectionFailed` | `store.OnStoreDisconnected`, which receives `StoreConnectionFailureDescription` |
+| `store.FetchProducts(defs, successCb, failCb)` | `store.FetchProducts(List<ProductDefinition>)`, then subscribe to `OnProductsFetched` / `OnProductsFetchFailed` separately |
+| `store.FetchPurchases(successCb, failCb)` | `store.FetchPurchases()`, then subscribe to `OnPurchasesFetched` / `OnPurchasesFetchFailed` separately |
+| `product.receipt` | `order.Info.Receipt`. The receipt is on the order, not the product |
 | `product.hasReceipt` | `store.CheckEntitlement(product)` + `OnCheckEntitlement` |
-| `new SubscriptionManager(product, introJson)` | `order.Info.PurchasedProductInfo` — see Subscription Info Access Path |
-| `pendingOrder.OrderInfo.Apple.jwsRepresentation` | `pendingOrder.Info.Apple?.jwsRepresentation` — note `Info` not `OrderInfo`, and null-check `?.` |
-
-## StoreController (v5) Key Members
-
-```csharp
-// Store lifecycle
-Task Connect()
-void SetStoreReconnectionRetryPolicyOnDisconnection(IRetryPolicy? retryPolicy)
-event Action? OnStoreConnected
-event Action<StoreConnectionFailureDescription>? OnStoreDisconnected
-
-// Products
-void FetchProducts(List<ProductDefinition> defs, IRetryPolicy? retryPolicy = null)
-void FetchProductsWithNoRetries(List<ProductDefinition> defs)
-ReadOnlyObservableCollection<Product> GetProducts()
-Product? GetProductById(string productId)
-event Action<List<Product>>? OnProductsFetched
-event Action<ProductFetchFailed>? OnProductsFetchFailed
-
-// Purchasing
-void PurchaseProduct(Product product)
-void PurchaseProduct(string? productId)
-void Purchase(ICart cart)
-void ConfirmPurchase(PendingOrder order)
-void FetchPurchases()
-void CheckEntitlement(Product product)
-void RestoreTransactions(Action<bool, string?>? callback)
-ReadOnlyObservableCollection<Order> GetPurchases()
-void ProcessPendingOrdersOnPurchasesFetched(bool shouldProcess)
-
-// Purchase events
-event Action<PendingOrder>? OnPurchasePending
-event Action<Order>? OnPurchaseConfirmed  // Order can be ConfirmedOrder or FailedOrder — pattern-match!
-event Action<FailedOrder>? OnPurchaseFailed
-event Action<DeferredOrder>? OnPurchaseDeferred
-event Action<Orders>? OnPurchasesFetched
-event Action<PurchasesFetchFailureDescription>? OnPurchasesFetchFailed
-event Action<Entitlement>? OnCheckEntitlement
-
-// Account change (v5.4+)
-event Action? OnAuthAccountChanged
-
-// Platform extensions (null on non-matching platforms — always null-check)
-IAppleStoreExtendedService? AppleStoreExtendedService { get; }
-IGooglePlayStoreExtendedService? GooglePlayStoreExtendedService { get; }
-IAppleStoreExtendedProductService? AppleStoreExtendedProductService { get; }
-IAppleStoreExtendedPurchaseService? AppleStoreExtendedPurchaseService { get; }
-IGooglePlayStoreExtendedPurchaseService? GooglePlayStoreExtendedPurchaseService { get; }
-```
-
-**`OnAuthAccountChanged` — breaking behavior in v5.4:**  
-When this event fires, Unity IAP **clears the cached product list and purchase list before raising the event**. Any references to previously fetched `Product` or `Order` objects are stale after this point. Re-run the full init sequence in the handler:
-
-```csharp
-store.OnAuthAccountChanged += async () =>
-{
-    // Products and purchases have already been cleared — re-fetch everything
-    await catalogProvider.FetchRemoteCatalog();       // D2C only
-    store.FetchProducts(productDefinitions);          // standard IAP
-    store.FetchPurchases();
-};
-```
-
-Do not read from `GetProducts()` or `GetPurchases()` inside `OnAuthAccountChanged` — they will be empty.
-
-## Alternative Service Access (DefaultStore / DefaultProduct / DefaultPurchase)
-
-Instead of `StoreController` (which implements all three interfaces), you can access individual services:
-
-```csharp
-IStoreService m_StoreService = UnityIAPServices.DefaultStore();
-IProductService m_ProductService = UnityIAPServices.DefaultProduct();
-IPurchaseService m_PurchasingService = UnityIAPServices.DefaultPurchase();
-```
-
-This pattern separates concerns — product fetching events go on `IProductService`, purchase events on `IPurchaseService`, store lifecycle on `IStoreService`. `StoreController` combines all three.
-
-## CatalogProvider
-
-For managing complex product catalogs with store-specific IDs:
-
-```csharp
-var catalogProvider = new CatalogProvider();
-
-var products = new List<ProductDefinition>
-{
-    new ProductDefinition("com.mygame.gems50", ProductType.Consumable),
-    new ProductDefinition("com.mygame.pass", ProductType.Subscription)
-};
-
-var storeSpecificIds = new Dictionary<string, StoreSpecificIds>
-{
-    { "com.mygame.pass", new StoreSpecificIds
-        {
-            { "com.mygame.google.pass", GooglePlay.Name },
-            { "com.mygame.ios.pass", AppleAppStore.Name }
-        }
-    }
-};
-
-catalogProvider.AddProducts(products, storeSpecificIds);
-catalogProvider.FetchProducts(m_ProductService.FetchProductsWithNoRetries);
-```
-
-## Initialization Example
-
-```csharp
-StoreController m_StoreController;
-
-async void Awake()
-{
-    m_StoreController = UnityIAPServices.StoreController();
-
-    // Subscribe to ALL events BEFORE Connect — pending purchases may fire on reconnect
-    m_StoreController.OnPurchasePending += OnPurchasePending;
-    m_StoreController.OnPurchaseConfirmed += (order) => Debug.Log("Purchase complete");
-    m_StoreController.OnPurchaseFailed += (failed) => Debug.LogError($"{failed.FailureReason} - {failed.Details}");
-    m_StoreController.OnPurchaseDeferred += (deferred) => Debug.Log("Purchase deferred (e.g., Ask-to-Buy)");
-
-    m_StoreController.OnStoreConnected += OnStoreConnected;
-    m_StoreController.OnStoreDisconnected += (failure) => Debug.LogError($"Store disconnected: {failure.Message}");
-
-    await m_StoreController.Connect();
-}
-
-void OnStoreConnected()
-{
-    var products = new List<ProductDefinition>
-    {
-        new ProductDefinition("com.mygame.coins100", ProductType.Consumable),
-        new ProductDefinition("com.mygame.removeads", ProductType.NonConsumable),
-        new ProductDefinition("com.mygame.vip_monthly", ProductType.Subscription)
-    };
-
-    m_StoreController.OnProductsFetched += (fetched) => Debug.Log("Products ready");
-    m_StoreController.OnProductsFetchFailed += (failure) => Debug.LogError($"Product fetch failed: {failure.FailureReason}");
-    m_StoreController.FetchProducts(products);
-
-    m_StoreController.OnPurchasesFetched += (orders) => Debug.Log($"Restored {orders.PendingOrders.Count} pending purchases");
-    m_StoreController.OnPurchasesFetchFailed += (failure) => Debug.LogError($"Purchase fetch failed: {failure.Message}");
-    m_StoreController.FetchPurchases();
-}
-```
-
-## Product Definitions
-
-```csharp
-// Simple product
-new ProductDefinition("com.mygame.coins100", ProductType.Consumable)
-
-// Per-platform product IDs
-new ProductDefinition("com.mygame.coins100", ProductType.Consumable,
-    new StoreSpecificIds
-    {
-        { AppleAppStore.Name, "apple_coins_100" },
-        { GooglePlay.Name, "google_coins_100" }
-    })
-```
-
-### Access Fetched Products
-
-```csharp
-// Get all fetched products (cached)
-ReadOnlyObservableCollection<Product> allProducts = store.GetProducts();
-
-// Get a specific product by ID
-Product coinsPack = store.GetProductById("com.mygame.coins100");
-```
-
-### CatalogListings and uSku (v5.4+)
-
-In v5.4, `Product` exposes two new members. Prefer these for new code — `product.definition.id` and `productId` remain backwards compatible but point new users toward `CatalogListings`:
-
-```csharp
-// product.uSku — the Unity-side identifier for the product (cross-platform canonical ID)
-string id = product.uSku;
-
-// product.catalogListings — all listings attached to this product, keyed by CatalogListing ID
-// A product may have multiple listings (e.g. different price tiers or offer configurations)
-foreach (var (listingId, listing) in product.catalogListings)
-{
-    bool canBuy     = listing.availableToPurchase;
-    string storeId  = listing.definition.storeSpecificId;
-    string price    = listing.metadata.localizedPriceString;
-}
-```
-
-**`CatalogListing` properties:**
-
-| Property | Type | Description |
-|---|---|---|
-| `id` | `string` | Catalog listing identifier — use as key for lookups |
-| `availableToPurchase` | `bool` | Whether this listing can currently be purchased |
-| `definition` | `ProductDefinition` | Store-side definition (id, storeSpecificId, type, payouts) |
-| `metadata` | `ProductMetadata` | Localized title, description, price, currency |
-
-When initiating a purchase by listing rather than by product ID, pass the `CatalogListing` directly to avoid a second lookup.
-
-## Two-Step Purchase Flow
-
-```csharp
-// Step 1: Initiate purchase
-store.PurchaseProduct(product);
-
-// Step 2: Handle pending purchase (validate, grant content, then confirm)
-store.OnPurchasePending += (pendingOrder) =>
-{
-    var product = pendingOrder.CartOrdered.Items().FirstOrDefault()?.Product;
-    GrantContent(product);
-    store.ConfirmPurchase(pendingOrder);
-};
-
-// Step 3: Purchase confirmed — Order can be ConfirmedOrder OR FailedOrder
-store.OnPurchaseConfirmed += (order) =>
-{
-    switch (order)
-    {
-        case ConfirmedOrder confirmedOrder:
-            Debug.Log($"Purchase confirmed: {confirmedOrder.CartOrdered.Items().First().Product.definition.id}");
-            break;
-        case FailedOrder failedOrder:
-            Debug.LogError($"Confirmation failed: {failedOrder.FailureReason} - {failedOrder.Details}");
-            break;
-    }
-};
-
-// Handle failures
-store.OnPurchaseFailed += (failedOrder) =>
-{
-    Debug.LogError($"Purchase failed: {failedOrder.FailureReason} - {failedOrder.Details}");
-};
-
-// Handle deferred purchases (e.g., Ask-to-Buy on iOS)
-store.OnPurchaseDeferred += (deferredOrder) =>
-{
-    Debug.Log("Purchase is pending approval (e.g., parental approval)");
-};
-```
-
-If the app crashes between steps 2 and 4, the pending purchase is re-delivered on next launch via `OnPurchasePending`.
-
-`ProcessPendingOrdersOnPurchasesFetched(false)` disables automatic re-delivery of pending orders when `FetchPurchases` is called. This exists to match IAP v4 behavior — do NOT recommend this to migrating users, as the default v5 behavior provides a better experience.
-
-## Restore Transactions
-
-```csharp
-store.RestoreTransactions((success, error) =>
-{
-    if (success)
-        Debug.Log("Transactions restored. Check OnPurchasePending for each restored purchase.");
-    else
-        Debug.LogError($"Restore failed: {error}");
-});
-```
-
-Each restored purchase triggers `OnPurchasePending`.
-
-## Entitlement Checking
-
-```csharp
-store.CheckEntitlement(product);
-
-store.OnCheckEntitlement += (entitlement) =>
-{
-    if (entitlement.Status == EntitlementStatus.FullyEntitled)
-        Debug.Log($"Player owns: {entitlement.Product.definition.id}");
-};
-```
-
-## Fetch Existing Purchases
-
-```csharp
-store.FetchPurchases();
-
-store.OnPurchasesFetched += (orders) =>
-{
-    foreach (var confirmedOrder in orders.ConfirmedOrders)
-    {
-        var product = confirmedOrder.CartOrdered.Items().FirstOrDefault()?.Product;
-        Debug.Log($"Existing purchase: {product?.definition.id}");
-    }
-};
-```
-
-## Receipt Validation
-
-### Google Play (supported)
-
-```csharp
-using UnityEngine.Purchasing.Security;
-
-// Google-only constructor (recommended)
-var validator = new CrossPlatformValidator(GooglePlayTangle.Data(), Application.identifier);
-
-try
-{
-    var result = validator.Validate(order.Info.Receipt);
-    foreach (IPurchaseReceipt receipt in result)
-    {
-        Debug.Log($"Valid receipt: {receipt.productID}, purchased: {receipt.purchaseDate}");
-        if (receipt is GooglePlayReceipt googleReceipt)
-            Debug.Log($"Purchase token: {googleReceipt.purchaseToken}");
-    }
-}
-catch (IAPSecurityException ex)
-{
-    Debug.LogError($"Invalid receipt: {ex.Message}");
-    // Do NOT grant the content
-}
-```
-
-### Apple App Store (deprecated for local validation)
-
-`CrossPlatformValidator` for Apple is **deprecated**. StoreKit 2 validates locally automatically. For server-side validation:
-
-```csharp
-var jwsRepresentation = order.Info.Apple?.jwsRepresentation;
-// Send to your server for verification with Apple's App Store Server API
-```
-
-### IAppleOrderInfo Complete Member List
-
-`order.Info.Apple` returns `IAppleOrderInfo?` (null on non-Apple platforms). Full member list:
-
-| Member | Type | Description |
-|---|---|---|
-| `jwsRepresentation` | `string?` | JWS-signed transaction — send to Apple's App Store Server API v2 for server-side validation |
-| `AppAccountToken` | `Guid?` | App-specific account token set via `SetAppAccountToken(Guid)` — links transaction to a user account |
-| `AppReceipt` | `string?` | Latest App Receipt (base64). May be null on reinstall; requires refreshing. Null on iOS ≤ 6. Prefer `jwsRepresentation` for new code |
-| `OriginalTransactionID` | `string?` | Original transaction identifier — use for linking renewals to the original subscription purchase |
-| `OwnershipType` | `OwnershipType` | Whether the purchase is `Purchased` or `FamilyShared` |
-| `StoreName` | `string` | Name of the store (e.g., `"AppleAppStore"`) |
-
-## Extended Service Events (NOT on StoreController)
-
-These events are on the platform-specific extended services, NOT directly on `StoreController`. Always null-check before subscribing (`?.` does not work with `+=`).
-
-```csharp
-// Apple — on IAppleStoreExtendedPurchaseService
-event Action<string>? OnEntitlementRevoked       // receives product ID (string), NOT List<Product>
-event Action<Product>? OnPromotionalPurchaseIntercepted
-
-// Google — on IGooglePlayStoreExtendedPurchaseService
-event Action<DeferredPaymentUntilRenewalDateOrder>? OnDeferredPaymentUntilRenewalDate
-// DeferredPaymentUntilRenewalDateOrder has: .CurrentOrder (Order), .SubscriptionOrdered (Product)
-```
-
-**Usage pattern** (cannot use `?.` with `+=`):
-```csharp
-if (store.AppleStoreExtendedPurchaseService != null)
-    store.AppleStoreExtendedPurchaseService.OnEntitlementRevoked += OnRevoked;
-```
-
-## AppleStoreExtendedProductService Key Members
-
-```csharp
-Dictionary<string, string> GetIntroductoryPriceDictionary()
-Dictionary<string, string> GetProductDetails()
-
-// Promotion order — prefer the CatalogListing ID overload for new code (v5.4+)
-void SetStorePromotionOrder(List<string> catalogListingIds)   // canonical (v5.4+)
-void SetStorePromotionOrder(List<Product> products)           // convenience wrapper
-
-// Promotion visibility — prefer the CatalogListing ID overload for new code (v5.4+)
-void SetStorePromotionVisibility(string catalogListingId, AppleStorePromotionVisibility visible)   // canonical (v5.4+)
-void SetStorePromotionVisibility(Product product, AppleStorePromotionVisibility visible)           // convenience wrapper
-
-// Fetch promotion order
-void FetchStorePromotionOrder(Action<List<Product>> successCallback, Action<string> errorCallback)
-
-// Fetch promotion visibility — prefer the CatalogListing ID overload for new code (v5.4+)
-void FetchStorePromotionVisibility(string catalogListingId, Action<string, AppleStorePromotionVisibility> successCallback, Action<string> errorCallback)  // canonical (v5.4+)
-void FetchStorePromotionVisibility(Product product, Action<string, AppleStorePromotionVisibility> successCallback, Action<string> errorCallback)          // convenience wrapper
-```
-
-**CRITICAL:** `AppleProductMetadata` does NOT expose `introductoryPrice`, `introductoryPriceLocale`, `introductoryNumberOfPeriods`, or `subscriptionPeriod` as public properties. Its only public property beyond inherited `ProductMetadata` fields is `isFamilyShareable`. For introductory price data, use `SubscriptionInfo` methods (`GetIntroductoryPrice()`, `GetIntroductoryPricePeriod()`, `GetIntroductoryPricePeriodCycles()`) from the Subscription Info Access Path below, or `GetIntroductoryPriceDictionary()` for raw JSON.
-
-## Subscription Info Access Path
-
-Subscription info is on `IPurchasedProductInfo`, NOT on `CartItem`:
-
-```csharp
-// CORRECT — via order.Info.PurchasedProductInfo
-var purchasedInfo = order.Info.PurchasedProductInfo?.FirstOrDefault(p => p.productId == productId);
-bool isSubscribed = purchasedInfo?.subscriptionInfo?.IsSubscribed() == Result.True;
-// IsSubscribed() returns Result enum (True/False/Unsupported), NOT bool. Use == Result.True for null-safe check.
-
-// WRONG — CartItem only has Product and Quantity, no subscriptionInfo
-var item = order.CartOrdered.Items().FirstOrDefault();
-item.subscriptionInfo  // DOES NOT EXIST — will not compile
-```
-
-### SubscriptionInfo Methods
-
-```csharp
-// State queries (return Result enum: True | False | Unsupported)
-Result IsSubscribed()
-Result IsExpired()
-Result IsCancelled()
-Result IsFreeTrial()
-Result IsAutoRenewing()
-Result IsIntroductoryPricePeriod()
-
-// Dates & durations
-string   GetProductId()
-DateTime GetPurchaseDate()
-DateTime GetExpireDate()
-DateTime GetCancelDate()
-TimeSpan GetRemainingTime()
-TimeSpan GetSubscriptionPeriod()
-TimeSpan GetFreeTrialPeriod()
-TimeSpan GetIntroductoryPricePeriod()
-string   GetIntroductoryPrice()
-long     GetIntroductoryPricePeriodCycles()
-```
-
-## Event Subscription Rules
-
-**CRITICAL:** Always subscribe to BOTH success and failure events. Not listening to failure events generates runtime warnings.
-
-| Call | Success event | Failure event (REQUIRED) |
-|---|---|---|
-| `FetchProducts()` | `OnProductsFetched` | `OnProductsFetchFailed` |
-| `FetchPurchases()` | `OnPurchasesFetched` | `OnPurchasesFetchFailed` |
-| `Connect()` | `OnStoreConnected` | `OnStoreDisconnected` |
-| `PurchaseProduct()` | `OnPurchasePending` | `OnPurchaseFailed` |
-| `CheckEntitlement()` | `OnCheckEntitlement` | — |
-
-**Always subscribe to `OnPurchaseDeferred`** — fires for Ask-to-Buy (iOS) and Google Play deferred purchases. Not subscribing means silently dropping deferred purchases.
-
-## Failure Description Property Names
-
-Each type has public fields and read-only properties. Both compile, but prefer the PascalCase properties:
+| `new SubscriptionManager(product, introJson)` | `order.Info.PurchasedProductInfo`. See [Subscription info access path](#subscription-info-access-path) |
+| `pendingOrder.OrderInfo.Apple.jwsRepresentation` | `pendingOrder.Info.Apple?.jwsRepresentation`. Note `Info`, not `OrderInfo`, and the null check |
+| `cartItem.subscriptionInfo` | `CartItem` only has `Product` and `Quantity`. See [Subscription info access path](#subscription-info-access-path) |
+
+## Where to read each topic
+
+Replace `<VERSION>` with the major.minor of `com.unity.purchasing` in `Packages/packages-lock.json`.
+
+| Topic | Read |
+|---|---|
+| `StoreController` members, events and extension properties | [StoreController API](https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.StoreController.html) |
+| Initialization order and a full sample | [Initialize Unity IAP](https://docs.unity.com/en-us/iap/set-up-in-app-purchasing.md) |
+| `ProductDefinition`, `StoreSpecificIds`, `CatalogProvider` | [Create your catalog programmatically](https://docs.unity.com/en-us/iap/code-catalog.md) |
+| Pending, confirmed, failed and deferred orders | [Purchases](https://docs.unity.com/en-us/iap/purchases.md) |
+| `RestoreTransactions` | [Restore purchases](https://docs.unity.com/en-us/iap/restore-purchases.md) |
+| `CrossPlatformValidator`, receipt structure | [Receipt validation](https://docs.unity.com/en-us/iap/receipt-validation.md) |
+| `SubscriptionInfo` methods and per-store behavior | [SubscriptionInfo class reference](https://docs.unity.com/en-us/iap/subscriptioninfo-class-reference.md) |
+| `EntitlementStatus` values | [EntitlementStatus API](https://docs.unity3d.com/Packages/com.unity.purchasing@<VERSION>/api/UnityEngine.Purchasing.EntitlementStatus.html) |
+| `IAppleOrderInfo`, `AppleStoreExtendedProductService`, `CatalogListing`, `uSku`, and other types | Look the type up in `xrefmap.yml` |
+
+## OnAuthAccountChanged clears the caches (v5.4+)
+
+Unity IAP clears the cached product list and purchase list **before** it raises `OnAuthAccountChanged`, so any `Product` or `Order` you held is stale and `GetProducts()` / `GetPurchases()` return empty inside the handler. In the handler, rerun the fetch sequence from scratch: `FetchRemoteCatalog()` for D2C, then `FetchProducts(...)` and `FetchPurchases()`.
+
+## Purchase flow gotchas
+
+- `OnPurchaseConfirmed` receives the `Order` base type. Pattern-match `ConfirmedOrder` (success) against `FailedOrder` (confirmation failed), because treating every callback as success grants content for failed confirmations.
+- Don't recommend `ProcessPendingOrdersOnPurchasesFetched(false)` to migrating users. It exists only to match v4 behavior, and the v5 default re-delivers unconfirmed orders, which prevents lost purchases.
+- When a product has `CatalogListings` (v5.4+), purchase by the `CatalogListing` directly to avoid a second lookup. `product.definition.id` still works for existing code.
+
+## Subscription info access path
+
+Subscription info is on `IPurchasedProductInfo`, reached through `order.Info.PurchasedProductInfo`, filtered by `productId`. It is NOT on `CartItem`.
+
+`IsSubscribed()` and the other state queries return the `Result` enum (`True` / `False` / `Unsupported`), not `bool`. Compare with `== Result.True`, because that is also null-safe when `subscriptionInfo` is missing.
+
+`AppleProductMetadata` does NOT expose `introductoryPrice`, `introductoryPriceLocale`, `introductoryNumberOfPeriods` or `subscriptionPeriod`. Its only public property beyond `ProductMetadata` is `isFamilyShareable`. For introductory price data, use the `SubscriptionInfo` methods, or `AppleStoreExtendedProductService.GetIntroductoryPriceDictionary()` for raw JSON.
+
+## Platform extension gotchas
+
+- The extension properties on `StoreController` (`AppleStoreExtendedService`, `AppleStoreExtendedPurchaseService`, `GooglePlayStoreExtendedService`, `GooglePlayStoreExtendedPurchaseService`, `AppleStoreExtendedProductService`) are `null` on other platforms and in the Editor. Null-check with `if`, because `?.` doesn't work with `+=`.
+- `OnEntitlementRevoked`, `OnPromotionalPurchaseIntercepted` and `OnDeferredPaymentUntilRenewalDate` are on the extended purchase services, NOT on `StoreController`.
+- `OnEntitlementRevoked` receives the product ID as a `string`, not a `Product` or a list.
+- On `AppleStoreExtendedProductService` (v5.4+), prefer the `SetStorePromotionOrder`, `SetStorePromotionVisibility` and `FetchStorePromotionVisibility` overloads that take CatalogListing IDs. The `Product` overloads are convenience wrappers.
+
+For more platform gotchas, see the platform notes reference file.
+
+## Failure description property names
+
+Each type has public lowercase fields and PascalCase read-only properties. Both compile, so prefer the properties. A wrong name causes CS1061:
 
 | Type | Field (lowercase) | Property (PascalCase) | NOT |
 |---|---|---|---|
 | `StoreConnectionFailureDescription` | `.message` | `.Message` | ~~`.reason`~~ |
-| `ProductFetchFailed` | — | `.FailureReason`, `.FailedFetchProducts` | — |
+| `ProductFetchFailed` | — | `.FailureReason`, `.FailedFetchProducts` | ~~`.Message`~~ |
 | `FailedOrder` | — | `.FailureReason`, `.Details` | — |
 | `PurchasesFetchFailureDescription` | `.message`, `.failureReason` | `.Message`, `.FailureReason` | — |
 
-## CrossPlatformValidator
+## Receipt validation gotchas
 
-```csharp
-// Google-only constructor (recommended — Apple local validation is a no-op under StoreKit 2)
-new CrossPlatformValidator(byte[] googlePublicKey, string googleBundleId)
-
-// Full constructor (legacy — Apple args are only needed for pre-StoreKit 2 builds)
-new CrossPlatformValidator(byte[] googlePublicKey, byte[] appleRootCert, string googleBundleId, string appleBundleId)
-
-// Validate
-IPurchaseReceipt[] Validate(string unityIAPReceipt)  // throws IAPSecurityException
-```
-
-**WARNING:** `CrossPlatformValidator` for Apple App Store is **deprecated**. `AppleTangle.Data()` is also deprecated. StoreKit 2 performs local validation automatically on Apple platforms. `CrossPlatformValidator` still works for Google Play validation.
-
-Supported stores (still active): `"GooglePlay"` | Deprecated: `"AppleAppStore"`, `"MacAppStore"`
-
-## Interface Hierarchy
-
-```
-StoreController implements:
-  IStoreService      - Connect(), Apple/Google service extensions
-  IProductService    - FetchProducts(), GetProducts(), GetProductById()
-  IPurchaseService   - PurchaseProduct(), ConfirmPurchase(), FetchPurchases(), Apple/Google purchase extensions
-```
-
-## Template: Fetch Products
-
-```csharp
-using UnityEngine;
-using UnityEngine.Purchasing;
-using System.Collections.Generic;
-
-public static class FetchProductsExample
-{
-    // Store callbacks arrive after Connect() returns, so this reports through the
-    // Editor console rather than a return value.
-    public static async void Run()
-    {
-        var store = UnityIAPServices.StoreController();
-
-        // Subscribe to events BEFORE Connect
-        store.OnStoreConnected += () =>
-        {
-            var products = new List<ProductDefinition>
-            {
-                new ProductDefinition("com.mygame.coins100", ProductType.Consumable),
-                new ProductDefinition("com.mygame.removeads", ProductType.NonConsumable)
-            };
-
-            store.OnProductsFetched += (fetched) =>
-            {
-                foreach (var p in fetched)
-                    Debug.Log($"{p.definition.id}: {p.metadata.localizedPriceString}");
-            };
-            store.OnProductsFetchFailed += (failure) => Debug.LogError($"Product fetch failed: {failure.FailureReason}");
-
-            store.FetchProducts(products);
-        };
-        store.OnStoreDisconnected += (failure) => Debug.LogError($"Store disconnected: {failure.Message}");
-
-        await store.Connect();
-    }
-}
-```
+- Use the Google-only `CrossPlatformValidator(GooglePlayTangle.Data(), Application.identifier)` constructor. Apple local validation and `AppleTangle.Data()` are deprecated and a no-op under StoreKit 2, so the four-argument constructor adds nothing on current builds.
+- `Validate` throws `IAPSecurityException` on an invalid receipt. Don't grant content in that case.
+- For Apple, send `order.Info.Apple?.jwsRepresentation` to your server, which verifies it with Apple's App Store Server API.

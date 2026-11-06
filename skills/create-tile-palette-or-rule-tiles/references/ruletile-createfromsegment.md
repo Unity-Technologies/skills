@@ -1,5 +1,11 @@
 # Tilemap RuleTile Create From Segment
 
+Links in this file are relative to this `references/` folder; `..` resolves to the skill directory.
+
+## Contents
+
+Purpose, Workflow, Step 1, Step 2, Pattern Filtering, Deduplication, Rule Sorting, Sprite Assignment, Algorithm Summary, Scripts, Common Tile Patterns, Notes, Prerequisites, See Also.
+
 Use when the user wants tiles that auto-tile (autotile) as they paint, wants a RuleTile built from existing terrain or edge sprites, or asks to make sprites "tile correctly" or "connect properly". Also converts sprite-segment-3x3grid output patterns into Unity RuleTile TilingRules: 3x3 grid text patterns (X, ., *) become TilingRule neighbor configurations, mapping '.' to 'This' rules and 'X' to 'DontCare', sorted by specificity (more 'This' rules first). Sprites must be provided as input.
 
 Requires packages: `com.unity.2d.tilemap` >=1.0.0, `com.unity.2d.tilemap.extras` >=4.0.0
@@ -75,17 +81,17 @@ Grid Layout:              Unity Vector3Int positions:
 
 ## Pattern Filtering
 
-By default, detected patterns that do not match any entry in the Common Tile Patterns table are discarded. Only the 47 known patterns are kept. This prevents unexpected or noisy rules from appearing in the final RuleTile.
+Discard detected patterns that don't match an entry in the Common Tile Patterns table, and keep only the 47 known patterns, because unexpected or noisy patterns add rules the user didn't draw art for. `CreateRuleTileFromSprites` does this by default.
 
-If the user explicitly asks to keep non-standard patterns, set `filterToKnownPatterns: false` to bypass this filtering.
+If the user explicitly asks to keep non-standard patterns, set `filterToKnownPatterns: false` to skip this filter.
 
 ## Deduplication
 
-Duplicate TilingRules with identical neighbor configurations are automatically removed. When multiple sprites produce the same pattern, only the first sprite encountered is kept.
+Remove TilingRules that have identical neighbor configurations. When several sprites produce the same pattern, keep the first sprite, because the first matching rule wins and a duplicate rule is never reached.
 
 ## Rule Sorting
 
-Rules are sorted by specificity (number of `This` rules) in descending order. More specific rules are evaluated first.
+Sort rules by specificity (number of `This` neighbors), most specific first, because the RuleTile uses the first rule that matches, so a less specific rule placed earlier hides the rules after it.
 
 | This Count | Example Pattern                 | Priority |
 |------------|---------------------------------|----------|
@@ -96,11 +102,11 @@ Rules are sorted by specificity (number of `This` rules) in descending order. Mo
 
 ## Sprite Assignment
 
-Each TilingRule is assigned at most 1 Sprite:
+Assign at most 1 sprite to each TilingRule:
 - Set `m_Output` to `TilingRuleOutput.OutputSprite.Single`
 - Assign the sprite to `m_Sprites[0]`
 
-The RuleTile's `m_DefaultSprite` is set to the sprite from the bottom-most (least specific) rule. Since rules are sorted by specificity descending, this is the last rule in the list. This sprite is used when no TilingRule matches.
+Set the RuleTile's `m_DefaultSprite` to the sprite from the least specific rule, which is the last rule in the sorted list, because the RuleTile shows the default sprite when no TilingRule matches.
 
 ## Algorithm Summary
 
@@ -162,13 +168,13 @@ TilemapRuleTileCreateFromSegment.ApplyRulesToTile(ruleTile, rules);
 | Flat edge (Left)                                     | `. . X / . * X / . . X`          | 5          |
 | Flat edge (Right)                                    | `X . . / X * . / X . .`          | 5          |
 | L-Shape, Point Right                                 | `X X X / . * . / . . X`          | 4          |
-| L-Shape, Point Bottom                                | `. . X / . * X / X . X`          | 3          |
+| L-Shape, Point Bottom                                | `. . X / . * X / X . X`          | 4          |
 | L-Shape, Point Left                                  | `X . . / . * . / X X X`          | 4          |
-| L-Shape, Point Top                                   | `X . X / X * . / X . .`          | 3          |
+| L-Shape, Point Top                                   | `X . X / X * . / X . .`          | 4          |
 | L-Shape Inverse, Point Left                          | `X X X / . * . / X . .`          | 4          |
-| L-Shape Inverse, Point Bottom                        | `X . . / X * . / X . X`          | 3          |
+| L-Shape Inverse, Point Bottom                        | `X . . / X * . / X . X`          | 4          |
 | L-Shape Inverse, Point Right                         | `. . X / . * . / X X X`          | 4          |
-| L-Shape Inverse, Point Top                           | `X . X / . * . / . . X`          | 5          |
+| L-Shape Inverse, Point Top                           | `X . X / . * X / . . X`          | 4          |
 | T-Shape, face down                                   | `X X X / . * . / X . X`          | 3          |
 | T-Shape, face top                                    | `X . X / . * . / X X X`          | 3          |
 | T-Shape, face left                                   | `X . X / . * X / X . X`          | 3          |
@@ -196,7 +202,8 @@ TilemapRuleTileCreateFromSegment.ApplyRulesToTile(ruleTile, rules);
 - A rule with 0 `This` conditions matches any configuration (use as fallback)
 - The center cell (`*`) is always ignored in neighbor calculations
 - Unity's RuleTile supports up to 8 neighbors in a standard 3x3 grid
-- For hexagonal or isometric grids, use `HexagonalRuleTile` or `IsometricRuleTile`
+- If the sprites are for an isometric grid, create an `IsometricRuleTile` with the same algorithm, because it uses the same 8 neighbor positions as `RuleTile`.
+- If the sprites are for a hexagonal grid, don't use this algorithm, because a hex tile has 6 neighbors that the 3x3 pattern can't describe. Instead, create a `HexagonalRuleTile` from the rule pattern in [hexagonalruletile.md](hexagonalruletile.md) and follow its Usage steps to map the sprites.
 
 ## Prerequisites
 
@@ -208,5 +215,5 @@ TilemapRuleTileCreateFromSegment.ApplyRulesToTile(ruleTile, rules);
 ## See Also
 
 - `sprite-segment-3x3grid` - required prerequisite; generates the input patterns
-- `Packages/com.unity.2d.tilemap.extras/Runtime/Tiles/RuleTile/RuleTile.cs` for RuleTile implementation
-- Unity Manual: [Rule Tile](https://docs.unity3d.com/Packages/com.unity.2d.tilemap.extras@latest)
+- `RuleTile` API: look members up with the `com.unity.2d.tilemap.extras` `xrefmap.yml`, as the skill's API reference section describes, rather than reading the package's C# source.
+- Rule Tile manual: `<project>/Library/PackageCache/com.unity.2d.tilemap.extras@*/Documentation~/RuleTile.md` (read only .md files in that folder). If it isn't there, because some packages don't ship their docs, fetch `https://docs.unity3d.com/Packages/com.unity.2d.tilemap.extras@<VERSION>/manual/RuleTile.html`, replacing `<VERSION>` with the package's major.minor from `Packages/packages-lock.json`

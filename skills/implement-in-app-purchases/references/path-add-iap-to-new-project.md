@@ -87,16 +87,16 @@ Create a single `IAPManager` (MonoBehaviour singleton or service, matching proje
 - Exposes `Buy(string productId)`.
 - Exposes `RestorePurchases()` — **only** if the product list contains `NonConsumable` or `Subscription` types.
 - Fires UI-friendly events or callbacks for: `OnInitialized`, `OnProductsLoaded`, `OnPurchaseSuccess`, `OnPurchaseFailed`, `OnPurchaseDeferred`.
-- Initializes once in `Awake()` — see the **Initialization Flow** section in SKILL.md for the exact event subscription and `Connect()` ordering rules.
+- Initializes once in `Awake()` — see **Core rules > Initialization** in the parent skill file for the event subscription and `Connect()` ordering rules.
 - Registers all products from a single authoritative product list (not scattered across UI handlers).
 
 ### Product catalog
 
-Define products in one place — a `ScriptableObject`, a plain `List<ProductDefinition>`, or a constants class — not inside button click handlers. Wire button click handlers to `IAPManager.Buy(productId)` using the catalog, not hardcoded strings.
+Define products in one place, never inside button click handlers, so IDs can't drift between the shop UI and the store. By default, use a static class that holds the product ID constants and builds the `List<ProductDefinition>` passed to `FetchProducts()`. Use a `ScriptableObject` instead only if the project already configures game data through ScriptableObjects, or the user wants designers to edit products in the Inspector. Wire button click handlers to `IAPManager.Buy(productId)` using those constants, not hardcoded strings.
 
 ## Step 5 — Purchase Handling Contract
 
-For API mechanics (two-step flow, event names, `ConfirmPurchase` signature) see the **Two-Step Purchase Flow** and **Required Event Subscriptions** sections in SKILL.md. This section covers only the grant-and-save contract that is specific to this path.
+For API mechanics (two-step flow, event names, `ConfirmPurchase` signature) read the [Purchases](https://docs.unity.com/en-us/iap/purchases.md) page and **Core rules > Purchases** in the parent skill file. This section covers only the grant-and-save contract that is specific to this path.
 
 ### PendingOrder — the save-before-confirm rule
 
@@ -120,7 +120,7 @@ Do not grant anything. Fire `OnPurchaseDeferred` event to update UI ("Purchase p
 
 ### FailedOrder
 
-Do not grant anything. Fire `OnPurchaseFailed` with the reason. See **Failure Description Property Names** in SKILL.md for the correct property names per type.
+Do not grant anything. Fire `OnPurchaseFailed` with the reason. See **Core rules > Compile errors** in the parent skill file for the correct property names per type.
 
 ## Step 6 — Product Type Behavior Rules
 
@@ -135,13 +135,13 @@ Do not grant anything. Fire `OnPurchaseFailed` with the reason. See **Failure De
 
 - Unlock a durable entitlement (feature flag, item ownership).
 - Include `RestorePurchases()` — required on iOS, good practice on Android.
-- Re-apply the entitlement on app startup: call `store.FetchPurchases()` and re-check ownership in `OnPurchasesFetched`, or use `store.CheckEntitlement(product)`. See **Entitlement Checking** and **Fetch Existing Purchases** in SKILL.md.
+- Re-apply the entitlement on app startup: call `store.FetchPurchases()` and re-check ownership in `OnPurchasesFetched`, or use `store.CheckEntitlement(product)`. See **Core rules > Ownership and subscriptions** in the parent skill file.
 
 ### Subscription
 
 - Restore or check subscription state on app startup, not only at purchase time. Subscriptions can expire or be cancelled externally.
 - Use `store.CheckEntitlement(product)` or inspect `OnPurchasesFetched` results to update active/expired/unknown state.
-- See **Subscription Info** in SKILL.md for the correct access path (`order.Info.PurchasedProductInfo`, `IsSubscribed() == Result.True`).
+- See **Core rules > Ownership and subscriptions** in the parent skill file for the correct access path (`order.Info.PurchasedProductInfo`, `IsSubscribed() == Result.True`).
 
 ## Step 7 — Cloud Save Integration
 
@@ -156,9 +156,8 @@ SaveGame\(|SaveDataAsync\(|PlayerPrefs\.SetInt|JsonUtility\.ToJson|JsonConvert\.
 
 ### Rules
 
-- **Use the existing save abstraction** — do not create a new save system.
-- Prefer methods already in use: `CloudSaveService.Instance.Data.Player.SaveAsync()`, `SaveGame()`, `SaveDataAsync()`, or equivalent.
-- If no save system exists, use `PlayerPrefs` as a minimal fallback and document it as a TODO for the developer to upgrade.
+- **Use the existing save abstraction** — do not create a new save system. If the project has more than one, use the one that already stores the currency or inventory the purchase credits, so the grant and the balance are saved together.
+- If no save system exists, use `PlayerPrefs` as the fallback, because it needs no new package or backend, and list it as a follow-up in the report, since `PlayerPrefs` is local to the device and not safe against tampering.
 - Save **must complete before `ConfirmPurchase`** is called (see Step 5).
 
 ## Step 8 — UI Integration
