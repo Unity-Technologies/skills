@@ -65,7 +65,7 @@ throttled. `com.unity.pipeline` ships a command for exactly this, `editor set_au
 tick at a throttled rate even while unfocused:
 
 ```bash
-unity command editor set_auto_tick  # enable=true, interval_ms=16 (~60 Hz), persist=true by default
+unity command editor set_auto_tick  # enabled=true, interval-ms=16 (~60 Hz), persist=true by default
 ```
 
 Call it before every `editor.playmode start` you drive, not once per Editor session: step 8 turns it off
@@ -89,7 +89,7 @@ of builds:
 
 ```bash
 unity command editor.playmode set_run_in_background                      # on for this Editor session
-unity command editor.playmode set_run_in_background -- --enable false    # put the project's value back
+unity command editor.playmode set_run_in_background -- --enabled false    # put the project's value back
 ```
 
 The override doesn't touch the project's saved settings, so it lasts until you revert it or the
@@ -152,7 +152,7 @@ true` and poll the result instead of blocking on it:
 ```bash
 unity command job wait -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' \
   --timeout 120 --async true          # returns { "waitId": "..." } immediately
-unity command job wait_status -- --wait_id <waitId>
+unity command job wait_status -- --wait-id <waitId>
 ```
 
 `job wait`'s own `--async` is unrelated to `unity command`'s `--detach`: the former is the
@@ -161,8 +161,8 @@ connected Editor evaluating the condition in the background and reporting throug
 `unity job wait`) for a command that runs long on the Editor's main thread. Don't conflate the two,
 or `unity job wait <job-id>` (the CLI's own command) with `unity command job wait` (the Pipeline's).
 
-`job wait` also accepts a `findType`/`target` + instance member path instead of a static one (for
-example a gameplay manager's own state field), and an `on_met.capture` follow-up that captures the
+`job wait` also accepts a `find-type`/`target` + instance member path instead of a static one (for
+example a gameplay manager's own state field), and an `on-met.capture` follow-up that captures the
 game view in the same frame the condition first holds, atomically, when a client-side "wait, then
 screenshot" loop would risk missing a short-lived state. Discover the exact shape (and whether your
 project's package version has it at all) with `unity command job --format json`
@@ -182,19 +182,19 @@ Each `Step()` advances one frame. Drive it from the host, one call per frame, be
 ### 5. Capture the game view without bloating the response
 
 ```bash
-unity command capture game_view -- --source screen --save_path Screenshots/playtest.png
+unity command capture game_view -- --source screen --output-path Screenshots/playtest.png
 ```
 
-The flag here is `--save_path`, not the `--output` that `capture screenshot` takes. Pass `save_path` and the result is a file path, not an inline base64 image, which keeps an agent's
+The flag here is `--output-path`, the same one `capture screenshot` takes. Pass it and the result is a file path, not an inline base64 image, which keeps an agent's
 tool result small. The path is **project-relative** (the package's own docs give
 `Screenshots/foo.png` as the example); nothing in the package documentation states a restriction to
 paths under `Assets/`, so do not assume one. When you do need the image inline instead of, or as
-well as, the file (for example to look at it yourself in this turn), add `--include_inline_image
-true` and use `--max_resolution` to cap the inline copy's longest edge without touching the
+well as, the file (for example to look at it yourself in this turn), add `--include-inline-image
+true` and use `--max-resolution` to cap the inline copy's longest edge without touching the
 resolution of the saved file:
 
 ```bash
-unity command capture game_view -- --max_resolution 512   # inline only, downscaled, no save_path
+unity command capture game_view -- --max-resolution 512   # inline only, downscaled, no output-path
 ```
 
 `source=screen` captures the composited game view (including Screen Space - Overlay UI such as
@@ -251,8 +251,8 @@ tweak inside a live Play mode session, `script eval` is cheaper and keeps the lo
 
 ```bash
 unity command editor.playmode stop
-unity command editor.playmode set_run_in_background -- --enable false
-unity command editor set_auto_tick -- --enable false
+unity command editor.playmode set_run_in_background -- --enabled false
+unity command editor set_auto_tick -- --enabled false
 ```
 
 Stop only a session you started. One that was already playing when you read `editor status` in
@@ -270,10 +270,10 @@ unity command editor.playmode set_run_in_background
 unity command editor.playmode start
 unity status --until-ready --project-path <path> --format json
 unity command job wait -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' --timeout 10
-unity command capture game_view -- --source screen --save_path Screenshots/playtest.png   # --source camera when the machine may be locked
+unity command capture game_view -- --source screen --output-path Screenshots/playtest.png   # --source camera when the machine may be locked
 unity command console get -- --tail 50 --level error
 unity command script eval "<C# to inspect or tune the running game>"
 unity command editor.playmode stop
-unity command editor.playmode set_run_in_background -- --enable false
-unity command editor set_auto_tick -- --enable false   # skip if you'll keep driving the Editor
+unity command editor.playmode set_run_in_background -- --enabled false
+unity command editor set_auto_tick -- --enabled false   # skip if you'll keep driving the Editor
 ```

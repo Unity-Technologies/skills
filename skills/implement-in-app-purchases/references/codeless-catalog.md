@@ -1,10 +1,12 @@
 # Editing `IAPProductCatalog.json`
 
+Links to other reference files point to files in this `references/` folder. Any other relative paths resolve to the skill directory.
+
 ## Table of Contents
 
 - [Quick reference — minimal safe edit](#quick-reference--minimal-safe-edit)
 - [File location](#file-location)
-- [Schema](#schema)
+- [Top-level keys](#top-level-keys)
 - [Serialization rules](#serialization-rules)
   - [JsonUtility round-trip](#jsonutility-round-trip)
   - [The `Price.data` decimal array](#the-pricedata-decimal-array)
@@ -20,7 +22,7 @@
   - [Pushing the catalog to the storefronts](#pushing-the-catalog-to-the-storefronts)
   - [Detection checklist](#detection-checklist)
 
-`Assets/Resources/IAPProductCatalog.json` is a Unity-managed JSON asset deserialized by `JsonUtility.FromJson<ProductCatalog>` (`Runtime/Purchasing/Extension/ProductCatalog.cs`). It can be edited safely outside the Editor as long as the serialization rules below are respected.
+`Assets/Resources/IAPProductCatalog.json` is the file behind the IAP Catalog window, deserialized with `JsonUtility`. For what each product field means, read [Set up Codeless IAP](https://docs.unity.com/en-us/iap/codeless-iap.md) and the IAP Catalog window it describes; this file covers only what you need to edit the JSON directly without corrupting it. You can edit it outside the Editor as long as you follow the serialization rules below.
 
 ## Quick reference — minimal safe edit
 
@@ -56,42 +58,11 @@ Append to the `products` array, save, then trigger a refresh.
 
 `Resources.Load("IAPProductCatalog")` deserializes it at runtime via `ProductCatalogImpl.LoadDefaultCatalog()`. The asset must remain under a `Resources/` directory for runtime load to succeed.
 
-## Schema
+## Top-level keys
 
-```jsonc
-{
-  "appleSKU": "",                                  // app-level Apple SKU (Apple XML exporter)
-  "appleTeamID": "",                               // Apple team ID (Apple XML exporter)
-  "enableCodelessAutoInitialization": true,        // auto-init Unity IAP at runtime
-  "enableUnityGamingServicesAutoInitialization": false,
-  "products": [
-    {
-      "id": "gold_100",                            // canonical Unity SKU — required, non-empty, unique
-      "type": 0,                                   // ProductType int (see Enum integers)
-      "storeIDs": [                                // per-store override SKUs
-        { "store": "AppleAppStore", "id": "com.example.gold100" }
-      ],
-      "defaultDescription": {                      // required for export
-        "googleLocale": 21,                        // TranslationLocale int (en_US = 21)
-        "title": "",
-        "description": ""
-      },
-      "screenshotPath": "",                        // Apple screenshot path (optional)
-      "applePriceTier": 0,                         // Apple price tier (Apple XML exporter)
-      "googlePrice": { "data": [99,0,0,131072], "num": 0.99 },  // see Price.data
-      "pricingTemplateID": "",                     // Google Play pricing template
-      "descriptions": [                            // additional locale variants
-        { "googleLocale": 30, "title": "...", "description": "..." }
-      ],
-      "payouts": [                                 // optional grant metadata
-        { "t": "Currency", "st": "Gold", "q": 100, "d": "" }
-      ]
-    }
-  ]
-}
-```
+The file has five top-level keys: `appleSKU`, `appleTeamID`, `enableCodelessAutoInitialization`, `enableUnityGamingServicesAutoInitialization` and `products`. Each entry in `products` has the fields shown in the [quick reference](#quick-reference--minimal-safe-edit) example, plus optional `storeIDs` overrides (`{ "store": "AppleAppStore", "id": "..." }`), extra `descriptions` per locale, and `payouts` (`{ "t": "Currency", "st": "Gold", "q": 100, "d": "" }`).
 
-Per-product required fields for the runtime to accept the product: `id` (non-empty, trimmed). Everything else is optional at runtime; exporters and the Editor window enforce stricter rules (see [Validation](#validation--run-before-saving)).
+The runtime only requires a non-empty `id` per product. The Editor window and the store exporters enforce stricter rules (see [Validation](#validation--run-before-saving)).
 
 ## Serialization rules
 
@@ -105,154 +76,48 @@ Per-product required fields for the runtime to accept the product: `id` (non-emp
 
 ### The `Price.data` decimal array
 
-`Price` is the trickiest field. It serializes a `decimal` via two mirror fields and **`data` is authoritative on read**:
+`googlePrice` stores a `decimal` in two mirror fields, `data` and `num`, and **`data` is authoritative on read**: `num` is ignored when the file loads, so a price changed only in `num` silently keeps the old value.
 
-```csharp
-public void OnBeforeSerialize() {
-    data = decimal.GetBits(value);        // int[4]: [low, mid, high, flags]
-    num  = decimal.ToDouble(value);
-}
-public void OnAfterDeserialize() {
-    if (data != null && data.Length == 4)
-        value = new decimal(data);        // num is ignored on read
-}
-```
-
-`data` is the `decimal.GetBits` representation: `[low32 mantissa, mid32 mantissa, high32 mantissa, flags]`.
-
-The `flags` int encodes scale (decimal places) and sign:
-- Bits 16–23: scale (0–28)
-- Bit 31: sign (0 = positive, 1 = negative; negative prices are never valid here)
-- All other bits: unused, must be 0
-
-For scale 2 (cents-style prices): `flags = 0x00020000 = 131072`
-For scale 0 (yen / whole-unit prices): `flags = 0`
-
-| Price (display) | Mantissa | Scale | `data` |
-|---|---|---|---|
-| 0.99 | 99 | 2 | `[99, 0, 0, 131072]` |
-| 1.99 | 199 | 2 | `[199, 0, 0, 131072]` |
-| 2.99 | 299 | 2 | `[299, 0, 0, 131072]` |
-| 4.99 | 499 | 2 | `[499, 0, 0, 131072]` |
-| 9.99 | 999 | 2 | `[999, 0, 0, 131072]` |
-| 19.99 | 1999 | 2 | `[1999, 0, 0, 131072]` |
-| 99.99 | 9999 | 2 | `[9999, 0, 0, 131072]` |
-| 1000 (¥, ₩) | 1000 | 0 | `[1000, 0, 0, 0]` |
-
-Formula for arbitrary positive prices with up to 2³¹−1 unscaled units:
+`data` is the `decimal.GetBits` array `[low, mid, high, flags]`, where `flags` holds the number of decimal places shifted left by 16. For a normal price:
 
 ```
-unscaled = round(price * 10^scale)           // e.g. 2.99 with scale=2 → 299
+unscaled = round(price * 10^scale)    // scale = decimal places, usually 2
 data     = [unscaled, 0, 0, scale << 16]
 ```
 
-Keep `num` in sync with the display price even though it's not read — the Editor reads it diagnostically and the file diffs more readably.
-
-For prices larger than ~$21M (unscaled > 2³¹−1), the high two ints carry the overflow — at that point invoke Unity in batchmode and let `Price.OnBeforeSerialize` do the conversion, rather than constructing the bits by hand.
+So `0.99` is `[99, 0, 0, 131072]` and a whole-unit price such as `1000` (yen, won) is `[1000, 0, 0, 0]`. Keep `num` equal to the display price so the file stays readable. If `unscaled` exceeds 2³¹−1 (prices above about 21 million), don't build the bits by hand; hand the user back to the IAP Catalog window.
 
 ### Enum integers
 
-`ProductType` (`type` field):
-
-| Int | Enum | Use for |
-|---|---|---|
-| 0 | `Consumable` | Coins, gems, lives, ammo — granted then consumed |
-| 1 | `NonConsumable` | One-time unlocks, remove-ads, character packs |
-| 2 | `Subscription` | Recurring entitlements |
-
-`TranslationLocale` (`googleLocale` field): the int is the zero-based index into the enum declared in `Runtime/Purchasing/Extension/ProductCatalog.cs`. Common values:
-
-| Int | Locale |
-|---|---|
-| 13 | `zh_CN` |
-| 14 | `zh_TW` |
-| 17 | `da_DK` |
-| 18 | `nl_NL` |
-| 21 | `en_US` (default for new descriptions) |
-| 22 | `en_GB` |
-| 30 | `fr_FR` |
-| 33 | `de_DE` |
-| 41 | `it_IT` |
-| 42 | `ja_JP` |
-| 46 | `ko_KR` |
-| 63 | `pl_PL` |
-| 64 | `pt_BR` |
-| 69 | `ru_RU` |
-| 75 | `es_ES` |
-
-For anything outside this list, count from the top of the `TranslationLocale` enum in `ProductCatalog.cs` — the order is the index.
-
-`ProductCatalogPayoutType` (`payouts[].t` field): **serialized as a string**, not an int. Valid values: `"Other"`, `"Currency"`, `"Item"`, `"Resource"`.
+- `type` is the `ProductType` integer: `0` Consumable, `1` NonConsumable, `2` Subscription.
+- `googleLocale` is the zero-based index into the `TranslationLocale` enum. `21` is `en_US`. For any other locale, read the enum's order in the installed package's `Runtime/Purchasing/Extension/ProductCatalog.cs` under `Library/PackageCache/com.unity.purchasing@*/`, because guessing the index silently assigns the wrong language.
+- `payouts[].t` is serialized as a **string** (`"Other"`, `"Currency"`, `"Item"`, `"Resource"`), not an integer.
 
 ### Canonical store keys
 
-`storeIDs[].store` must be one of the keys validated by `ProductCatalogEditor.kStoreKeys`:
-
-- `AppleAppStore`
-- `GooglePlay`
-- `MacAppStore`
-
-Using `"Apple"`, `"apple"`, `"google"`, etc. won't crash but the override will not be picked up by the runtime store routing. An empty `storeIDs` array means the product's `id` is used as the platform SKU on every store.
+`storeIDs[].store` must be exactly `AppleAppStore`, `GooglePlay` or `MacAppStore`. Other spellings (`"apple"`, `"google"`) don't fail, but the runtime ignores the override. An empty `storeIDs` array uses the product `id` on every store.
 
 ### Non-ASCII characters in descriptions
 
-`LocalizedProductDescription.Title` / `Description` setters encode any character with code point > 127 as `\uXXXX` (`EncodeNonLatinCharacters` in `ProductCatalog.cs`). The getter regex-decodes both forms. So both representations work on read:
-
-```jsonc
-{ "title": "Caf\\u00e9 Pack" }   // Editor-written form
-{ "title": "Café Pack" }          // raw UTF-8 — also accepted on read
-```
-
-**Prefer the `\uXXXX` form** when writing programmatically, to match what the Editor will round-trip the file into on the next save. Mixed forms in one file are fine but the next Editor save normalizes everything to escaped form.
-
-Subtype `payouts[].st` has a 64-char max (`ProductCatalogPayout.MaxSubtypeLength`). Subtype `payouts[].d` (data) has a 1024-char max (`MaxDataLength`).
+Both `\uXXXX` escapes and raw UTF-8 load correctly. Write the `\uXXXX` form, because the Editor rewrites the file in that form on its next save and mixed forms make diffs noisy.
 
 ## Validation — run before saving
 
-These mirror the Editor window's validation. Verify each before writing:
+Check each product before writing, because the runtime silently skips invalid ones:
 
-**Per product:**
-- `id` is non-empty after trim. (`ProductCatalog.allValidProducts` filters on this.)
-- `id` is unique across all products in the array (the Editor flags duplicates).
-- `type` ∈ `{0, 1, 2}`.
-- Every `defaultDescription.googleLocale` and `descriptions[].googleLocale` is a valid int index into `TranslationLocale`.
-- `storeIDs[].store` ∈ canonical store keys.
-- If `googlePrice.data` is present, it is a 4-element int array; sign bit (bit 31 of `data[3]`) is 0.
+- `id` is non-empty after trimming, and unique in the array.
+- `type` is `0`, `1` or `2`, and every `googleLocale` is a valid `TranslationLocale` index.
+- `storeIDs[].store` is a canonical store key.
+- `googlePrice.data` has four integers, and the sign bit of `data[3]` is 0.
+- `enableCodelessAutoInitialization` is a JSON bool, not `0`/`1`.
 
-**Per-exporter (only if export is intended):**
-
-- **Apple XML** (`AppleXMLProductCatalogExporter.Validate`):
-  - Catalog-level: `appleSKU` non-empty, `appleTeamID` non-empty, no duplicate product IDs, no duplicate Apple store IDs, no duplicate runtime IDs.
-  - Per item: `id` non-empty, `defaultDescription.Title` non-empty, `defaultDescription.Description` non-empty, **`screenshotPath` non-empty (required, not optional)**.
-  - `applePriceTier` is written to the XML (`<wholesale_price_tier>`) but not validated — any int is accepted.
-- **Google CSV** (`GooglePlayProductCatalogExporter.Validate`):
-  - Catalog-level: no duplicate product IDs, no duplicate Google store IDs, no duplicate runtime IDs.
-  - Per item: `id` non-empty AND must start with a lowercase letter or digit AND contain only `a-z`, `0-9`, `_`, `.` (same rule applies to `storeIDs[].id` for the `GooglePlay` override).
-  - Description rules (apply to `defaultDescription` and every entry in `descriptions`):
-    - `Title` non-empty; ≤ 55 chars (error if longer); warning if > 25 chars.
-    - `Description` non-empty; ≤ 80 chars (error if longer).
-  - Price: either `googlePrice.value` ≠ 0 (i.e. non-zero `data` mantissa) **or** `pricingTemplateID` non-empty.
-
-**Top-level:**
-- `enableCodelessAutoInitialization` is a bool, not 0/1.
-- If the catalog ends up empty (no products with non-empty `id`), `CodelessIAPStoreListener.InitializeCodelessPurchasingOnLoad` short-circuits — flipping the auto-init flag in that state has no effect until a product is added.
+If the user will export to the stores, two exporter rules catch people out: the Apple export requires a non-empty `screenshotPath`, and the Google export requires `id` (and any `GooglePlay` override) to use only lowercase letters, digits, `_` and `.`, starting with a letter or digit. The IAP Catalog window's App Store Export reports the rest.
 
 ## Post-edit refresh
 
-The Unity Editor caches `IAPProductCatalog` as a `TextAsset` keyed by Resources path. After writing the JSON externally:
-
-- **Editor open, not in Play Mode:** Unity detects external changes on next focus and re-imports the asset automatically (`AssetDatabase`'s file watcher). If you want to force it from the Editor side, run **Assets → Refresh** (Ctrl/Cmd+R). The next `Resources.Load("IAPProductCatalog")` call will see the new contents.
-- **Editor open, in Play Mode:** the runtime `TextAsset` was loaded at play-start and is cached. Changes won't be picked up until play mode is restarted (or you re-call `Resources.Load` after `AssetDatabase.ImportAsset` to bypass the cache).
-- **Editor closed:** edits are picked up next time the Editor opens.
-- **Player build:** the catalog is baked into the build at build-time. Edits after build do nothing — rebuild required.
-
-For batchmode-driven workflows that need a guaranteed refresh:
-
-```
-"<unity>/Unity.exe" -batchmode -quit -projectPath "<path>" -logFile -
-```
-
-Plain batchmode without `-executeMethod` is enough to trigger asset import on startup. The next Editor session will see the change.
+- With the Editor open and not in Play mode, Unity reimports the file on focus, or use **Assets > Refresh**.
+- In Play mode the catalog was loaded at start, so exit and re-enter Play mode to see the change.
+- A Player build contains the catalog from build time, so rebuild after editing.
 
 ## When to escalate to the Editor window
 
@@ -290,13 +155,14 @@ If the project has **both** a non-empty `IAPProductCatalog.json` with `enableCod
 - "Store already connected" warnings on `Connect()`.
 - Unpredictable which init's product list wins.
 
-Mitigations (pick one):
+Default fix: **keep scripted, disable codeless.** Set `"enableCodelessAutoInitialization": false` in the catalog JSON. This is the smallest change, it keeps the user's products and store IDs in the catalog for `ProductCatalog.LoadDefaultCatalog()`, and scripted IAP is the recommended path for production.
 
-1. **Keep scripted, disable codeless:** set `"enableCodelessAutoInitialization": false` in the catalog JSON. The catalog stays available for `ProductCatalog.LoadDefaultCatalog()` calls.
-2. **Keep codeless, remove scripted init:** delete the user's `StoreController` setup; rely on `CodelessIAPStoreListener.Instance`.
-3. **Empty the catalog:** clear `products` to `[]`. `CodelessIAPStoreListener.InitializeCodelessPurchasingOnLoad` short-circuits on empty catalogs even with the flag on.
+Use an alternative only when the user asks for it:
 
-Surface this before adding scripted IAP to a project that already has a non-empty catalog.
+- **Keep codeless, remove scripted init** when the user wants to stay on Codeless IAP buttons. Guard the `StoreController` setup out rather than deleting it.
+- **Empty the catalog** (`products: []`) only if the user wants the catalog gone. Codeless auto-init skips an empty catalog even with the flag on, but the product data is lost.
+
+Tell the user about the race and the fix before adding scripted IAP to a project that already has a non-empty catalog.
 
 ### Pushing the catalog to the storefronts
 
@@ -324,8 +190,8 @@ Routing the result:
 | Catalog | autoInit | Scripted `StoreController` | Action |
 |---|---|---|---|
 | present (non-empty) | true | absent | Pure codeless — edit the catalog freely. |
-| present (non-empty) | true | present | **Race condition** — surface to the user, apply one of the three mitigations. |
+| present (non-empty) | true | present | **Race condition** — tell the user, then apply the default fix from [Auto-init race condition](#auto-init-race-condition). |
 | present | false | present | Catalog is dormant unless `ProductCatalog.LoadDefaultCatalog()` is called from user code. Edits safe. |
 | present (empty) | true or false | present | Codeless auto-init short-circuits on empty catalog. Treat as scripted-only. |
 | absent | n/a | present | Standard scripted IAP. See [path-add-iap-to-new-project.md](path-add-iap-to-new-project.md). |
-| absent | n/a | absent | No IAP — see [pre-check.md](pre-check.md) routing. |
+| absent | n/a | absent | No IAP — go back to the pre-check routing. |

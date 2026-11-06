@@ -1,6 +1,6 @@
 ---
 name: new-unity-project
-description: Guides creating a new Unity project, gathering concept, platforms, and monetization before setting up the project, source control, and packages. Use when the user asks to start a new game or prototype. Runs an opinionated paved path by default; full interview on request.
+description: Guides creating a new Unity project, from concept, platforms, and monetization to source control and packages. Use when the user asks to start a new game or prototype. Runs an opinionated paved path by default.
 allowed-tools:
   - Bash
   - Write
@@ -296,7 +296,7 @@ log and reports clean whatever the scene looks like:
 - No render-pipeline or shader errors Editor-side. Read the Editor console through `unity-cli`,
   or read `Editor.log` directly — that skill's "Recovering from Safe Mode" section has the
   per-platform paths.
-- `unity command capture screenshot --output baseline.png` looks lit and tonemapped rather than flat
+- `unity command capture screenshot --output-path baseline.png` looks lit and tonemapped rather than flat
   gray.
 
 ## Step 8 — Save & first commit

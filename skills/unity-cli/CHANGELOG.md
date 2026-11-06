@@ -12,6 +12,14 @@ release's own dated section once the CLI actually ships it.
 
 ## [Unreleased]
 
+### Changed
+
+- **Kebab-case Pipeline command parameters**: `integration-advanced.md`, `playmode-verification-loop.md`, the `runtime-verify` skill and the `new-unity-project` skill spell Editor command parameters the way the Pipeline package now accepts them: `--enabled` (was `--enable`), `--output-path` for every capture command (was `--save_path` and `--output`), `--wait-id`, `--async-tests`, `--include-inline-image`, `--max-resolution`, and `find-type` and `on-met.capture` inside `job wait`. The Pipeline rejects the old spellings with `INVALID_COMMAND_ARGS`. Pending the `com.unity.pipeline` release that renames them.
+
+## CLI `1.0.0-beta.17` (2026-11-05)
+
+Aligned to the CLI's `1.0.0-beta.17` release. Cut automatically by the release that published it, from the skill as it stood in that release — so this entry covers the documentation changes that had already landed by then. Anything worth calling out individually is added here in a follow-up pass.
+
 ## CLI `1.0.0-beta.16` (2026-11-03)
 
 Aligned to the CLI's `1.0.0-beta.16` release. Everything below was documented ahead of the release and ships in it.
@@ -55,6 +63,7 @@ Aligned to the CLI's `1.0.0-beta.15` release. Everything below was documented ah
 
 ### Changed
 
+- **Analytics on by default, no first-run prompt**: `diagnostics-maintenance.md` says the CLI never asks, that a user who never chose is opted in and told once by a stderr notice, and that an earlier choice, the Hub's setting and `DO_NOT_TRACK` are kept. The notice and `analytics status` now link the privacy policy, and `status` no longer prints the ping hint. `SKILL.md` drops `UNITY_NO_CONSENT_PROMPT` and the banner above the prompt. Pending the change shipping in a CLI release.
 - **Local package docs in `docs --package`**: `diagnostics-maintenance.md` and `docs-workflow.md` say `unity docs --package` opens the project's own `Documentation~` page when it has one, offline, that `--online` skips it and `--url` still prints the online manual, and that JSON reports `resolvedBy: local`, `source: local` and `path`. Pending the change shipping in a CLI release.
 - **Busy and dialog-blocked Editors**: `SKILL.md` lists exit `17` (`UNAVAILABLE`) for an Editor that is loading, compiling, reloading or in Safe Mode, and `18` (`AWAITING_INPUT`) for one a modal dialog blocks, with what to do for each. Pending the change shipping in a CLI release.
 - **`plugin install` and `plugin upgrade` install a plugin's skill**: `integration-advanced.md` says they write the skill a plugin ships into every AI client that already has the Unity skill, and leave other clients alone. Pending the change shipping in a CLI release.
