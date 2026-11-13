@@ -8,7 +8,7 @@ A game that boots directly into gameplay reads as a demo. The shell is formulaic
 
 ## The minimum shell (four states, one state machine)
 
-One `GameState` enum (`Title, Playing, Paused, Ended`) on one manager; every screen is a palette-styled panel (see [art-direction](art-direction.md) — default uGUI skin never ships; if no art bible or Palette source exists yet, run that reference first — it is the root dependency). On a fresh URP template, import TMP Essential Resources before the first text element ([TMP font assets](https://docs.unity3d.com/Packages/com.unity.ugui@<VERSION>/manual/TextMeshPro/index.html)); the exact failure and fix are in the table below.
+One state machine on one manager, because two owners drift apart. When the playable-loop floor's run-state owner exists, extend it rather than adding a second enum: its `Ready` is Title, `Running` is Playing, `Won`/`Lost` are Ended, and the shell adds only `Paused`. Otherwise, one `GameState` enum (`Title, Playing, Paused, Ended`). Every screen is a palette-styled panel (see [art-direction](art-direction.md) — default uGUI skin never ships; if no art bible or Palette source exists yet, run that reference first — it is the root dependency). On a fresh URP template, import TMP Essential Resources before the first text element ([TMP font assets](https://docs.unity3d.com/Packages/com.unity.ugui@<VERSION>/manual/TextMeshPro/index.html)); the exact failure and fix are in the table below.
 
 - **Title** — the worked treatment below. **Backdrop is the live game scene**, gameplay HUD hidden. Free production value; no separate art, and the style uniformity is automatic.
 - **Pause** — `Time.timeScale = 0` + dimmed overlay; Resume / Restart / Quit. Audio ducks −6 dB (mixer snapshot, [game-audio](game-audio.md)). Feel/tween code must run on *unscaled* time while paused ([game-feel](game-feel.md)'s Tween has an unscaled path).
@@ -38,7 +38,7 @@ Every state change crosses a 0.3 s fade (one fullscreen black-from-palette overl
 
 ## Verify
 
-Drive the full loop headlessly via `unity-cli` (eval state changes + capture each screen): boot → Title frame, pause → Paused frame, end → Ended frame, restart → clean second run. "Clean" is asserted, not eyeballed: eval-read the `GameState` enum at each step to confirm the transition landed, re-read the run counters after restart (score/XP/level back at initial values), and read the Editor log for a zero console-error count. Caveat when driving via `eval`: a timed-out eval may still have executed — mutations are not idempotent-safe; long work goes through `run_script`.
+Drive the full loop headlessly via `unity-cli` (eval state changes + capture each screen): boot → Title frame, pause → Paused frame, end → Ended frame, restart → clean second run. "Clean" is asserted, not eyeballed: eval-read the state enum (the run-state owner's, or `GameState`) at each step to confirm the transition landed, re-read the run counters after restart (score/XP/level back at initial values), and read the Editor log for a zero console-error count. Caveat when driving via `eval`: a timed-out eval may still have executed — mutations are not idempotent-safe; long work goes through `run_script`.
 
 ## Expansion scope
 
