@@ -1,5 +1,7 @@
 ## Workflow prerequisites (packages and cloud setup)
 
+Relative links in this file resolve to the skill directory's `references/` folder.
+
 **Agent-only sanity check** before recommending a path: match the user's **intent** to **dependencies** and **live services / deployment** (see **`llms.txt`** install, init, deployment, and tutorial pages for authoritative steps). Package IDs can vary slightly by Unity/editor version—verify in Package Manager or docs when implementing.
 
 **Which workflow applies** must be **inferred** when possible from **conversation context** and **project state** (e.g. `Packages/manifest.json`, server vs client build targets, existing multiplayer scripts, deployment assets). If more than one row in the table could fit and the choice **changes** prerequisites or APIs, **ask the user** with **high-level** questions (see **User-facing questions and explanations** in [implementation-fit.md](implementation-fit.md)), not by naming product rows from this table. This aligns with **Implementation fit** in [implementation-fit.md](implementation-fit.md): infer first, then clarify if ambiguous.

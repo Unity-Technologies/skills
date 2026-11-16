@@ -35,6 +35,10 @@ unity auth login --client-id <id> --secret-from-stdin
 # Login without persisting credentials to the keyring (ephemeral CI)
 unity auth login --client-id <id> --secret-from-stdin --no-store
 
+# No system credential store (headless Linux, a locked Keychain): keep the
+# sign-in in a plain, unencrypted file instead. Off unless you ask for it.
+unity auth login --insecure-storage
+
 # Sign the CLI out (clears its OAuth sign-in and any saved service-account
 # credentials). There is no confirmation prompt; --yes is accepted and changes nothing.
 unity auth logout
@@ -44,7 +48,7 @@ unity auth logout
 unity auth logout user@example.com
 ```
 
-**How sign-in is served.** Every command’s OAuth token read goes through a resident auth broker — a background `unity` process started on demand by the first command that needs a token, exiting on its own after two idle minutes. It seals the token store to the machine’s hardware where available (a non-exportable TPM key on Windows, TPM2 via `systemd-creds` on Linux, then DPAPI, the Secret Service, the Keychain and a local key file, in that order), and `unity doctor` reports the active tier. On macOS and Windows it verifies a connecting process’s code signature and refuses an unsigned or non-Unity-signed peer. The Editor identity helper that signs in an Editor started by `unity open` applies the same rule, so an Editor built from source (unsigned or not Unity-signed) is not supported for automatic sign-in. Set `UNITY_NO_AUTH_BROKER=1` to bypass the broker and read the OS keyring directly. `unity auth consumers` (below) lists the applications in its audit trail and revocation list.
+**How sign-in is served.** Every command’s OAuth token read goes through a resident auth broker — a background `unity` process started on demand by the first command that needs a token, exiting on its own after two idle minutes. It seals the token store to the machine’s hardware where available (a non-exportable TPM key on Windows, TPM2 via `systemd-creds` on Linux, then DPAPI, the Secret Service, the Keychain and a local key file, in that order), and `unity doctor` reports the active tier. On macOS and Windows it verifies a connecting process’s code signature and refuses an unsigned or non-Unity-signed peer. The Editor identity helper that signs in an Editor started by `unity open` applies the same rule, so an Editor built from source (unsigned or not Unity-signed) is not supported for automatic sign-in. Set `UNITY_NO_AUTH_BROKER=1` to bypass the broker and read the OS keyring directly. The local key file and the CLI's plain credential file are used only in insecure-storage mode, which `unity auth login --insecure-storage` (or `UNITY_INSECURE_STORAGE=1`) turns on. Without it, a sign-in with no working credential store fails and names the flag. In the mode, the login prints where the file is, `unity auth status` warns, and `unity doctor` names the file. To turn it off, sign in again without the flag, and unset `UNITY_INSECURE_STORAGE` if you set it. For CI, prefer the service-account environment variables, which need no credential store. `unity auth consumers` (below) lists the applications in its audit trail and revocation list.
 
 #### Multiple accounts
 
@@ -92,7 +96,7 @@ unity auth token --json
 ```
 
 - **OAuth sign-in:** an expired access token is refreshed before it prints. When the session can't be refreshed, nothing prints and the command exits `3` with `NOT_SIGNED_IN` or `SESSION_EXPIRED`.
-- **Service account** (`UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET`, or `unity auth login --client-id`): prints the bearer Unity's token exchange mints for those credentials. Rejected credentials exit `3` (`AUTH_TOKEN_SERVICE_ACCOUNT_REJECTED`); any other mint failure exits `6`.
+- **Service account** (`UNITY_SERVICE_ACCOUNT_ID` / `UNITY_SERVICE_ACCOUNT_SECRET`, or `unity auth login --client-id`): prints the bearer Unity's token exchange mints for those credentials, scoped to the project ID in `UNITY_CLOUD_PROJECT` (an ID, not a name). With no project set it exits `2` (`AUTH_TOKEN_PROJECT_REQUIRED`), and with a value that is not an ID `AUTH_TOKEN_PROJECT_INVALID`, both without calling Unity. Rejected credentials exit `3` (`AUTH_TOKEN_SERVICE_ACCOUNT_REJECTED`); any other mint failure exits `6`.
 - **`--audience` and `--scope` are refused** (exit `2`, `AUTH_TOKEN_NARROWING_UNSUPPORTED`) until Unity's token service can mint a narrowed token, rather than handing out a broader one than asked for.
 - The token is short-lived: fetch it again rather than storing it. The CLI never writes it to its logs; keep it out of yours.
 

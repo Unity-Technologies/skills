@@ -226,6 +226,9 @@ unity editor add /path/to/Unity/Editor
 
 # Skip fetching module metadata (faster, but modules won't be listed until refreshed)
 unity editor add /path/to/Unity/Editor --no-fetch-modules
+
+# Register an unsigned development build (for example a locally built trunk Editor)
+unity editor add /path/to/Unity/Editor --skip-signature-check
 ```
 
 ---
@@ -363,20 +366,6 @@ unity install 6000.0.47f1 --download-only --operating-system windows -m il2cpp -
 ```
 
 Each payload is checked against its published size and checksum before the run reports success, and a payload that fails is removed. Only the modules you name with `-m` are fetched, and the license gate is unchanged: a non-interactive run needs `--accept-eula`. The envelope's items end as `downloaded` (listed in `data.completedUids`) and `data.path` is the download folder; the human summary says where the files are and that nothing was installed. `-d/--download-directory` still means a portable install and cannot be combined with it, nor can `--resume`, `--set-default` or `--list-modules` (exit 2). `--changeset` with another OS's `--operating-system` is still refused.
-
-#### Headless Linux Editor (`--headless`)
-
-On Linux, a release can also ship a headless Editor that runs with no display, for CI and servers. `unity install` never picks it on its own:
-
-- `--headless` installs the headless Editor. A release without one, or a macOS or Windows target, fails with `INSTALL_HEADLESS_UNAVAILABLE`. The bundled catalog doesn't list the headless Editor, so the same error appears when the CLI falls back to it offline.
-- Without it, the version picker (`unity install` with no version, on a terminal) asks which one, with the regular Editor selected. Any other run installs the regular Editor, even on a machine with no display.
-
-The headless Editor leaves out the modules it can't use, such as iOS and visionOS. A release without a headless Editor installs the regular one unless `--headless` was given.
-
-```bash
-# A CI image: the headless Editor and Android support
-unity install 6000.7.0f1 --headless -m android --accept-eula
-```
 
 #### Linux arm64: experimental x86_64 Editor under FEX-Emu
 

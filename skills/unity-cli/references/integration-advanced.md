@@ -31,7 +31,7 @@ Relative links in this file resolve to the skill directory's `references/` folde
 3. `--project-path <path>` — the Editor selector. With the flag absent, `UNITY_PROJECT_PATH` stands in for it.
 4. Otherwise, the running Editor whose project directory **contains the current working directory**. With a project nested inside another, the deepest match wins.
 
-**Pass `--project-path` whenever more than one Editor may be running.** Relying on step 4 means the target depends on the shell's cwd, which is rarely what an agent intends and is invisible in the command it ran. An agent working in its own worktree can instead prefix each call with `UNITY_PROJECT_PATH=<that worktree's full project path>`. An `export` only lasts as long as the shell, and most agent tools start a fresh shell for each command. `unity status` honors the variable too, but `unity recompile` does not: pass `--project-path` to it.
+**Pass `--project-path` whenever more than one Editor may be running.** Relying on step 4 means the target depends on the shell's cwd, which is rarely what an agent intends and is invisible in the command it ran. An agent working in its own worktree can instead prefix each call with `UNITY_PROJECT_PATH=<that worktree's full project path>`. An `export` only lasts as long as the shell, and most agent tools start a fresh shell for each command. `unity status` and `unity recompile` honor the variable too.
 
 > `unity pipeline install` and `unity pipeline upgrade` take `--project-path` too, but they do **not** use this resolver — they pick among the editors that actually need the operation, showing an interactive selector on a terminal and a different, candidate-listing error without `data.candidates` otherwise. Everything below describes the shared resolver only.
 
@@ -99,16 +99,31 @@ unity mcp --project-path /path/to/MyProject
 # Same, from the environment (the flag wins when both are set)
 UNITY_PROJECT_PATH=/path/to/MyProject unity mcp
 
-# Expose only some tools, or hide some
+# Expose only some commands, or hide some
 unity mcp --tools "script.eval,capture.*"
 unity mcp --exclude-tools "exec,script.eval,script.eval_file,test.run"
+
+# Hide every command that can destroy data or run code
+unity mcp --exclude-annotations destructive
+
+# Hide whole command groups
+unity mcp --exclude-tool-groups "scene,editor.*"
+
+# One tool per command group instead of one per command
+unity mcp --tool-groups
 ```
 
-`--tools <list>` keeps only the tools whose names match the comma-separated list, and `--exclude-tools <list>` then hides the ones that match its list. In both, `*` matches any run of characters, and names are case-sensitive. Each tool is named by its full command name with every space and dot written as `_` (`script_eval`, `test_run`, `settings_player_get`), so every tool has its own name in the characters all clients accept. An older package that lists only flat names keeps them as its tool names (`eval`, `run_tests`), so call the name `tools/list` shows. A pattern matches a command under every spelling it answers to: the tool name, the full name's dotted form (`script.eval`), and the old flat name an older package uses (`eval`, `run_tests`). Excluding `script_eval`, `script.eval` or `eval` therefore hides the same tool, and a call under any of them is refused. A smaller tool list saves the client's context. The filter also applies to the tools a later `tools/list_changed` notification announces. Calling a hidden tool fails with an error that names the tools the session exposes, and the call never reaches the Editor. An empty entry, or a pattern with a character other than letters, digits, `_`, `-`, `.`, and `*`, is a usage error.
+`unity mcp` lists one tool per Editor command, and `unity mcp --tool-groups` lists one tool per Editor command group instead. `unity mcp configure` writes `--tool-groups` into the entries it creates, so a client set up with it gets groups. An entry an older `configure` wrote runs plain `unity mcp` and keeps its per-command tools, so a client allow list that names them keeps working. Run `configure` again to switch that entry to groups; it warns that the tool names change, and an allow list then has to name the group tools. A group tool is named by its group (`scene`, `gameobject`, `settings_player`, ...) with every space and dot written as `_`. A group tool takes the command to run in `command` and that command's parameters in `args`: call the `scene` tool with `{"command": "save", "args": {"path": "Assets/Main.unity"}}`. Its description lists every command with its parameters, required ones first, a `?` marking an optional one, an object's own keys in braces and a short note in brackets on what a value is, for example `set_field(target: string, field: string (SerializedProperty path), value: string, component?: string)`. A long group keeps every command's parameters and leaves out the one-line summaries it has no room for. Grouping keeps a full Editor catalog, about 180 commands, to about 40 tools, under the tool limits of VS Code (128), Windsurf (100) and Cursor (40), and in a much smaller listing. The four job tools stay their own tools, and so do the commands that run code (`script_eval`, `exec`), so approving a group never approves running C#. A group too large for one description is split over several tools (`scene`, `scene_2`). `job_start` takes a command by its full name (`test run`).
+
+`--tools <list>` keeps only the commands whose names match the comma-separated list, and `--exclude-tools <list>` then hides the ones that match its list. Both apply to commands, so with groups a hidden command leaves its group tool, and a group with none left is not listed. In both, `*` matches any run of characters, and names are case-sensitive. Each command's own tool, without `--tool-groups`, is named by its full command name with every space and dot written as `_` (`script_eval`, `test_run`, `settings_player_get`), so every tool has its own name in the characters all clients accept. An older package that lists only flat names keeps them as its tool names (`eval`, `run_tests`), so call the name `tools/list` shows. A pattern matches a command under every spelling it answers to: the tool name, the full name's dotted form (`script.eval`), and the old flat name an older package uses (`eval`, `run_tests`). Excluding `script_eval`, `script.eval` or `eval` therefore hides the same tool, and a call under any of them is refused. A smaller tool list saves the client's context. The filter also applies to the tools a later `tools/list_changed` notification announces. Calling a hidden tool fails with an error that names the tools the session exposes, and the call never reaches the Editor. An empty entry, or a pattern with a character other than letters, digits, `_`, `-`, `.`, and `*`, is a usage error.
+
+`--exclude-tool-groups <list>` hides whole command groups, every command in them. An entry matches a group by its dotted name (`editor.playmode`) or its tool name (`editor_playmode`), and `*` matches any characters. It applies without `--tool-groups` too. A call to a command in a hidden group, direct, through its group or through `job_start`, is refused before it reaches the Editor. A pattern with a character other than letters, digits, `_`, `-`, `.`, and `*` is a usage error. An `--exclude-tools` list written for one tool per command keeps working with groups.
+
+`--exclude-annotations <list>` hides the Editor commands whose MCP annotations include any entry of the comma-separated list: `read-only`, `destructive`, `idempotent` or `open-world`. `--exclude-annotations destructive` hides every command that deletes or overwrites data or runs code, such as `asset delete` and `script eval`. A call to a hidden command is refused before it reaches the Editor, with or without groups. Any other entry is a usage error that lists the four.
 
 `unity mcp` no longer accepts `--instance <host:port>`: talking to an Editor requires that Editor's per-instance auth token, which a bare host and port can't carry, so the CLI always discovers running Editors itself — run from the project directory or pass `--project-path` to target one. Editors launched to create a new project (`-createproject`) are discovered too.
 
-`unity mcp --cli-tools` also lists six read-only tools that run the CLI's own commands with no Editor running: `unity-status`, `unity-editors-list` (installed editors), `unity-projects-list`, `unity-projects-info`, `unity-releases` and `unity-doctor`. Each answers with the command's `--format json` envelope. Use it for an MCP client with no shell, such as Claude Desktop; `unity mcp configure` doesn't write the flag, so add it to the entry's arguments.
+`unity mcp --cli-tools` also lists six read-only tools that run the CLI's own commands with no Editor running: `unity-status`, `unity-editors-list` (installed editors), `unity-projects-list`, `unity-projects-info`, `unity-releases` and `unity-doctor`. Each answers with the command's `--format json` envelope. Use it for an MCP client with no shell, such as Claude Desktop; `unity mcp configure` doesn't write the flag, so add it to the entry's arguments. The same goes for `--exclude-annotations` and `--exclude-tool-groups`.
 
 With an Editor connected, the list also holds `job_start`, `job_status`, `job_wait` and `job_cancel`, with no option needed, so an agent in an MCP session can run a long Editor job instead of holding a tool call open. `job_start` takes `command` (one of the session's Editor tools, except `eval` and the other commands that run code, which keep their own tools) and its `arguments`, starts it the way `unity command <name> --detach` does, and returns `{ jobId, state }`. The other three take that `job_id` and answer like `unity job status --format json`. `job_wait` waits at most `timeout` seconds (30 by default, 45 at most); if the job is still running then, it returns its state with `stillRunning: true` rather than an error, so call it again. When the Editor's `com.unity.pipeline` predates jobs, each answers with the same error `--detach` prints.
 
@@ -479,7 +494,7 @@ completion and exits on its own (the log ends `Exiting batchmode successfully no
 three patterns below. Any resident Editor (batch or GUI) then answers in ~200–600 ms with no recompile
 and no domain reload, so an agent can iterate in a single session.
 
-**Persistent headless (no GUI) — agent / SSH build box.** Launch the Editor binary directly in batch
+**Persistent batch mode (no GUI) — agent / SSH build box.** Launch the Editor binary directly in batch
 mode and **omit `-quit`** so it stays resident and keeps serving the Pipeline API. The binary lives
 inside the install dir reported by `unity editors --installed` (`location`).
 
@@ -536,7 +551,7 @@ registered command, prints its result, and exits — a fresh boot each time (no 
 unity run /path/to/MyProject --command spawn_light --format ndjson -- --name Sun
 ```
 
-A resident Editor (headless or GUI) holds a license seat until it exits; the one-shot path releases it
+A resident Editor (batch mode or GUI) holds a license seat until it exits; the one-shot path releases it
 on exit.
 
 #### pipeline (alias: pipe) — manage the Unity Pipeline package
@@ -703,6 +718,8 @@ unity commands
 
 Each node in `data.commands` carries `name`, `aliases`, `description`, `arguments` (positional, with `required`/`variadic`), `options` (this command's own flags: `long`/`short`/`valuePlaceholder`/`default`/`description`), `globalOptions` (same shape — flags inherited from every ancestor, so `--format`/`--json`/etc. show up on every node without repeating a root-level dump, and a mid-tree umbrella's own options show up on its descendants too), and `subcommands` (the same shape, recursively). Hidden and dev-only surfaces are excluded — the same visibility rule `--help` uses — so what you see is exactly what the current build actually exposes.
 
+**Add the connected Editor's commands: `unity commands --include-editor`.** The manifest then also lists the Pipeline commands of the Editor for the project `UNITY_PROJECT_PATH` names, else the one in the working directory, after the CLI's own. Every top-level entry carries `source`: `cli` for the CLI's commands, `editor` for the Editor's. An Editor entry has the node shape above (no aliases, arguments or subcommands; one option per parameter) plus `group`, `invoke` (`unity command <name>`) and `parameters`, each with `name`, `type`, `required`, `description` and, when the Editor gives one, `default`. `data.editor` says whether the Editor was asked: `{"checked": true}`, or `{"checked": false, "reason": ...}` with `noEditor`, `ambiguous`, `failed` or `timedOut`, plus a warning naming the command that helps. The Editor gets at most 3 seconds. Without the flag the manifest never contacts an Editor. The human listing adds an `Editor commands` section, and the tsv rows add `command <name>` paths.
+
 **Search it instead of dumping it: `unity commands --grep <pattern>`** (or `unity command --query <pattern>`, the same search). The same tree, plus the plugin catalog (the same universe `unity plugins` reports, installed or not) and the Pipeline commands of the live connected Editor, filtered to what matches. A command matches on its full path (`plugins`), name, aliases, description, arguments, or its own options; the inherited global options are not searched, since every command has them. A plugin matches on its id, display name, registry description, or the command word that runs it (`ugs`, `uvcs`, `cm`, `ai`):
 
 ```bash
@@ -863,7 +880,7 @@ sandbox on that platform necessarily behaves this way:
   for a live connection — outside a sandboxed environment, the same "no Editor" result
   usually does mean what it says.
 - Don't quietly substitute a different workflow instead — e.g. driving a separate
-  headless Editor process to approximate what the live connection would have done.
+  batch-mode Editor process to approximate what the live connection would have done.
   That produces a different result (sometimes an incomplete one, materializing only
   once something else runs) without ever telling the user their task was rerouted.
   Say what's actually happening — sandbox suspected, live connection unavailable —
@@ -935,7 +952,7 @@ first, then fix the compile errors at the source and restart:
    read the **narrowest** log available, in
    this order — each one after the first widens what you are reading:
 
-   1. the `-logFile <path>` you launched the Editor with (see the persistent-headless launch above);
+   1. the `-logFile <path>` you launched the Editor with (see the persistent batch-mode launch above);
    2. `<project>/Logs/Editor.log` — Unity 6 moves logging there early in boot, so it usually exists
       for the versions this workflow applies to;
    3. the per-user **global** `Editor.log` below — the fallback older editors write, and the same log
@@ -1092,7 +1109,7 @@ unity shell
 - Ctrl-C cancels a cancellable running command (such as `build`) and returns to the prompt; for a command that doesn't yet support cancellation the first Ctrl-C is held (with a hint) and a second quick press force-quits the session.
 - The prompt terminator is a heavy angle (`❯`) on Unicode-capable terminals, falling back to `>`; it shows the previous command's exit code when it was non-zero.
 - **Command history** persists across sessions — press ↑/↓ to recall previous commands (stored under the CLI data directory, capped at the most recent 1000 entries). Secret-bearing flag values (`--android-keystore-password`, `--client-secret`, `--serial`, `--git-token`, and the other keystore/token flags) are masked to `***` before being written to disk.
-- **Tab completion** — press Tab to complete command names, subcommands, option flags, and option values (for example `--format`) against the live command tree, plus the shell's own builtins.
+- **Tab completion** — press Tab to complete command names, subcommands, option flags, and option values (for example `--format`) against the live command tree, plus the shell's own builtins. After `command`, Tab offers the connected Editor's commands and the chosen command's parameters, waiting at most 1 second for the Editor.
 - Interactive prompts (confirmations, sign-in) work inside the shell, and a write in one command (`auth logout`, `config`, `editors default`, …) is visible to the next.
 - Piped/scripted sessions (`… | unity shell`) run every line and exit with the first command that failed (0 when every command succeeds), so a batch is usable in automation with `$?`. Interactive sessions still exit 0.
 - In a piped session and in `--protocol ndjson` mode, stdin carries the shell's own commands, so a command the shell dispatches sees an **empty stdin**. `--secret-from-stdin` and `--key-from-stdin` therefore read nothing there and report a missing secret (exit 2). `--git-token-stdin` reports nothing: it resolves no token and falls through to `--git-token`, the provider token environment variable, and the credential helper, so a clone or link can proceed with an ambient credential. Plugin lines (`unity-*` on PATH) are the exception: they still inherit the shell’s stdin and can read its command stream. Pass the secret another way (`--client-secret`, `--key`, `--git-token`, or its environment variable), or run that command outside the shell with the secret piped to it.

@@ -8,11 +8,11 @@ description: Builds and operates a live game's backend with Unity Gaming Service
 ## Before You Start
 
 1. Read the Editor version from `ProjectSettings/ProjectVersion.txt` and the installed UGS package versions from `Packages/packages-lock.json`. Pick the steps below that match (for example `.ccmu` or `.ccmr` modules), because the right workflow depends on the Editor and package versions.
-2. Check whether the project is linked to a Unity project ID and environment (**Edit > Project Settings > Services**), and ask the user to link it if it is not.
-3. Create a restore point you can roll back to if your changes fail: commit the project in version control. If there is no version control, copy the project folder instead.
+2. Create a restore point you can roll back to if your changes fail: commit the project in version control. If there is no version control, copy the project folder instead. Do this before linking or any other write.
+3. If the project has no Unity Cloud link, see [Link the Project to Unity Cloud](#link-the-project-to-unity-cloud). Advice-only questions stay read-only: give the `unity projects link cloud` command.
 4. Before you go forward with a workflow or diagnosis, open and read the documentation pages for the service you will use (see [Documentation Map](#documentation-map)) and the matching file under `references/`, and name the pages you read in your response. This is because your training knowledge about Unity Gaming Services might be out of date, incorrect, or for the wrong package version.
 5. Do only what's asked. Don't change unrelated assets or files. Avoid long explanations.
-6. When you change runtime behaviour, add `Debug.Log` lines at the points you need to verify (sign-in complete, module call returned, config fetched). You read them in Play mode during [Validation](#validation).
+6. Never leave verification code in the user's script. Never build logging or detection they didn't ask for.
 
 ## Glossary
 
@@ -25,7 +25,7 @@ description: Builds and operates a live game's backend with Unity Gaming Service
 | **Script** | Server-side JavaScript endpoint. Legacy: maintain existing ones, don't write new ones |
 | **CloudBehaviour** | Experimental Cloud Code class that generates client bindings, synchronized state and push events |
 | **Protected data** | Cloud Save player data that the player can read but only server code can write |
-| **Custom data** | Cloud Save game-wide data, not tied to one player, written only by server code |
+| **Custom data** | Cloud Save game-wide data, not tied to one player, server-written only |
 | **Cloud resource file** | A deployable config file (`.rc`, `.ac`, `.ccmu`, `.ccmr`, `.lb`, `.ugo`) that the Deployment Window pushes to a UGS environment |
 
 ## Documentation Map
@@ -61,6 +61,7 @@ Pages to read before acting:
 - [Before You Start](#before-you-start)
 - [Glossary](#glossary)
 - [Documentation Map](#documentation-map)
+- [Link the Project to Unity Cloud](#link-the-project-to-unity-cloud)
 - [Initialization Pattern](#initialization-pattern)
 - [Architecture — How Packages Combine](#architecture--how-packages-combine)
 - [Core Services — Quick Reference](#core-services--quick-reference)
@@ -68,6 +69,10 @@ Pages to read before acting:
 - [Validation](#validation)
 - [Detailed References](#detailed-references)
 - [Final Report](#final-report)
+
+## Link the Project to Unity Cloud
+
+Service calls need a linked Cloud project. Link only when the task needs service calls or asks to link, and only after the restore point. Follow every step in [references/link-cloud.md](references/link-cloud.md): choose backend and COPPA setting, check the Pipeline package, close the Editor, link, reopen, verify.
 
 ## Initialization Pattern
 
@@ -225,7 +230,8 @@ After writing code for a live game feature, run these checks in order. If one fa
 3. Check that sensitive writes (XP, rewards, currency) go through Cloud Code: search the client code for Cloud Save `SaveAsync` calls on those keys and move any you find into a module. Also confirm each Cloud Save read uses the access class of the bucket that was written to, because a mismatched class returns no data.
 4. Deploy the cloud resource files the feature uses (`.rc`, `.ac`, `.ccmu` or `.ccmr`, `.lb`; skip the types it does not use) to the active environment with the `Deploy.cs` script in `references/deployment.md`, and read its output: every file must report `Success`. A file reported as `not a deployable item`, or with an `Error` status, has failed. If the project does not have both packages the script needs, `com.unity.pipeline` and `com.unity.services.deployment.api`, ask the user to deploy from the Deployment Window and report each file's status.
 5. Check Access Control by its effect: if the feature deploys an `.ac` policy that denies direct player writes, enter Play mode, run one direct client Cloud Save write to a key the policy covers (a temporary `SaveAsync` call), and confirm it fails with a `403`. Remove the temporary call afterwards. Skip this step when the feature has no `.ac` file.
-6. Enter Play mode, run the feature once, and confirm the `Debug.Log` lines from [Before You Start](#before-you-start) appear in the order you expect and the console has zero errors.
+6. Check for zero console errors with `unity command console status`. Pass `--project-path <path>` to every `unity command` here, so it drives this project's Editor. Older Editors name it `console_status`: check with `unity commands --grep console`.
+7. Stop after step 6 unless the user asked for proof or you suspect a specific fault, and report that the feature was not run. To chase that fault, enter Play mode once (`unity command editor.playmode start`), run the feature, read the result (player ID, module return value, config) through `unity command script eval`, not added logging, then repeat step 6. Remove any temporary code afterwards. Take no screenshots.
 
 ## Detailed References
 
@@ -249,7 +255,7 @@ After writing code for a live game feature, run these checks in order. If one fa
 
 When the work is done, end your response with a short report:
 
-1. What you created or changed: files, packages added to `Packages/manifest.json`, and cloud resource files.
+1. What you created or changed: files, packages added to `Packages/manifest.json`, cloud resource files, and the Unity Cloud project you linked (its ID, and whether the link created it).
 2. The checks from [Validation](#validation) that you ran and their results, including any you could not run and why.
 3. Follow-ups only the user can do, for example: deploy the cloud resources to the target environment, link the project to a Unity project ID and environment, complete a stubbed integration (such as battle pass `PurchasePremium`), or restore from the restore point you created if they reject the changes.
 4. Which documentation pages you read.

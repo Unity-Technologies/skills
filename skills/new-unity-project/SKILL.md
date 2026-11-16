@@ -45,9 +45,14 @@ with your client's multiple-choice question tool (plain text only without one), 
 answer. Send it together with the delegated-skills offer (below) and any Step 1 question, so the
 user answers once. Offer the free
 **Unity Personal** license as the default choice, with the other license types (a subscription the
-account already has, a serial, a floating server) as alternatives. The Personal choice itself says
-that picking it accepts the Unity Personal EULA
-(https://unity.com/legal/editor-terms-of-service/software), so the user sees it before answering.
+account already has, a serial, a floating server) as alternatives. The question says that a yes
+also accepts the Unity Editor Software Terms
+(https://unity.com/legal/editor-terms-of-service/software) for every Editor this run opens, installed now or already on the machine, and
+the Personal choice says it accepts the Unity Personal EULA (the same page), so the user sees both
+before answering. Every Editor stops on its own terms dialog the first time it opens until they are
+accepted, and an agent can't see or click that dialog. When sign-in and license are already set
+and no license question goes out, still ask about the terms with your first question; the create
+can start before the answer, but `unity terms accept` and the first `unity open` wait for it.
 
 - Never tell the user to sign in or activate a license themselves, and never hand them commands to
   run. You run them, after they say yes.
@@ -141,6 +146,13 @@ Two decisions (paved: filled from the Defaults table, then **print the manifest*
 Default to an explicit `--editor-version latest` unless the user names a version — without the
 flag, create prefers a stored default or an older installed Editor.
 
+For a cloud-linked create, pick the organization first: `unity cloud orgs --format json`. When
+`data.activeOrganizationId` is null and `data.organizations` holds exactly one org, pass that org's `id` as
+`--cloud-org <id>`; without it create links nothing (`CLOUD_LINK_FAILED`, no organization
+configured) and skips player accounts, Remote Config and Cloud Save. With several orgs and no
+default, ask the user which one before starting the create (the list needs sign-in, so this comes
+after it).
+
 Confirm prerequisites, then **start the create as a background task** (`unity-cli` has module
 names and auth / license setup):
 
@@ -149,8 +161,9 @@ unity --version   # sign-in and license: settled before your first question (see
 
 # Start in the BACKGROUND. Module names per platform are in the unity-cli skill.
 # --bare only on the user's ask (see Mode).
-unity projects create "<Name>" --path <dir> --editor-version latest \
-  --template <3d|2d> --install-editor --module <platform-modules> --accept-eula --format json
+unity projects create "<Name>" --output-dir <dir> --editor-version latest \
+  --template <3d|2d> --install-editor --module <platform-modules> --accept-eula \
+  [--cloud-org <id>] --format json
 ```
 
 The command waits for the install, then creates the project, so its one result covers both. If you
@@ -176,6 +189,17 @@ no-identity. A result carrying a `steps` field reconciles step-by-step from it.
 the platform modules with `unity install-modules -e <version> -m <platform-modules> --accept-eula`
 (skips what's already there). If create failed, surface the error (`unity-cli` troubleshooting)
 and stop — a failed install creates no project, and nothing downstream works without an Editor.
+
+**Once create succeeded, accept the Editor Software Terms before any open, and only after the
+user's yes.** If the terms question is still unanswered, wait for the answer before running
+anything. If the user declined, don't run `unity terms accept`: stop before the first open and say
+the Editor won't start past its terms dialog. On a yes, run
+`unity terms accept <data.version> --architecture <data.architecture> --yes` with no Editor running
+(a running Editor can overwrite the answer). It reports `alreadyAccepted: true` and writes nothing
+when they are already recorded. Do the same for any Editor the run moves to later, such as the
+6000.5.3+ update in Step 7. If `unity status --until-ready` after an open reports
+no instance while the Editor process is running, check `unity terms status <version> --architecture <architecture>`: a
+`not-accepted` Editor is sitting on that dialog, which only the user can click.
 
 ## Step 4 — Source control
 
@@ -234,7 +258,8 @@ whole step (no Pipeline install, no baseline): go to Step 8, which opens the pro
 Editors (create reports `PIPELINE_EDITOR_UNSUPPORTED`), so nothing below can connect, and reopening
 won't help. Create also left the package out on those Editors. Ask the user to update to
 6000.5.3f1 or later, then continue below with the project still closed: the Pipeline install comes
-first, then the open names the updated Editor, `unity open "<project-path>" --editor-version
+first, then `unity terms accept <updated-version> --architecture <architecture> --yes` (Step 3; the
+architecture of the Editor you'll open), then the open names the updated Editor, `unity open "<project-path>" --editor-version
 <updated-version>` — a plain `unity open` reopens with the project's saved 6000.5.x Editor. If the
 update is 6000.7 or later, `unity open` refuses that move (`PROJECT_UPGRADE_REQUIRED`): run
 `unity projects upgrade "<project-path>" --to <updated-version> --yes` instead. It asks

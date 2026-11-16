@@ -1,6 +1,6 @@
 ## Examples: user-facing language
 
-These illustrate **User-facing questions and explanations** in [implementation-fit.md](implementation-fit.md). They are for prose to the user, not for code or file edits (those may use real API names).
+These illustrate **User-facing questions and explanations** in the implementation-fit reference. They are for prose to the user, not for code or file edits (those may use real API names).
 
 ### Clarifying questions
 

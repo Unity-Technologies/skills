@@ -1,6 +1,8 @@
 ## Implementation fit: clarify multiplayer requirements
 
-Before recommending architecture or APIs internally, the agent **must** ground advice in the right product choices for *this* application. Map answers to [entrypoints.md](entrypoints.md) and the **Priority: Multiplayer Sessions first** section in [SKILL.md](../SKILL.md) only **after** requirements are clear (from context, project, or user). For concrete phrasing samples, see [examples.md](examples.md).
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Before recommending architecture or APIs internally, the agent **must** ground advice in the right product choices for *this* application. Map answers to [entrypoints.md](entrypoints.md) and this skill's **Priority: Multiplayer Sessions first** section only **after** requirements are clear (from context, project, or user). For concrete phrasing samples, see [examples.md](examples.md).
 
 **How to obtain requirements (in order):**
 
