@@ -89,11 +89,11 @@ Lines between the pre-build or post-build script's start and its exit code come 
 
 ### Xcode build
 
-`** ARCHIVE FAILED **` is a summary line. Find the first `error:` line above it, then apply the signing playbook or the `invalid_ios_dependency` row. `Platform Not Installed` is Build Automation.
+`** ARCHIVE FAILED **` is a summary line. Find the first `error:` line above it, or in the Xcode log artifact (`gym_log`) if the build log has none, then apply the signing playbook or the `invalid_ios_dependency` row. `Platform Not Installed` is Build Automation.
 
 ### Unit tests
 
-Failed tests are Your project. Read `reference/unit-tests.md`.
+Failed tests are Your project. Name them from `testResults` in the `builds get` output, because the log often doesn't. Read `reference/unit-tests.md`.
 
 ### Publishing: `+ Publishing`
 

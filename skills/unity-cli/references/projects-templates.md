@@ -43,6 +43,7 @@ unity open /path/to/MyProject
 unity close /path/to/MyProject
 unity close /path/to/MyProject --timeout 60
 unity close /path/to/MyProject --force
+unity close /path/to/MyProject --if-saved
 
 # Same command, under the projects umbrella
 unity projects close /path/to/MyProject
@@ -58,7 +59,7 @@ unity open /path/to/MyProject --accept-upgrades
 # Return once the Editor is ready for commands; fail fast if a dialog stops it
 unity open /path/to/MyProject --until-ready --timeout 600 --format json
 
-# Start a headless batch-mode Editor and return once it is ready; stop it with unity close
+# Start a batch-mode Editor and return once it is ready; stop it with unity close
 unity open /path/to/MyProject --batchmode --until-ready --format json
 
 # Open with a specific editor version
@@ -93,7 +94,7 @@ Dialogs are matched by their English titles, so an Editor in another UI language
 
 **`command editor dialog` reads and answers the dialog an Editor waits on.** `unity command editor dialog` prints the dialog on top: its id, title, message and buttons. `unity command editor dialog answer <id> <button>` presses a button by its label, in any case. The Editor answers these itself, so they work while the dialog blocks it, but only an Editor that reports its dialogs to the CLI does (any other Editor gets them through the Pipeline package, which fails them as unknown commands). With several Editors open, name one with `--project-path`, `--pid`, `--port` or `--instance`, or run it from inside its project. It exits `6` when the dialog is gone or cannot be answered from outside, and `2` for wrong arguments. `unity pipeline list` shows the same dialog under its Editor, with the phase the Editor is in (`loading project`, `ready`).
 
-**`open --batchmode` starts a headless Editor.** It launches the Editor with `-batchmode`: no window, and it keeps running until `unity close <project>` stops it. On a project without the Pipeline package the Editor has no graceful channel to close it through, so use `unity close <project> --force` there. It refuses to open the project with another Editor version than the one it was saved with (exit 2, `OPEN_BATCHMODE_VERSION_CHANGE`), because a batch-mode Editor changes the project's version without showing the dialog a windowed open stops on. A `-batchmode` passed through `--args` gets the same check. Pass `--accept-upgrades` to allow the change. Add `--until-ready` to wait for its Pipeline server: the outcomes and codes are the ones in the table above. `unity status` lists the Editor with `batchmode: true` under `--format json` or `ndjson`, and a `Mode: batchmode` line in its human output. An Editor started with `-batchmode` some other way is marked the same.
+**`open --batchmode` starts a batch-mode Editor.** It launches the Editor with `-batchmode`: no window, and it keeps running until `unity close <project>` stops it. On a project without the Pipeline package the Editor has no graceful channel to close it through, so use `unity close <project> --force` there. It refuses to open the project with another Editor version than the one it was saved with (exit 2, `OPEN_BATCHMODE_VERSION_CHANGE`), because a batch-mode Editor changes the project's version without showing the dialog a windowed open stops on. A `-batchmode` passed through `--args` gets the same check. Pass `--accept-upgrades` to allow the change. Add `--until-ready` to wait for its Pipeline server: the outcomes and codes are the ones in the table above. `unity status` lists the Editor with `batchmode: true` under `--format json` or `ndjson`, and a `Mode: batchmode` line in its human output. An Editor started with `-batchmode` some other way is marked the same.
 
 **`open` never moves a project onto Unity 6.7 or later.** When the Editor that `unity open` or `unity projects open` would use is 6.7 or later and the project was saved with an older version, the command exits `2` with `PROJECT_UPGRADE_REQUIRED` before it installs or launches anything. That covers `--editor-version` (a partial version such as `6.7` included), the `unity <version> <project>` shorthand, and an Editor picked at the missing-Editor prompt. Use `unity projects upgrade <project> --to <version>` instead, which asks for the Unity Cloud link choice and, when the project ends up linked, turns on build profile diagnostics (see the upgrade section below). Under `--format json` or `ndjson` the refusal carries one `notifications` entry, `OPEN_UPGRADE_WITH_PROJECTS_UPGRADE`, whose `remediation.command` is that `projects upgrade` command with `requiresUserApproval: true`, so ask the user before running it. Opening a project already on 6.7 or later, with the same version, or with an Editor below 6.7 is unchanged.
 
@@ -111,13 +112,13 @@ Dialogs are matched by their English titles, so an Editor in another UI language
 
 This reports only what’s on disk. It can’t tell you whether Unity’s servers accept or receive the data.
 
-**`unity close <project>` exits the editor WITHOUT saving.** It waits up to `--timeout <seconds>` (default 30) for a graceful exit. `--force` terminates the process (SIGTERM, then SIGKILL) when the editor offers no graceful channel, or once the wait runs out. Unsaved work is lost either way, so ask the user before running it. `unity projects close <project>` is the same command under the `projects` umbrella; pick whichever mount reads better in context. A windowed Editor that `unity open` started on a project without the Pipeline package has no graceful channel either: `close` leaves it running and exits 6 with `PROJECTS_CLOSE_PIPELINE_MISSING` (`reason: pipeline_missing` under `--format json`, an `Error:` line on stderr under the human and `tsv` formats). Run `unity pipeline install` before opening the project, or use `--force`; once the Editor has exited, the project is free for `unity build`.
+**`unity close <project>` exits the editor WITHOUT saving.** It waits up to `--timeout <seconds>` (default 30) for a graceful exit. `--force` terminates the process (SIGTERM, then SIGKILL) when the editor offers no graceful channel, or once the wait runs out. Unsaved work is lost either way (the result names it: an `unsaved` list under `--format json`, a warning in human output), so ask the user before running it, or pass `--if-saved`: it first asks the Editor for unsaved scenes (and an open Prefab Stage) and refuses to close when it has any, exit 6 with `PROJECTS_CLOSE_UNSAVED_CHANGES` (`reason: unsaved_changes` and an `unsaved` list under `--format json`), or with `PROJECTS_CLOSE_UNSAVED_UNVERIFIED` when the Editor can't answer. `--if-saved` can't be combined with `--force`. A path that isn't a Unity project (no `Assets` or `ProjectSettings` folder) fails with exit 11 and `PROJECTS_CLOSE_NOT_A_PROJECT`; an existing project no Editor has open still succeeds with `reason: not_open`. `unity projects close <project>` is the same command under the `projects` umbrella; pick whichever mount reads better in context. A windowed Editor that `unity open` started on a project without the Pipeline package has no graceful channel either: `close` leaves it running and exits 6 with `PROJECTS_CLOSE_PIPELINE_MISSING` (`reason: pipeline_missing` under `--format json`, an `Error:` line on stderr under the human and `tsv` formats). Run `unity pipeline install` before opening the project, or use `--force`; once the Editor has exited, the project is free for `unity build`.
 
 **`--wait` — a real exit code from an interactive open.** By default `unity open`, `unity projects open` and `unity projects upgrade` return once the hand-off to the Editor completes, watching it only briefly for an instant failure. `--wait` blocks for as long as the Editor runs and exits `0` when it exits cleanly or `6` (`OPEN_EDITOR_EXITED`, or the licensing diagnosis for a 198) when it fails. The Editor runs in its own process group: Ctrl-C is absorbed, the wait always runs to completion, and the Editor is never touched. macOS and Linux only for now — Windows refuses `--wait` with exit `2` rather than falling back to the bounded watch. Without `--wait`, the CLI watches the Editor for only about 150 ms after launch, so an Editor killed by a signal is reported as a failure only when that happens inside the startup window; once the command has returned, nothing further can be reported. `--wait` is what covers the Editor’s whole lifetime, and it reports a signal death as a failure too. `projects create --open` does not take `--wait`.
 
 **`--accept-upgrades` — answer yes to the Editor's upgrade dialogs.** `unity open` and `unity projects open` take it to pass `-skipUpgradeDialogs` to the Editor, which clears the "Project Upgrade Required" dialog and the API Updater's "Script Updating Consent" dialog that would otherwise leave an unattended open hanging. It says yes to both: the project is upgraded to the Editor's version and Unity rewrites scripts that use obsolete APIs, with no backup prompt. That changes the project's files, so it is never a default: pass it only when the user or the task has chosen it, and prefer a version-control checkpoint first. To upgrade as a deliberate step, use `unity projects upgrade` instead (`--to <version>`). `--accept-upgrades` does not move a project onto Unity 6.7 or later: opening a project saved with an older version in a 6.7+ Editor still exits `2` with `PROJECT_UPGRADE_REQUIRED`, because that move needs the Unity Cloud link choice that `unity projects upgrade` asks for. `unity projects upgrade`, `unity run` and `unity test` do not take the flag. It does not clear every dialog: on Windows an upgraded project can still show an "Auto Graphics API Notice". `unity status` reports it as `STATUS_BLOCKED_BY_DIALOG_GRAPHICS_API`; ask the user to choose Confirm in the Editor, since no launch flag answers it.
 
-**First windowed open on a new machine: the Unity Editor Software Terms.** The Editor stops at its "Unity Editor Software Terms" dialog (Accept and Continue / Decline) on its first windowed open until the terms are accepted for that Editor. A headless open (`--non-interactive`, `UNITY_NON_INTERACTIVE`, a machine `--format`, redirected output, CI) still passes `-acceptSoftwareTermsForThisRunOnly`, but current Editors ignore that flag, so it does not prevent the dialog. `--args` cannot remove it, and passing it yourself does nothing. `unity status` reports the dialog as `STATUS_BLOCKED_BY_DIALOG_SOFTWARE_TERMS`, and `unity open --until-ready` as `OPEN_BLOCKED_BY_DIALOG_SOFTWARE_TERMS`. Accepting is the user's decision: ask them to accept once in the Editor, or to run `unity terms accept <version>` (it shows the terms and asks; see [editors-install.md](editors-install.md#software-terms--unity-terms)), which also prepares a container image or a provisioning script before the Editor first opens. Unity skips the dialog after that. Never click it for them, and never run `unity terms accept --yes` unless the user has agreed to the terms.
+**First windowed open on a new machine: the Unity Editor Software Terms.** The Editor stops at its "Unity Editor Software Terms" dialog (Accept and Continue / Decline) on its first windowed open until the terms are accepted for that Editor. A non-interactive open (`--non-interactive`, `UNITY_NON_INTERACTIVE`, a machine `--format`, redirected output, CI) still passes `-acceptSoftwareTermsForThisRunOnly`, but current Editors ignore that flag, so it does not prevent the dialog. `--args` cannot remove it, and passing it yourself does nothing. `unity status` reports the dialog as `STATUS_BLOCKED_BY_DIALOG_SOFTWARE_TERMS`, and `unity open --until-ready` as `OPEN_BLOCKED_BY_DIALOG_SOFTWARE_TERMS`. Accepting is the user's decision: ask them to accept once in the Editor, or to run `unity terms accept <version>` (it shows the terms and asks; see [editors-install.md](editors-install.md#software-terms--unity-terms)), which also prepares a container image or a provisioning script before the Editor first opens. Unity skips the dialog after that. Never click it for them, and never run `unity terms accept --yes` unless the user has agreed to the terms.
 
 **Reserved flags — do NOT pass these via `--args`.** `-projectPath` is managed by the command (Unity's parser is last-wins, so forwarding it would silently redirect the open to a different project), and `-useHub`/`-hubIPC` are deliberately never passed — they tell the Editor a Unity Hub manages its session, which the CLI is not. Passing any of them fails fast, before launch, with exit code 6:
 
@@ -129,13 +130,13 @@ All three spellings Unity accepts are rejected (`-useHub`, `--useHub`, `-useHub=
 
 #### projects create
 
-Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template) and then asks whether to link the project to a Unity Cloud project. That last question defaults to **Yes**, so pressing Enter links the project. Pass `--no-cloud` to decline without being asked, or answer `No` at the prompt to create an unlinked project instead. Piping stdin (a non-interactive terminal) suppresses every prompt and falls back to stored defaults, including the cloud default, so an unattended run still links unless `--no-cloud` (or `UNITY_NO_CLOUD`) says otherwise. On a real TTY, `--non-interactive` alone suppresses only the cloud question; the parent-directory, editor-version, and template prompts still fire (see below for the fully unattended recipe). The first positional argument is the project **name**; `--path` sets the parent directory:
+Create a project. On a TTY, prompts for any missing options (parent directory, editor version, template) and then asks whether to link the project to a Unity Cloud project. That last question defaults to **Yes**, so pressing Enter links the project. Pass `--no-cloud` to decline without being asked, or answer `No` at the prompt to create an unlinked project instead. Piping stdin (a non-interactive terminal) suppresses every prompt and falls back to stored defaults, including the cloud default, so an unattended run still links unless `--no-cloud` (or `UNITY_NO_CLOUD`) says otherwise. On a real TTY, `--non-interactive` alone suppresses only the cloud question; the parent-directory, editor-version, and template prompts still fire (see below for the fully unattended recipe). The first positional argument is the project **name**; `--output-dir` sets the parent directory (`--path` still works, with a deprecation warning):
 
 ```bash
 unity projects create MyGame --editor-version 6000.0.47f1 --template com.unity.template.urp-blank
 
 # Place the project in a specific directory
-unity projects create MyGame --path /path/to/projects --editor-version 6000.0.47f1
+unity projects create MyGame --output-dir /path/to/projects --editor-version 6000.0.47f1
 
 # --template also accepts a .tgz file path or a directory, not just a registered template id
 unity projects create MyGame --template /path/to/template.tgz
@@ -176,7 +177,7 @@ unity projects create MyGame --no-cloud
 
 That makes authentication a **precondition** of `projects create`, not a capability it discovers late: without `--no-cloud`, a signed-out run fails with `NOT_SIGNED_IN` and a service-account run with `CLOUD_PROJECT_REQUIRES_OAUTH`, both exit `3`, before any scaffolding happens. So in CI, pass `--no-cloud` unless you have an interactive (OAuth) session and actually want the link.
 
-Unlike the other three questions, the cloud one can fire even when every option was supplied on the command line, so `--non-interactive` is what keeps a fully-specified scripted run from stopping on it. Be aware that the global currently gates **only** this question: the parent-directory, editor-version, and template questions still gate on terminal interactivity alone, so `--non-interactive` on a TTY does not make them fall back to stored defaults. For a fully unattended run on a terminal, pass `--path`, `--editor-version`, and `--template` as well.
+Unlike the other three questions, the cloud one can fire even when every option was supplied on the command line, so `--non-interactive` is what keeps a fully-specified scripted run from stopping on it. Be aware that the global currently gates **only** this question: the parent-directory, editor-version, and template questions still gate on terminal interactivity alone, so `--non-interactive` on a TTY does not make them fall back to stored defaults. For a fully unattended run on a terminal, pass `--output-dir`, `--editor-version`, and `--template` as well.
 
 Once the command is past that precondition, a link that then fails never costs you the project: if it cannot be set up (expired session, no resolvable organization), the project is still created unlinked and the reason is reported as a warning, exit 0. Two cases fail instead, because the flag named something specific: `--cloud` fails outright, and so does `--cloud-project <query>` when the query matches no project of the organization or more than one (exit `6`, `PROJECTS_CREATE_CLOUD_PROJECT_UNKNOWN` or `PROJECTS_CREATE_CLOUD_PROJECT_AMBIGUOUS`, no `steps` in the envelope). That failure keeps the local project, unlinked: the error's `data` carries its `path` and `cloudLinked: false`, and the message names where it is. An explicit flag is a contract, not a suggestion.
 
@@ -246,7 +247,7 @@ Clone a remote repository and register the Unity project it contains. Works acro
 
 ```bash
 # Clone by provider + namespace + repo
-unity projects clone --vcs github --vcs-namespace my-org --vcs-repo my-game --path ./MyGame
+unity projects clone --vcs github --vcs-namespace my-org --vcs-repo my-game --output-dir ./MyGame
 
 # Check out a specific ref (branch, sha, or UVCS changeset)
 unity projects clone --vcs uvcs --vcs-namespace my-org --vcs-repo my-game --ref main
@@ -256,7 +257,7 @@ unity projects clone --vcs gitlab --vcs-namespace my-org --vcs-repo my-game --gi
 
 # Project lives in a subdirectory of the repo
 unity projects clone --vcs github --vcs-namespace my-org --vcs-repo monorepo \
-  --path ./repo --subpath packages/MyGame
+  --output-dir ./repo --subpath packages/MyGame
 
 # Clone an arbitrary git URL instead (HTTPS, or SSH via the standard
 # git user@host:path shorthand) — no --vcs/--vcs-namespace/--vcs-repo needed
@@ -264,9 +265,9 @@ unity projects clone https://github.com/my-org/my-game.git
 unity projects clone --ref develop <ssh-clone-url-for-your-host>
 ```
 
-Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name>`, `--ref <branch|sha|changeset>` (an all-digit ref is treated as a Unity Version Control changeset; for git, a branch or tag, or a commit id that is checked out after the clone), `--path <dest>` (clone destination), `--subpath <subpath>` (the project's folder, when the repository holds more than one), `--git-token <pat>` / `--git-token-from-stdin`, `--json`. Git LFS assets are fetched as pointer files only.
+Options: `--vcs github|gitlab|uvcs`, `--vcs-namespace <name>`, `--vcs-repo <name>`, `--ref <branch|sha|changeset>` (an all-digit ref is treated as a Unity Version Control changeset; for git, a branch or tag, or a commit id that is checked out after the clone), `--output-dir <dir>` (the exact clone destination, not a parent; `--path` still works, with a deprecation warning), `--subpath <subpath>` (the project's folder, when the repository holds more than one), `--git-token <pat>` / `--git-token-from-stdin`, `--json`. Git LFS assets are fetched as pointer files only.
 
-**The `[url]` form is an alternative to `--vcs`/`--vcs-namespace`/`--vcs-repo`, not an addition to them** — passing a URL alongside any of those three flags is a bad-arguments error. `--ref`, `--path`, `--subpath`, `--no-lfs` always apply. `--git-token`/`--git-token-from-stdin` only apply when the URL is an **explicit HTTPS** URL whose host is github.com or gitlab.com — passing a token for any other host (an SSH-form or SCP-style URL, or a host that isn't github.com/gitlab.com) is a bad-arguments error, since there's nowhere for that credential to go. No token is required: with none supplied, the clone runs with whatever git auth is already set up on the machine (SSH agent, a configured credential helper, `.netrc`, or userinfo embedded in the URL itself) — this includes every SSH-form clone, even against github.com/gitlab.com, since the provider credential helper is HTTPS-only. Unity-project detection is **always** a post-clone scan of the downloaded tree for the URL form (never a provider API call, regardless of host or token) — only Git LFS credentials differ by tier: an HTTPS URL to github.com/gitlab.com with a token uses the provider-scoped LFS credential helper, everything else uses the machine's own git auth for the LFS pull too. A malformed URL, an unreachable host, a rejected/unknown SSH host key, and an authentication failure are reported as distinct errors (exit 2, 7, 3, and 3 respectively).
+**The `[url]` form is an alternative to `--vcs`/`--vcs-namespace`/`--vcs-repo`, not an addition to them** — passing a URL alongside any of those three flags is a bad-arguments error. `--ref`, `--output-dir`, `--subpath`, `--no-lfs` always apply. `--git-token`/`--git-token-from-stdin` only apply when the URL is an **explicit HTTPS** URL whose host is github.com or gitlab.com — passing a token for any other host (an SSH-form or SCP-style URL, or a host that isn't github.com/gitlab.com) is a bad-arguments error, since there's nowhere for that credential to go. No token is required: with none supplied, the clone runs with whatever git auth is already set up on the machine (SSH agent, a configured credential helper, `.netrc`, or userinfo embedded in the URL itself) — this includes every SSH-form clone, even against github.com/gitlab.com, since the provider credential helper is HTTPS-only. Unity-project detection is **always** a post-clone scan of the downloaded tree for the URL form (never a provider API call, regardless of host or token) — only Git LFS credentials differ by tier: an HTTPS URL to github.com/gitlab.com with a token uses the provider-scoped LFS credential helper, everything else uses the machine's own git auth for the LFS pull too. A malformed URL, an unreachable host, a rejected/unknown SSH host key, and an authentication failure are reported as distinct errors (exit 2, 7, 3, and 3 respectively).
 
 **SSH transport policy.** No SSH URL is ever rewritten to HTTPS, and no key handling happens in the CLI — a key held by a running ssh-agent is used automatically, and a repository-local `core.sshCommand` or an `~/.ssh/config` host alias behaves identically to plain `git`, because the CLI only supplies its own SSH defaults when none of those (nor `GIT_SSH_COMMAND`/`GIT_SSH`) are already set — and it supplies none of them at all on an interactive terminal, deferring entirely to ssh's own prompts (a real fingerprint prompt for an unfamiliar host, a real passphrase prompt for a protected key with no agent), since a person at the terminal can answer them. Only in a non-interactive invocation (no TTY, or `--non-interactive`/`UNITY_NON_INTERACTIVE`), where no prompt could ever be answered, does the CLI supply its own defaults: an unknown host is trusted on first connect and pinned (so a *later* change to that host's key still fails loudly — this is not silenced), and a passphrase-protected key with no agent fails fast with an actionable error instead of hanging.
 
@@ -309,9 +310,8 @@ team state, so it stays an explicit `unity uvcs lock unlock` the user types.
 #### Code review comments
 
 `unity vcs uvcs review` reads the review comments a person left in the Unity Version Control GUI,
-and answers them. This is the one UVCS surface with no `cm` route at all — `cm codereview` manages
-review objects but has no comment verbs — so without these commands a reviewer's feedback is
-invisible to anything outside the GUI, and a human has to restate every comment in the prompt.
+and answers them. Without these commands a reviewer's feedback is invisible to anything outside the
+GUI, and a human has to restate every comment in the prompt.
 
 ```bash
 # Find a review. Any of --changeset, --branch or --status narrows it server-side.
@@ -327,14 +327,20 @@ unity vcs uvcs review reply   --review 42 --comment 7 --body "Fixed in the next 
 unity vcs uvcs review resolve --review 42 --comment 7 --changeset 118
 ```
 
-All four take the usual optional `[path]` operand; everything else is an option. `--limit` defaults
+All of them take the usual optional `[path]` operand; everything else is an option. `--limit` defaults
 to 50 and caps at 500, and the envelope's `truncated` tells you when there was more.
 
-**Unity Cloud only.** The reviews service resolves a per-organization cloud region, so a
-self-hosted workspace has no reviews API — those commands refuse with
-`VCS_UVCS_REVIEW_SELF_HOSTED` and point at the GUI rather than failing obscurely.
+**Cloud and self-hosted servers both work, through different routes.** A Unity Cloud workspace
+talks to the reviews service. A self-hosted workspace goes through the local `cm` client instead,
+and needs no Unity sign-in. That route needs `cm` 11.0.16.10512 or later for `reviews`, and
+11.0.16.10616 or later for `comments`, `reply` and `resolve`. An older client is refused up front with
+`VCS_UVCS_REVIEW_CM_TOO_OLD` (exit 4), naming both versions. Any other `cm` failure on that route
+is `VCS_UVCS_REVIEW_CM_FAILED` (exit 6) and carries `cm`'s own message. A `--branch`, `--changeset`
+or `--status` value with a single quote or a line break cannot go into a `cm` query, so it is
+refused with `VCS_UVCS_REVIEW_CM_UNQUOTABLE` (exit 2), naming the option.
 
-**They need a signed-in session, and the three auth-shaped failures mean different things.**
+**On Unity Cloud they need a signed-in session, and the three auth-shaped failures mean different
+things.**
 `unity auth login` is all you have to do; the short-lived gateway token these commands
 authenticate with is obtained for you. `NOT_SIGNED_IN` and `SESSION_EXPIRED` (both exit 3) mean
 sign in again. `UVCS_TOKEN_UNAVAILABLE` (exit 6) means that token could not be obtained at all —
@@ -370,6 +376,26 @@ other people read, and an indirect selector resolving to the wrong review would 
 conversation nobody looked at. Both ids come straight out of `review comments`. A reply body
 carrying control characters is refused rather than stripped, so what lands in the review is exactly
 what was written.
+
+**Opening a review and asking reviewers goes through `cm` everywhere.** `create`, `reviewers` and
+`request` use the local `cm` client on Unity Cloud and self-hosted workspaces alike, and need `cm`
+11.0.16.10512 or later.
+
+```bash
+# Open a review of one changeset or one branch. Repeat --reviewer for several people.
+unity vcs uvcs review create --changeset 118 --title "Fix the lighting bake" --reviewer amy --format json
+unity vcs uvcs review create --branch /main/feature --title "Lighting pass"
+
+# See who was asked and where each one stands, then ask someone else.
+unity vcs uvcs review reviewers --review 42 --format json
+unity vcs uvcs review request   --review 42 --reviewer carol --reviewer dan
+```
+
+Pass exactly one of `--changeset` and `--branch` to `create`; `--title` is required, is one line,
+and cannot start with `-`. `request` needs at least one `--reviewer`. A `--reviewer` value is one
+user name: a comma is refused rather than split. `cm` does not check that a reviewer exists, so a
+misspelled name is accepted silently: confirm with `reviewers`. Asking someone already on the
+review is a no-op.
 
 The `cm` client is needed for all of this. `unity plugin install plastic` installs it; a command
 that needs it and cannot find it says so and names that command.
@@ -873,7 +899,7 @@ unity templates create /path/to/MyProject \
   --display-name "My Template" \
   --description "A starting point for our projects" \
   --version 1.0.0 \
-  --output /path/to/templates/dir \
+  --output-dir /path/to/templates/dir \
   --keep-embedded-packages \
   --keep-project-settings \
   --overwrite
@@ -894,7 +920,7 @@ unity templates create /path/to/MyProject \
 **`templates create` key notes:**
 - The project is the path argument, `--project-path <path>`, or `UNITY_PROJECT_PATH`, in that order (same for `templates pack`, `projects link` and `projects unlink vcs`); giving both the argument and the flag is a usage error. `projects unlink cloud` never reads `UNITY_PROJECT_PATH`: pass its path as the argument or `--project-path`
 - `--name` must be a valid npm package name (e.g. `com.myorg.template.mytemplate`)
-- `--output` overrides the Hub-configured user templates directory
+- `--output-dir` overrides the Hub-configured user templates directory (`--output` still works, with a deprecation warning)
 - `--overwrite` replaces an existing archive of the same name without error
 - On success, prints the path to the created `.tgz` archive
 - Created templates appear in `unity templates --editor-version <v> --custom`

@@ -366,9 +366,10 @@ Separately again, every run (CI, an agent, a machine `--format` included) sends 
 
 - explicitly turning analytics off (`unity analytics opt-out`, an opt-out answered at an older CLI's prompt, or turning it off in the Hub while signed in to the Hub; a Hub opt-out made while signed out is not visible to the CLI and does not stop it);
 - `DO_NOT_TRACK` set to any value but empty, `0` or `false` ([consoledonottrack.com](https://consoledonottrack.com));
+- `UGS_CLI_TELEMETRY_DISABLED` set to any value but empty, `0` or `false`, the same switch under the UGS CLI's name;
 - `UNITY_NO_CLI_INVOKED_TELEMETRY` set to any value.
 
-`DO_NOT_TRACK` also stops the upload of opt-in usage data, even when you opted in. Usage data never holds a command for long: on a slow or unreachable network the CLI gives up on it after half a second. `unity analytics status` says what is collected, links the privacy policy, and reports whether the ping is on and why it is off. None of these settings stop the licensing records `unity license activate` files.
+`DO_NOT_TRACK` or `UGS_CLI_TELEMETRY_DISABLED` also stops the upload of opt-in usage data, even when you opted in. Usage data never holds a command for long: on a slow or unreachable network the CLI gives up on it after half a second. `unity analytics status` says what is collected, links the privacy policy, and reports whether the ping is on and why it is off. None of these settings stop the licensing records `unity license activate` files.
 
 ---
 
@@ -600,6 +601,8 @@ unity completion fish
 unity completion powershell
 ```
 
+After `unity command` (and its aliases `cmd` and `request`), Tab offers the connected Editor's commands, then a group's commands, then the chosen command's parameters not yet typed. The shell asks the CLI at Tab time, for the Editor of the project in the working directory or `UNITY_PROJECT_PATH`, and waits at most 1 second. With no Editor, or a slow one, Tab offers nothing there. Nothing is cached. Scripts generated before this need regenerating to get it.
+
 ---
 
 ### Bug — report a bug
@@ -626,7 +629,7 @@ Prompts for title, description, email, reproducibility level, and which area the
 
 The report can also be supplied entirely through flags — `--title`, `--description`, `--steps` (repeatable, one line per value), `--reproducibility <first-time|sometimes|always>`, and `--email` (defaults to your Unity account email when signed in; otherwise required). On a terminal, any flags you pass skip their prompts and the remaining fields still ask; a non-interactive run submits without prompting. A non-interactive run with missing or invalid fields fails fast with a usage error (exit 2) listing the exact flags to add.
 
-Use `--area <cli|pipeline-package|editor|licensing|ugs|plastic|ai|transform|not-sure>` to say which part of Unity the issue is in: the CLI itself, the connection to the Editor or the Pipeline package (`com.unity.pipeline`), the Editor or your project, licensing and signing in, or one of the plugins (`ugs`, `plastic`, `ai`, `transform`). Pass it whenever you know, because a failure that surfaces in CLI output is otherwise easy to misroute as a CLI bug when the Editor or the Pipeline package is at fault. It's optional and never blocks a report: pass `not-sure` when you don't know, or leave it out. On a terminal without `--area`, the reporter asks, with "Not sure" preselected; a non-interactive run without it submits with no area, the same report it sent before the flag existed. An unknown value is a usage error (exit 2). The answer is sent with the report as an `Issue area:` line in the report text, which is what triage sees. On a terminal, a plugin is offered as an area only while it is installed. A plugin area names the plugin and its installed version, and attaches the newest `.log` and `.txt` files from the log directories the plugin registry lists for it, redacted and size-capped like the other logs. Every report also lists the plugins installed on the machine, with their versions, as an `Installed plugins:` line.
+Use `--area <cli|pipeline-package|editor|licensing|ugs|plastic|ai|transform|assetlibrary|not-sure>` to say which part of Unity the issue is in: the CLI itself, the connection to the Editor or the Pipeline package (`com.unity.pipeline`), the Editor or your project, licensing and signing in, or one of the plugins (`ugs`, `plastic`, `ai`, `transform`, `assetlibrary`). Pass it whenever you know, because a failure that surfaces in CLI output is otherwise easy to misroute as a CLI bug when the Editor or the Pipeline package is at fault. It's optional and never blocks a report: pass `not-sure` when you don't know, or leave it out. On a terminal without `--area`, the reporter asks, with "Not sure" preselected; a non-interactive run without it submits with no area, the same report it sent before the flag existed. An unknown value is a usage error (exit 2). The answer is sent with the report as an `Issue area:` line in the report text, which is what triage sees. On a terminal, a plugin is offered as an area only while it is installed. A plugin area names the plugin and its installed version, and attaches the newest `.log` and `.txt` files from the log directories the plugin registry lists for it, redacted and size-capped like the other logs. Every report also lists the plugins installed on the machine, with their versions, as an `Installed plugins:` line.
 
 Use `--attachments <paths...>` (repeatable) to attach extra files — for example a crash log or a zipped copy of a subset of assets. Each path must be an existing, readable file; a folder is rejected (zip it yourself first), and a missing or unreadable path fails fast with a usage error (exit 2) naming the offending path.
 

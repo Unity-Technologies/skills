@@ -505,7 +505,7 @@ second branch is usable in minutes instead of a full reimport.
 
 ```bash
 unity vcs git worktree add feature/lighting
-unity vcs git worktree add feature/lighting --into ../lighting --seed full
+unity vcs git worktree add feature/lighting --output-dir ../lighting --seed full
 unity vcs git worktree add feature/lighting --install-editor
 unity vcs git worktree add feature/lighting --dry-run
 unity vcs git worktree add feature/lighting --no-register

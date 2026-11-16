@@ -214,7 +214,7 @@ All of these flag-combination mistakes, and an unknown `--report-format` value, 
 
 ```bash
 unity test /path/to/MyProject --format github
-unity build --target StandaloneWindows64 --output-path ./Build/Game.exe --format github
+unity build --target StandaloneWindows64 --output ./Build/Game.exe --format github
 ```
 
 - **A failing command annotates the job.** Its error message is emitted as `::error::<message>`, and a warning as `::warning::<message>`, so the runner surfaces it as an annotation on the run rather than leaving it buried in the log.
@@ -370,26 +370,27 @@ Options: `--mode EditMode|PlayMode`, `--filter <pattern>`, `--editor-version <ve
 
 ```bash
 unity recompile                                  # the Editor for the current project
-unity recompile --project-path /path/to/MyGame   # pick one when several are running
+unity recompile /path/to/MyGame                  # pick one when several are running
+unity recompile --project-path /path/to/MyGame   # the same, as an option
 unity recompile --strict                         # warnings fail too
 unity recompile --format json                    # structured diagnostics
 ```
 
 It triggers an asset refresh plus script recompile, polls until compilation finishes, prints each diagnostic with its file, line, column, code and message, and sets an exit code — so it drops straight into a pre-commit hook or a CI step.
 
-**Requires a running Editor with the Pipeline package.** That is what makes it fast (the Editor is already warm) and it means no build target has to be configured. There is no batch-mode fallback: with no reachable Editor it reports which Editors it found and what to do, and exits `7`.
+**Requires a running Editor with the Pipeline package.** That is what makes it fast (the Editor is already warm) and it means no build target has to be configured. There is no batch-mode fallback: with no reachable Editor it reports which Editors it found and what to do, and exits `12`, as `unity command` does.
 
-**It cannot report errors that put the Editor into Safe Mode.** An Editor that *boots* with compile errors loads no Pipeline package, so there is nothing to ask and you get exit `7`. This command reports errors you introduce into an Editor that is **already running** — the normal edit loop, where a failed compile keeps the server alive. See the Safe Mode note in `SKILL.md` for the recovery loop.
+**It cannot report errors that put the Editor into Safe Mode.** An Editor that *boots* with compile errors loads no Pipeline package, so there is nothing to ask and you get exit `12`. This command reports errors you introduce into an Editor that is **already running** — the normal edit loop, where a failed compile keeps the server alive. See the Safe Mode note in `SKILL.md` for the recovery loop.
 
-**Exit codes are the whole point for CI.** `0` compiled (or nothing needed recompiling), `6` compilation reported errors, `7` **no Editor could be reached, so whether the code compiles is unknown**. Treat `6` as terminal and `7` as worth retrying after fixing the environment — you never have to match on the message text. Several Editors running is a `6`: pick one with `--project-path`.
+**Exit codes are the whole point for CI.** `0` compiled (or nothing needed recompiling), `6` compilation reported errors, `12` **no Editor could be reached, so whether the code compiles is unknown**. Treat `6` as terminal and `12` as worth retrying after fixing the environment — you never have to match on the message text. Several Editors running is a `6`: pick one with `--project-path`.
 
-`7` covers an Editor that is *running* but unreachable, not just a missing one — a hung Editor, or your own sandbox refusing the loopback connection. If you are a sandboxed agent, read a `7` as "ask again once the sandbox allows loopback", never as a compile failure.
+`12` covers an Editor that is *running* but unreachable, not just a missing one — a hung Editor, or your own sandbox refusing the loopback connection. If you are a sandboxed agent, read a `12` as "ask again once the sandbox allows loopback", never as a compile failure.
 
-**Warnings do not fail by default.** `--strict` makes them fail. Warnings are read from the Editor console rather than the compile result (the Pipeline package only ever reports errors from a compile), bounded to the entries this compile produced; if the console cannot be read, the command says so on stderr rather than reporting "no warnings".
+**Warnings do not fail by default.** They are still reported; `--strict` makes them fail. Warnings are read from the Editor console rather than the compile result (the Pipeline package only ever reports errors from a compile), bounded to the entries this compile produced; if the console cannot be read, the command says so on stderr (human and `tsv`), and `--format json` / `ndjson` add `data.warningsRead: false`, so an empty `data.warnings` there means unread, not none.
 
-Diagnostics go to **stderr** in human and `tsv` output, so stdout stays clean for parsing. `--format json` / `ndjson` carry `errors` and `warnings` arrays plus `status`, `failed` and `compilationFailed` — note `compilationFailed: true` alongside `failed: false` is normal immediately after a compile that fixed the errors, and is not a failure.
+Diagnostics go to **stderr** in human and `tsv` output, so stdout stays clean for parsing. `--format json` / `ndjson` carry `errors` and `warnings` arrays plus `status`, `failed` and `compilationFailed` — note `compilationFailed: true` alongside `failed: false` is normal immediately after a compile that fixed the errors, and is not a failure. A domain reload mid-compile can briefly answer with a `400` or a `503`; the command waits that out and keeps polling, and it reads the compile status once more before it reports a failed status read, so a compile that succeeded exits `0`.
 
-Options: `--project-path <path>`, `--timeout <seconds>` (default 120), `--focus` (bring the Editor forward first; off by default because an unfocused Editor still compiles), `--strict`.
+Options: the project as `[path]` or `--project-path <path>` (not both), `--timeout <seconds>` (default 120), `--focus` (bring the Editor forward first; off by default because an unfocused Editor still compiles), `--strict`.
 
 ---
 
@@ -397,11 +398,11 @@ Options: `--project-path <path>`, `--timeout <seconds>` (default 120), `--focus`
 
 The first-class build workflow. Rule of thumb vs `unity run`: building a player → `unity build`; anything else headless → `unity run`.
 
-Pick one build strategy: a Unity 6+ Build Profile (`--profile`), a built-in desktop player build (`--target` with a desktop target, `--output-path` required), or a custom `--execute-method` (your method is responsible for the actual build, including honoring `--output-path`). Non-desktop targets need `--profile` or `--execute-method`.
+Pick one build strategy: a Unity 6+ Build Profile (`--profile`), a built-in desktop player build (`--target` with a desktop target, `--output` required), or a custom `--execute-method` (your method is responsible for the actual build, including honoring `--output`). Non-desktop targets need `--profile` or `--execute-method`.
 
 The build log is always written to the log file **and** streamed at the same time — to stdout, or to stderr under `--format json` so stdout holds only the result document; pass `--no-tail` to write the file only (the tail is also suppressed by `--quiet` and `--format ndjson`). The streamed copy masks the credentials the CLI passes the Editor (the `-accessToken` value, the Android keystore passwords) with `***`, as do `run` and `test` wherever they relay the Editor's log.
 
-**How the outcome is decided — do not gate CI on Unity's exit code alone.** For a built-in build (`--profile`, or `--target` without `--execute-method`) the CLI does not trust Unity's process exit code by itself: a real Editor exits `0` from a player build its own log reports as failed. When the log carries Unity's terminal verdict, that verdict decides the outcome, so a failed build exits **6** even where the Unity process exited `0`, and the provenance manifest records the failure. A log with no verdict falls back to the exit code, and an `--execute-method` build always does — your method owns the code it returns, including when it deliberately tolerates a build it reports on itself. A build that succeeds with errors still in its log reports them on stderr rather than dropping them; they also ride `editorErrors` under `--format json`.
+**How the outcome is decided — do not gate CI on Unity's exit code alone.** For a built-in build (`--profile`, or `--target` without `--execute-method`) the CLI does not trust Unity's process exit code by itself: a real Editor exits `0` from a player build its own log reports as failed. When the log carries Unity's terminal verdict, that verdict decides the outcome, so a failed build exits **6** even where the Unity process exited `0`, and the provenance manifest records the failure. A log with no verdict falls back to the exit code, with one addition: a clean exit `0` with no verdict and nothing at the `--output` path (or `<path>.app`) is also a failure (exit **6**), since an Editor that dies before it builds looks exactly like that. An `--execute-method` build always falls back to the exit code alone — your method owns the code it returns, including when it deliberately tolerates a build it reports on itself. A build that succeeds with errors still in its log reports them on stderr rather than dropping them; they also ride `editorErrors` under `--format json`.
 
 **Writing scripts for a player build? Keep one `MonoBehaviour` per `.cs` file, named after its class.** Unity ties a `MonoBehaviour` to its script by file name, so `PlayerController` belongs alone in `PlayerController.cs`. Several in one file can run fine in the Editor and Play Mode with no warning. The built player then crashes at startup with `The file '.../level0' is corrupted! Remove it and launch unity again!`. `level0` is the first scene in the build (later ones are `level1`, `level2`, and so on), so the message points at scene data, not the scripts. If you see it, look for a `.cs` file that declares more than one `MonoBehaviour` (one deriving from another of yours counts) and give each its own file, named after its class, before you bisect scenes. Check the scripts you wrote or generated this session before you build, and leave existing code alone until the error appears.
 
@@ -410,10 +411,10 @@ The build log is always written to the log file **and** streamed at the same tim
 unity build /path/to/MyProject \
   --target StandaloneOSX \
   --execute-method Builder.PerformBuild \
-  --output-path ./build/output
+  --output ./build/output
 
 # Build with a Unity 6+ build profile
-unity build /path/to/MyProject --profile "Windows Release" --output-path ./Build/MyGame.exe
+unity build /path/to/MyProject --profile "Windows Release" --output ./Build/MyGame.exe
 
 # Common build targets: StandaloneOSX, StandaloneWindows64, StandaloneLinux64, Android, iOS, WebGL
 ```
@@ -429,7 +430,7 @@ unity build /path/to/MyProject --profile "Windows Release" --output-path ./Build
 | `--list-profiles` | List the project’s Build Profile assets (Unity 6+), then exit. |
 | `--create-profile <target>` | Create a Build Profile for a target and exit without building (Unity 6+); build with it afterwards via `--profile`. |
 | `--build-target-group <group>` | Forwarded to Unity as `-buildTargetGroup`. |
-| `--output-path <path>` | Output path. With `--execute-method`, passed as `-buildOutput` (your method must honor it); otherwise the built-in build's destination (required). |
+| `-o, --output <path>` | Output path (`--output-path` still works). With `--execute-method`, passed as `-buildOutput` (your method must honor it); otherwise the built-in build's destination (required). |
 | `--log-file <path>` | Log file path. Default: `<project>/Logs/build-<target>-<timestamp>.log`. Streamed to stdout by default, stderr under `--format json` (see `--no-tail`). |
 | `--editor-version <version>` (env `UNITY_EDITOR_VERSION`) | Override editor version (default: from `ProjectVersion.txt`). The flag, then a non-empty variable, then `ProjectVersion.txt`, as `run` and `test` choose. |
 | `-e, --editor-path <path>` | Use a specific editor binary. A version passed here fails with a hint to use `--editor-version`. |
@@ -441,7 +442,7 @@ unity build /path/to/MyProject --profile "Windows Release" --output-path ./Build
 | `--build-version <version>` | Explicit version string; only used with `--versioning-strategy custom`. |
 | `--allow-dirty-build` | Skip the uncommitted-changes guard (default: false). |
 | `--timeout <seconds>` (env `UNITY_BUILD_TIMEOUT`) | Abort a build that runs longer than this many seconds, exit **14** (`BATCH_TIMEOUT`). Disabled by default. |
-| `--provenance-path <path>` | Where to write the provenance manifest. Default: beside the build output, or beside the log file when `--output-path` is not set. |
+| `--provenance-path <path>` | Where to write the provenance manifest. Default: beside the build output, or beside the log file when `--output` is not set. |
 | `--no-provenance` | Do not write the provenance manifest. |
 
 When `UNITY_EDITOR_VERSION` or `UNITY_ARCHITECTURE` chose the build's Editor, `build` says so in one line: a stderr notice in `human`, `tsv` and `github`, and an envelope warning in `json` and `ndjson`. The build provenance records the Editor version either way.
@@ -463,9 +464,9 @@ Keystore flags are validated together. Secrets passed as command-line flags surf
 
 **Versioning** — `semantic` and `tag` derive the version from git tags/history; `custom` requires an explicit `--build-version`; a dirty working tree is rejected unless `--allow-dirty-build` is passed.
 
-**Provenance manifest** — every build that reaches the editor writes a JSON manifest recording what produced it: editor version and changeset, resolved package set, target, profile, execute method, version stamp, git revision and dirty flag, CLI version, timestamps, and outcome. Failed builds get one too, with the exit code, so they stay diagnosable. It is redacted for publication — paths are project-relative, `--args`, the Android keystore flags, the editor's install location and the hostname are never written, a git package reference keeps its locator but loses any embedded credentials, and a `file:` dependency is recorded as `file:<local>` — so it can be attached to a release next to the artifact. Under `--format json` / `--format ndjson` the path is reported as `data.provenance` (omitted when no manifest was written), on failed builds as well as successful ones. The git revision is captured before the build starts, so an artifact written into the project does not make the manifest claim the build came from a dirty tree. `--provenance-path` and a relative `--output-path` both resolve against the current directory, matching what the CLI hands Unity. A manifest that cannot be written warns instead of failing the build.
+**Provenance manifest** — every build that reaches the editor writes a JSON manifest recording what produced it: editor version and changeset, resolved package set, target, profile, execute method, version stamp, git revision and dirty flag, CLI version, timestamps, and outcome. Failed builds get one too, with the exit code, so they stay diagnosable. It is redacted for publication — paths are project-relative, `--args`, the Android keystore flags, the editor's install location and the hostname are never written, a git package reference keeps its locator but loses any embedded credentials, and a `file:` dependency is recorded as `file:<local>` — so it can be attached to a release next to the artifact. Under `--format json` / `--format ndjson` the path is reported as `data.provenance` (omitted when no manifest was written), on failed builds as well as successful ones. The git revision is captured before the build starts, so an artifact written into the project does not make the manifest claim the build came from a dirty tree. `--provenance-path` and a relative `--output` both resolve against the current directory, matching what the CLI hands Unity. A manifest that cannot be written warns instead of failing the build.
 
-**Output path in the result.** Under `--format json` / `--format ndjson` the resolved `--output-path` is reported as `data.outputPath`: the absolute, cwd-resolved path this build told Unity to write to, exactly as `--output-path` was supplied (never introspected out of the Editor or the Build Profile asset). It is present for every built-in build (`--profile`, an auto-discovered profile, or a legacy desktop `--target`), where `--output-path` is required, and `null` only for an `--execute-method` build invoked without `--output-path`, where the method picks its own destination the CLI has no way to learn (the same case that leaves nothing for `build run` to record; see below). Unity decides whether that path names a single file (a Windows `.exe`, a Linux binary) or a directory it writes into (a macOS `.app` bundle, a WebGL build, an Android Studio project export); the CLI reports the path it told Unity to use either way, without distinguishing the two. Like `version`, `outputPath` is serialized as `null` rather than omitted when unknown, and it carries the same value on a failed build's payload whenever one is written. This is a different value from the provenance manifest's own `build.outputPath` (above): the manifest's copy is project-relative and omitted whenever the resolved path falls outside the project, for portability and redaction; `data.outputPath` is always absolute and never redacted, since it rides the CLI's own stdout rather than a file meant to travel with the artifact.
+**Output path in the result.** Under `--format json` / `--format ndjson` the resolved `--output` is reported as `data.outputPath`: the absolute, cwd-resolved path this build told Unity to write to, exactly as `--output` was supplied (never introspected out of the Editor or the Build Profile asset). It is present for every built-in build (`--profile`, an auto-discovered profile, or a legacy desktop `--target`), where `--output` is required, and `null` only for an `--execute-method` build invoked without `--output`, where the method picks its own destination the CLI has no way to learn (the same case that leaves nothing for `build run` to record; see below). Unity decides whether that path names a single file (a Windows `.exe`, a Linux binary) or a directory it writes into (a macOS `.app` bundle, a WebGL build, an Android Studio project export); the CLI reports the path it told Unity to use either way, without distinguishing the two. Like `version`, `outputPath` is serialized as `null` rather than omitted when unknown, and it carries the same value on a failed build's payload whenever one is written. This is a different value from the provenance manifest's own `build.outputPath` (above): the manifest's copy is project-relative and omitted whenever the resolved path falls outside the project, for portability and redaction; `data.outputPath` is always absolute and never redacted, since it rides the CLI's own stdout rather than a file meant to travel with the artifact.
 
 **Interrupt exit codes** — interrupting `unity build` exits with the conventional signal code (`130` for Ctrl-C / SIGINT, `143` for SIGTERM) rather than a generic `1`, so callers and CI can tell an aborted build apart from a failed one. The temporary Android keystore is scrubbed before exit.
 
@@ -475,7 +476,7 @@ Keystore flags are validated together. Secrets passed as command-line flags surf
 
 ```bash
 # With --format json, stdout is the result document alone; the progress frames and the streamed log go to stderr:
-unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output-path ./build/output --format json > result.json
+unity build /path/to/MyProject --target StandaloneOSX --execute-method Builder.Build --output ./build/output --format json > result.json
 # stderr (each progress line is a JSON object, the Editor log lines between them):
 # {"type":"progress","command":"build","message":"Resolving project..."}
 # {"type":"progress","command":"build","message":"Resolving editor..."}
@@ -497,14 +498,14 @@ unity build /path/to/MyProject --list-profiles --format json
 
 # Create a Build Profile for a target and exit without building (Unity 6000.0+), then build with it
 unity build /path/to/MyProject --create-profile WebGL
-unity build /path/to/MyProject --profile WebGL --output-path ./Build/web
+unity build /path/to/MyProject --profile WebGL --output ./Build/web
 
-# Launch the project’s most recent recorded build without rebuilding (recorded = built with a known --output-path)
+# Launch the project’s most recent recorded build without rebuilding (recorded = built with a known --output)
 unity build run /path/to/MyProject
 unity build run /path/to/MyProject --build-path ./Build/other/MyGame.exe   # a different build
 ```
 
-`--list-targets`, `--list-profiles` and `--create-profile` each do their job and exit — no build happens. A `--target` outside the classic catalog fails with `BUILD_INVALID_TARGET` and points at `--profile`. A successful `unity build` with a known output path — a built-in build (`--output-path` is required there) or a `--profile` / `--execute-method` build that passed `--output-path` — records that path together with the target, architecture and Editor version, and `build run` launches that recording: a desktop player natively, a WebGL build from a loopback-only local HTTP server that opens in the default browser. An `--execute-method` build without `--output-path` chooses its own destination inside the method, so it records nothing and leaves any earlier record in place; launch such a build with `build run --build-path <output>` instead. `build run` fails cleanly (exit 6) when no build has been recorded yet, when the recorded build’s platform cannot run on this OS, or when its output is gone.
+`--list-targets`, `--list-profiles` and `--create-profile` each do their job and exit — no build happens. A `--target` outside the classic catalog fails with `BUILD_INVALID_TARGET` and points at `--profile`. A successful `unity build` with a known output path — a built-in build (`--output` is required there) or a `--profile` / `--execute-method` build that passed `--output` — records that path together with the target, architecture and Editor version, and `build run` launches that recording: a desktop player natively, a WebGL build from a loopback-only local HTTP server that opens in the default browser. An `--execute-method` build without `--output` chooses its own destination inside the method, so it records nothing and leaves any earlier record in place; launch such a build with `build run --build-path <output>` instead. `build run` fails cleanly (exit 6) when no build has been recorded yet, when the recorded build’s platform cannot run on this OS, or when its output is gone.
 
 **Per-project defaults.** A committed `ProjectSettings/UnityCliConfig.json` declares `unity build` / `unity test` defaults (`build.target`, `build.outputPath`, `build.profile`, `build.timeout`, `test.mode`, `test.reportFormat`, `test.coverage`, `test.coverageOptions`, `test.timeout`) so they need not be repeated on every invocation; `unity config resolve <key> [project]` shows the resolved value and which layer supplied it. See [config-hub.md](config-hub.md).
 
@@ -528,7 +529,7 @@ The [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) i
 unity test /path/to/MyProject
 
 # One-shot override / opt-out
-unity build /path/to/MyProject --target StandaloneLinux64 --output-path ./Build/MyGame.x86_64 --accelerator cache.example.com:10080
+unity build /path/to/MyProject --target StandaloneLinux64 --output ./Build/MyGame.x86_64 --accelerator cache.example.com:10080
 unity test /path/to/MyProject --no-accelerator
 ```
 

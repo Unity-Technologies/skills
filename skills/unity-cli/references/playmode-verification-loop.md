@@ -217,6 +217,15 @@ unity command console get -- --tail 50 --level error
 only need the compile-failure flag and entry counts, not the entries themselves, to poll cheaply
 while something else runs.
 
+**Never run `console clear` to get a clean slate.** It empties the user's own **Console** window
+too, including errors they asked you to fix. A failed Editor command also logs an Error there, so
+red entries you caused are expected. To read only what your own steps logged, note the cursor that
+`console status` returns before you start, then read from it:
+
+```bash
+unity command console get -- --since <cursor> --level error
+```
+
 Older `com.unity.pipeline` documentation names this command `get_console_logs`, and before command
 groups it was `console` (with `console_status` and `clear_console` alongside it); the currently
 shipping command is `console get` (with `console status` and `console clear`), which is a
