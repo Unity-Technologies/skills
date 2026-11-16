@@ -9,7 +9,7 @@ allowed-tools:
 
 # New Unity Project
 
-A flow from an idea to a running, version-controlled Unity project. This skill owns the **flow** —
+A flow from an idea to a running, version-controlled Unity project that plays. This skill owns the **flow** —
 mode, defaults, ordering, background installs, handoffs.
 
 **Delegates to (read these for the actual commands — don't reinvent them):**
@@ -22,6 +22,14 @@ mode, defaults, ordering, background installs, handoffs.
 - **`implement-in-app-purchases`**, **`levelplay-unity-integration`**, **`build-live-game`** —
   monetization / backend *integration* (invoked at the end).
 
+**Before you go forward with a step or a diagnosis, open and read its pages**: the delegated
+skill and the `references/` file the step names. Name the files you read in your reply, because
+your training knowledge about Unity might be out of date, incorrect, or for the wrong Unity version.
+Prefer fetching a doc page directly (for example `WebFetch`) over searching (for example
+`WebSearch`), and only search without an exact URL. Replace `<VERSION>` before fetching:
+- **docs.unity3d.com**: the Unity version, eg `6000.6`
+- **Package on docs.unity3d.com**: the package version, eg `4.2`; check it if unsure. These sites have no `.md` variant
+
 ## Mode: paved by default, guided on request
 
 Run **paved** unless the user asks for the interview — in words ("ask me questions", "guide me")
@@ -30,9 +38,9 @@ or by pushing back on the manifest; mode is decided once per session. The paved 
 the create launches · **proceed**, asking only on pushback or an unruled fork ·
 **never consume a human gate** — sign-in, license activation and publishing each need the user's
 yes, asked as a question you wait on (see Sign-in and license). A **bare/minimal** ask gets
-`--bare`, skips the floors, and states the cost (identity, saves, ranks unwired). Bare runs Steps
-1–4, installs only the packages the user named in Step 5, skips Steps 6 and 7, then commits (Step 8)
-and hands off monetization (Step 9) without the forward baton.
+`--bare`, skips the floors, and states the cost (identity, saves, ranks unwired; no playable loop).
+Bare runs Steps 1–5 (only the packages the user named), skips 6, 7, 9 and 10's publish ask
+(the report names the route for later), commits (Step 8), and hands off (Step 11) without the baton.
 
 In **guided** mode, ask only the current step's questions and wait. The paved additions (identity,
 floors, baton) are asked at their steps there, never assumed.
@@ -54,19 +62,7 @@ accepted, and an agent can't see or click that dialog. When sign-in and license 
 and no license question goes out, still ask about the terms with your first question; the create
 can start before the answer, but `unity terms accept` and the first `unity open` wait for it.
 
-- Never tell the user to sign in or activate a license themselves, and never hand them commands to
-  run. You run them, after they say yes.
-- On yes, sign in only where the choice needs an account: Personal and an existing subscription
-  activate the signed-in user's licenses, and a cloud-linked project needs one too. Run
-  `unity auth login` then (it opens the browser; the user only completes the sign-in page, so tell
-  them that page is coming), in the background or with its output unfiltered, and pass on the
-  sign-in link it prints in case the browser doesn't open: a pipe through `tail` holds the link
-  back until sign-in ends. Then `unity license activate --personal --accept-eula` for Personal.
-  Serial and floating activation need no account: `unity license activate --floating`, or the
-  serial through `UNITY_LICENSE_SERIAL` and a bare `unity license activate`, so it stays off argv.
-- Declining stops the run before the create only when nothing can license the Editor. A user who
-  declines sign-in but has, or activates, a serial or floating license still gets a local project:
-  create with `--no-cloud` and say the cloud link and player accounts are off.
+You run every sign-in and activation command yourself, after the user's yes, and never hand them commands to run. Personal and subscription seats need `unity auth login`; serial and floating do not. Exact commands and the declined-sign-in path: [references/sign-in-details.md](references/sign-in-details.md).
 
 ## The Defaults table
 
@@ -80,7 +76,7 @@ Every row reverses on a word; change a row only with a run-earned receipt.
 | Monetization | None at creation; noted for later |
 | Version control | Local git + Unity .gitignore |
 | Player identity | Anonymous accounts — create's when its result shows them, else wired in Step 6 |
-| Craft floors | Always on, via the `craft-game-floors` skill: look, camera, lighting, feedback, audio, shell, live floor, done gate |
+| Craft floors | Always on, via the `craft-game-floors` skill: look, camera, lighting, character motion, a playable loop (the minimum), feedback, audio, shell, live floor, done gate |
 
 Cloud link and diagnostics are **not** a row: create applies its own defaults — narrate them from
 the result, don't re-decide.
@@ -94,21 +90,19 @@ create will do (the URP template per `--template 3d|2d`, never a guessed id):
 > anonymous player accounts (create's, else one bootstrap script) · <version control> ·
 > cloud-linked with diagnostics (create's defaults, narrated from the result) · floor packages
 > (Cinemachine; identity + live services when cloud-linked) · craft floors on via `craft-game-floors` ·
-> a one-line handoff note for the project's CLAUDE.md, written only on your yes.
+> at least one playable loop (<verb · goal · pressure>, or the user's stated shape), scored by its
+> done gate · a one-line handoff note for the project's CLAUDE.md, written only on your yes.
 > Say the word to change any of these; otherwise I'm proceeding.
 
-One block, every assumption present, each reversible, nothing implied; Step 3 reconciles the
-result against it.
+Step 3 reconciles the result against it.
 
 ## Before Step 1: check the delegated skills are loaded
 
 Look for `unity-cli`, `unity-package-management`, `urp-postprocessing`, `ui`, `build-live-game`
 and `craft-game-floors` in your client's skills. If any is missing, say which and what it does, and offer the install routes
 in [references/skill-setup.md](references/skill-setup.md), in the same question as sign-in and
-license when that one goes out — never install without a yes. Don't
-stall: a decline gets the fallback at its step, gap named in the report. `unity skill show` prints
-`unity-cli` without installing; without `unity-package-management`, Step 5 can't run — say so
-before Step 2.
+license — never install without a yes. A decline gets the fallback at its step, gap named in the
+report; without `unity-package-management`, Step 5 can't run, so say so before Step 2.
 
 ## The flow — and where the parallelism is
 
@@ -118,22 +112,19 @@ installs the Editor + modules (minutes), then creates the project; keep talking 
 3. **(joins)** reconcile the result against the manifest. 4. **Source control.** 5. **Packages.**
 6. **Player identity, then the craft floors** — confirm create's identity or wire it; load
 `craft-game-floors`. 7. **Visual baseline** on the craft skill's art bible. 8. **Save & first commit.**
-9. **Hand off** + the forward baton.
-
-The multi-minute Editor install overlaps the user's answers, so setup feels instant.
+9. **First playable loop** + the done gate. 10. **Publish** — asked, never assumed.
+11. **Hand off** + the forward baton.
 
 ## Step 1 — Concept
 
-**Paved:** the prompt is the spec — parse genre, dimension (2D/3D), look, scope, and name into a
-2–4 line brief; fill gaps from the Defaults table; no read-back.
+**Paved:** the prompt is the spec — parse genre, core loop, dimension (2D/3D), look, scope, and name
+into a 2–4 line brief; fill gaps from the Defaults table (no loop named → pick one from the genre and
+put it in the manifest); no read-back.
 
-**Guided:** ask with your client's multiple-choice tool (`AskUserQuestion` in Claude Code,
-`ask_user` in Copilot CLI, `askQuestions` in VS Code); without one, plain text.
-Cover **genre / core loop** · **dimension & look** (2D or 3D; pixel, low-poly, stylized,
-realistic) · **gameplay** (the one-sentence "what the player does moment to moment") · **scope**
-(prototype vs. multi-scene; single- or multiplayer). Settle a **project name**, write the brief,
-read it back. The brief drives the template (Step 2), packages (Step 5) and the baseline (Step 7):
-note the palette / mood words and pixel-art looks.
+**Guided:** ask with your client's multiple-choice tool (plain text without one): **genre / core
+loop** · **dimension & look** · **gameplay** (what the player does moment to moment) · **scope**.
+Settle a **project name**, write the brief, read it back. Note the palette and mood words,
+pixel-art looks and the loop's verb: they drive Steps 2, 5, 7 and 9.
 
 ## Step 2 — Platforms & monetization, then start installing
 
@@ -141,17 +132,22 @@ Two decisions (paved: filled from the Defaults table, then **print the manifest*
 
 - **Target platforms**: Desktop, Mobile (iOS/Android), WebGL, Console — they map to Editor
   **modules** (`--module`) and argue for leaner packages on mobile/WebGL.
-- **Monetization**: none / premium / IAP / ads / mix — this only decides the Step 9 handoff.
+- **Monetization**: none / premium / IAP / ads / mix — this only decides the Step 11 handoff.
 
 Default to an explicit `--editor-version latest` unless the user names a version — without the
 flag, create prefers a stored default or an older installed Editor.
 
 For a cloud-linked create, pick the organization first: `unity cloud orgs --format json`. When
 `data.activeOrganizationId` is null and `data.organizations` holds exactly one org, pass that org's `id` as
-`--cloud-org <id>`; without it create links nothing (`CLOUD_LINK_FAILED`, no organization
-configured) and skips player accounts, Remote Config and Cloud Save. With several orgs and no
-default, ask the user which one before starting the create (the list needs sign-in, so this comes
-after it).
+`--cloud-org <id>`; without it create links nothing and skips player accounts, Remote Config and
+Cloud Save. With several orgs and no default, ask the user which one before the create.
+
+| Error code | Cause | Resolution |
+|---|---|---|
+| `CLOUD_LINK_FAILED` (no organization configured) | create had no org to link | pass `--cloud-org <id>` from `unity cloud orgs`; ask when several |
+| `PIPELINE_EDITOR_UNSUPPORTED` | Editor 6000.5.0 to 6000.5.2 can't run the Pipeline package | ask to update to 6000.5.3f1 or later ([visual-baseline.md](references/visual-baseline.md)) |
+| `PROJECT_UPGRADE_REQUIRED` | `unity open` refuses a move to 6000.7 or later | `unity projects upgrade "<project-path>" --to <version> --yes` |
+| `CLOUD_CHOICE_REQUIRED` | upgrading a project the user kept unlinked | add `--no-cloud` to that upgrade |
 
 Confirm prerequisites, then **start the create as a background task** (`unity-cli` has module
 names and auth / license setup):
@@ -169,37 +165,19 @@ unity projects create "<Name>" --output-dir <dir> --editor-version latest \
 The command waits for the install, then creates the project, so its one result covers both. If you
 have nothing left to ask, it's fine to just wait.
 
-**Template:** `--template 3d` / `2d` resolve to the version's URP templates
-(`com.unity.template.urp-blank`, `com.unity.template.universal-2d`), the default for every game.
-Built-in templates (`com.unity.template.3d`/`.2d` as full ids) are deprecated from 6.5, removed in
-6.7 — pass one only when the user explicitly asks for Built-in.
+**Template:** `--template 3d` / `2d` resolve to the URP templates. Pass a Built-in template id only
+when the user asks for Built-in (deprecated from 6.5, removed in 6.7).
 
 ## Step 3 — Join: project ready, result reconciled
 
-Wait for the background create and read its JSON result: `data.path` is the project,
-`data.version` the Editor, `data.editorInstalled` whether this run installed it.
+Wait for the background create and read its JSON result: `data.path` is the project, `data.version`
+the Editor, `data.editorInstalled` whether this run installed it. If create failed, surface the error
+and stop, because nothing downstream works without an Editor.
 
-**Paved: reconcile the result against the manifest**, narrating divergence — the cloud-link
-soft-fail included (`cloudLinked: false`, warnings, project intact; Step 6 keys off it). A 403 on
-the link is often the saved default org refusing new projects — retry
-`unity projects link cloud <path> --cloud-org <an org the user owns>` before concluding
-no-identity. A result carrying a `steps` field reconciles step-by-step from it.
-
-`--module` only applies when the run installs the Editor: on `data.editorInstalled: false`, add
-the platform modules with `unity install-modules -e <version> -m <platform-modules> --accept-eula`
-(skips what's already there). If create failed, surface the error (`unity-cli` troubleshooting)
-and stop — a failed install creates no project, and nothing downstream works without an Editor.
-
-**Once create succeeded, accept the Editor Software Terms before any open, and only after the
-user's yes.** If the terms question is still unanswered, wait for the answer before running
-anything. If the user declined, don't run `unity terms accept`: stop before the first open and say
-the Editor won't start past its terms dialog. On a yes, run
-`unity terms accept <data.version> --architecture <data.architecture> --yes` with no Editor running
-(a running Editor can overwrite the answer). It reports `alreadyAccepted: true` and writes nothing
-when they are already recorded. Do the same for any Editor the run moves to later, such as the
-6000.5.3+ update in Step 7. If `unity status --until-ready` after an open reports
-no instance while the Editor process is running, check `unity terms status <version> --architecture <architecture>`: a
-`not-accepted` Editor is sitting on that dialog, which only the user can click.
+Then follow [references/join-and-terms.md](references/join-and-terms.md): reconcile the result
+against the manifest (paved), add modules when `editorInstalled` is false, and run
+`unity terms accept` only after the user's yes and before any `unity open`, because an unaccepted
+Editor stops on a dialog an agent cannot click.
 
 ## Step 4 — Source control
 
@@ -213,116 +191,39 @@ commit is Step 8. Exact flags: the `unity-cli` workflow.
 ## Step 5 — Packages
 
 Map the brief to a package list and install via **`unity-package-management`** (**never**
-hand-edit `manifest.json`): `package add` once the Editor is open with `com.unity.pipeline`
-(Step 7); its C# installer script when packages must land pre-open (the `-quit` gotcha applies).
-That skill has the genre/platform/monetization → package mapping. A `--bare` run installs only the
-packages the user named, through the C# installer script (bare has no `com.unity.pipeline`, so
-`package add` can't run; never `unity pipeline install` to get it, which undoes the bare ask), and
-stops there. Otherwise paved
-adds the floors' needs: Cinemachine for any gameplay camera (2D rigs included);
-`com.unity.services.authentication` when Step 6 wires identity; and the live floor's services set
-on cloud-linked projects — in this pass, not at shell time. Cloud save and remote config come from
-create: when its `steps` report `cloudSave` and `remoteConfig` as `done` or `present`, skip them and
-add only what is left (leaderboards). The template already provides the
-render pipeline — never add `com.unity.render-pipelines.universal` on a Built-in template
-(materials go pink) or vice versa. Read the list back before installing (paved: print it now);
-verify `manifest.json` after.
+hand-edit `manifest.json`); a `--bare` run installs only the packages the user named. Paved adds the
+floors' needs (Cinemachine, authentication when Step 6 wires identity, the live floor's services on
+cloud-linked projects) and skips what create already reports. Never add a render-pipeline package
+atop the template. Read the list back (paved: print it), then verify `manifest.json`. Install
+routes, the bare path and the services rules: [packages-and-identity.md](references/packages-and-identity.md).
 
 ## Step 6 — Player identity, then the craft floors
 
-**Identity — the create result is the switch** (a `--bare` run skips this whole step: bare
-projects still cloud-link unless `--no-cloud`, and the unwired cost was stated at Mode time):
-identity addressed in the result → confirm it in the reconciliation and **skip**, never wire auth
-twice. No identity and the project cloud-linked →
-wire it: services init plus anonymous sign-in kicked off at bootstrap in **one small bootstrap
-script**, never blocked on (mechanics: **`build-live-game`**, auth section — checked in Before
-Step 1; missing and declined → skip the wiring, gap named); each service dependency is a named
-plan line, declining removes only that line. Cloud link failed or skipped →
-skip with the cost stated (saves and ranks stay local) — never wire services init against a
-project with no cloud id. Invisible to players, upgradeable later — the root the live floor
-builds on.
-
-**A `--bare` run skips the floors too** (the Mode section's stated cost). Otherwise **load the
-`craft-game-floors` skill** (checked in Before Step 1) and follow its floors through the
-build — art bible first, then camera, lighting, feedback, audio, shell, live floor, its done gate.
-Its values supersede the inline fallbacks below whenever present, version skew included. Missing
-and declined → fallbacks, gap named in the report.
+A `--bare` run skips this step. **Identity:** the create result is the switch. Identity in the
+result → confirm it and skip; none and cloud-linked → wire anonymous sign-in in one small bootstrap
+script (`build-live-game`); link failed or skipped → skip, cost stated. Then **load
+`craft-game-floors`** and follow its floors through the build; its values supersede the inline
+fallbacks. Missing and declined → fallbacks, gap named. Full rules:
+[packages-and-identity.md](references/packages-and-identity.md).
 
 ## Step 7 — Visual baseline
 
-A fresh template renders correctly but looks like a default; left there, agents reach for `OnGUI`
-and guess shader names. Apply this floor **before** any gameplay work. A `--bare` run skips this
-whole step (no Pipeline install, no baseline): go to Step 8, which opens the project.
+A fresh template renders correctly but looks like a default, and agents then reach for `OnGUI`
+and guess shader names. Apply the baseline **before** any gameplay work. A `--bare` run skips this
+step: go to Step 8.
 
-**On Unity 6000.5.0 to 6000.5.2, stop here.** The Pipeline package can't start its server on those
-Editors (create reports `PIPELINE_EDITOR_UNSUPPORTED`), so nothing below can connect, and reopening
-won't help. Create also left the package out on those Editors. Ask the user to update to
-6000.5.3f1 or later, then continue below with the project still closed: the Pipeline install comes
-first, then `unity terms accept <updated-version> --architecture <architecture> --yes` (Step 3; the
-architecture of the Editor you'll open), then the open names the updated Editor, `unity open "<project-path>" --editor-version
-<updated-version>` — a plain `unity open` reopens with the project's saved 6000.5.x Editor. If the
-update is 6000.7 or later, `unity open` refuses that move (`PROJECT_UPGRADE_REQUIRED`): run
-`unity projects upgrade "<project-path>" --to <updated-version> --yes` instead. It asks
-nothing: add `--no-cloud` when the user declined the cloud link at create, since an unlinked
-project otherwise exits `CLOUD_CHOICE_REQUIRED`, and no cloud flag when create linked it.
-
-**First, `unity pipeline install --project-path "<project-path>"`, before opening the
-Editor.** Running C# in the Editor and `unity command capture screenshot` below both need the
-project's `com.unity.pipeline` package. Create adds it by default on newer CLIs (this install then
-changes nothing); older CLIs leave the project without it, and Step 5's `-batchmode` installer
-never touches it. Install-before-open is the supported order; without the package, everything below fails to
-connect (it mimics `unity-cli`'s Safe Mode failure). The failure codes
-(`PIPELINE_MANIFEST_WRITE_FAILED`, a stuck `STATUS_PIPELINE_LOAD_PENDING`) and the stuck-Editor
-recovery are tabled in [references/skill-setup.md](references/skill-setup.md).
-
-**Then** `unity open "<project-path>"`, wait until `unity status` reports the Editor ready, and
-apply each item below by running C# in it — **`unity-cli` owns those commands**; don't re-derive
-them here.
-
-Once the Editor is ready, read the `unity-pipeline` guide if your skills don't list it —
-locations and mirroring routes: [references/skill-setup.md](references/skill-setup.md).
-
-**Items 1, 2, 5 and 6 assume a URP template**, the Step 2 default. If the user explicitly chose
-Built-in, don't run them as written — `UniversalAdditionalCameraData`, `Light2D`, the
-`urp-postprocessing` volume framework and `Universal Render Pipeline/*` shaders don't exist there;
-post-processing means the legacy Post Processing Stack, the shader names are `Standard` /
-`Unlit/Color`, and items 3–4 apply as written. Don't reach for `migrate-birp-to-urp` — the user
-asked for Built-in.
-
-1. **Post-processing.** Global Volume — `craft-game-floors`'s scene-lighting values when loaded (they
-   supersede these); fallback: Tonemapping (ACES), Bloom intensity 0.5–1 @ threshold 0.9, Vignette
-   ≈ 0.25; set `renderPostProcessing = true` on the main camera's `UniversalAdditionalCameraData`.
-   **REQUIRED SUB-SKILL:** `urp-postprocessing` — its templates create the volume and check HDR and
-   the layer mask; if it isn't loaded, do both yourself from these values.
-2. **Camera and light.** 2D → orthographic, solid background from the brief's palette, a `Light2D`
-   of type Global if the template scene has none (Sprite-Lit shaders render black without one).
-   3D → perspective, main-light shadows on; `craft-game-floors`'s lighting pass replaces the template's
-   default light story when loaded, else keep the template's directional light and skybox.
-3. **Quality tier.** Read `QualitySettings.names` first — tier names differ per template — then
-   `QualitySettings.SetQualityLevel` to the one matching the primary target: the highest tier for
-   desktop, the lowest for mobile/WebGL. Leave color space Linear and the Input System as the
-   template set them.
-4. **UI stack.** HUD and menus use a uGUI Canvas + TextMeshPro or UI Toolkit — **never `OnGUI`**.
-   **REQUIRED SUB-SKILL:** `ui` picks between them for the project. If it isn't loaded, choose
-   between them from the brief and say which you chose, and why, in your final report.
-5. **Materials and shaders.** Under URP use `Universal Render Pipeline/Lit`, `…/Unlit`,
-   `…/2D/Sprite-Lit-Default` or `…/2D/Sprite-Unlit-Default`. `Standard` and `Unlit/Color` render
-   pink or washed out under URP. Prefer `GraphicsSettings.currentRenderPipeline.defaultMaterial`
-   / `.default2DMaterial` over `Shader.Find`, and treat a `null` from `Shader.Find` as an error.
-   `currentRenderPipeline`, not `defaultRenderPipeline`: a quality tier can carry its own pipeline
-   asset, and item 3 above just set the tier.
-6. **Pixel art only.** Point filter mode on sprites and a Pixel Perfect Camera — see
-   `2d-pixel-perfect`. If missing, do both yourself and note the skill-setup install route in the
-   report.
-
-Save the scene, then confirm both of these — **not with `unity logs`**, which reads the CLI's own
-log and reports clean whatever the scene looks like:
-
-- No render-pipeline or shader errors Editor-side. Read the Editor console through `unity-cli`,
-  or read `Editor.log` directly — that skill's "Recovering from Safe Mode" section has the
-  per-platform paths.
-- `unity command capture screenshot --output-path baseline.png` looks lit and tonemapped rather than flat
-  gray.
+1. **Read [references/visual-baseline.md](references/visual-baseline.md) first.** It holds the
+   Editor-version stop (6000.5.0 to 6000.5.2 cannot run the Pipeline package), the order of
+   `unity pipeline install` before `unity open`, and the six items, because the details differ per
+   render pipeline and a wrong guess renders pink or flat.
+2. Install the Pipeline package, open the project, and wait until `unity status` reports it ready.
+3. Apply post-processing, camera and light, quality tier, UI stack, materials and shaders (and
+   pixel-art settings for pixel art). `unity-cli` owns the commands; use `craft-game-floors` values when it is loaded.
+4. Save the scene, then check by file and API, never a screenshot: the Editor console has no
+   render-pipeline or shader errors (`unity command console status`; never `unity logs`, the CLI's
+   own log), and `script eval` reads back the camera post-processing flag, the Volume profile and the
+   quality tier. On a failure, reread [visual-baseline.md](references/visual-baseline.md), fix
+   that setting and check again.
 
 ## Step 8 — Save & first commit
 
@@ -341,71 +242,76 @@ only if not — headless/CI uses the "Import & save headlessly" method in
 - **Unity Version Control (UVCS):** check in through the workspace from Step 4 — no `git` step;
   generated folders stay excluded by the ignore rules.
 
-If Step 7 mirrored skills into the project, ask whether to include them. If Step 4 linked
-**without** `--no-initial-commit`, the CLI already committed the bare project — add a follow-up
-commit rather than double-committing.
+If Step 7 mirrored skills into the project, ask whether to include them. A Step 4 link without
+`--no-initial-commit` already committed the bare project: add a follow-up commit.
 
-## Step 9 — Hand off
+## Step 9 — First playable loop
+
+A `--bare` run skips this step. Otherwise the Step 8 commit is the restore point; build on it with
+`craft-game-floors`'s floors in its order: the gameplay camera, placeholder assets, character motion
+(floor 6), then **at least one playable loop** (floor 7): one verb, one visible goal, one pressure,
+a win or lose state, and a restart, or the shape the user stated (a sandbox has no lose state). Close the
+loop first, then build as far as the prompt reaches, one system per pass. Then the feel, audio, shell and live floors, and
+its **done gate** last, scored on the running build. Commit with the Step 4 VCS, `.meta` files
+included. `craft-game-floors` missing and declined → build the loop from the
+shape above, skip the gate, gap named in the report.
+
+## Step 10 — Publish
+
+**Publishing is a human gate**: after Step 9's commit, ask once whether to upload to Unity Play,
+say plainly what a yes uploads, and wait. It is public and on the user's account, so never assume it.
+
+On a yes, follow [references/publish.md](references/publish.md): confirm the CLI has a publishing
+command, build WebGL through a build profile, upload, and read `urlKind` from the JSON result.
+Never retry an upload that may have been accepted, because that creates a second public listing.
+A declined publish is a one-line note in the report with the route to run later, never a nag.
+
+## Step 11 — Hand off
 
 Based on Step 2 monetization, invoke the matching skill for the actual integration:
 - IAP → **implement-in-app-purchases**
 - Ads → **levelplay-unity-integration**
 - Accounts / cloud save / economy / remote config / leaderboards → **build-live-game**
 
-If the matching skill isn't loaded, point the next steps at the skill-setup install route rather
-than integrating from memory.
+If it isn't loaded, point at the skill-setup install route; never integrate from memory.
 
 **Offer the forward baton** (declared on the manifest; not on a `--bare` run): one idempotent line
 for the project's `CLAUDE.md` or `AGENTS.md` — "When building gameplay, feel, audio, shell, or live
 features, load the `craft-game-floors` skill; if it isn't installed, ask the user whether to run
 `unity skill install <client>` (ask: never run it without a yes)." That file steers every later
 agent session in the project, so **ask before writing it**, even in paved mode, and show the line.
-On a yes, append it and commit the note — appended after Step 8, it otherwise never reaches clones.
-On a no, put the line in the report for the user to add. Later sessions reach the floors through
-it without this skill re-triggering.
+On a yes, append it and commit the note — appended after the last commit, it otherwise never
+reaches clones. On a no, put the line in the report for the user to add.
 
-Report the project path, Editor version, pipeline and template, packages, the manifest with its
-reconciliation, identity state, the baseline applied, any missing skill, `craft-game-floors`'s done gate
-as the build's finish line, and next steps.
+**Final check before the report.** Confirm the project has zero console errors with
+`unity command console status` (on a `--bare` run without `com.unity.pipeline`, read `Editor.log`
+instead; never install Pipeline for this), and stop there unless the user asked for proof or you suspect a
+specific fault. To chase one, enter Play mode once and read state with `unity command script eval`
+instead of adding logging, and take no screenshots. If a fix doesn't work, go back and reread the
+step's delegated skill and `references/` file before trying again.
 
-## Scope — what this skill does NOT do
+## Final report
 
-- **No gameplay scaffolding.** A running, wired project with a visual floor; the game is the next
-  conversation (with `craft-game-floors`). One exception: Step 6's single bootstrap script.
-- **No command reference.** Syntax lives in `unity-cli` / `unity-package-management`.
-- **No re-deciding create's defaults** — narrate them from the result. The Defaults table is this
-  file's only opinions; the guided interview survives untouched.
+Summarize what you did: project path, Editor version, pipeline and template, the manifest with its
+reconciliation, identity state, the baseline, what the loop built, `craft-game-floors`'s done gate
+scores, and the Unity Play link and kind (or Step 10's note). Disclose every side effect: packages
+installed, terms accepted, sign-in, and files written such as the `CLAUDE.md` line. Then list the
+user's follow-ups, any missing skill included.
 
-## Checklist
+## Guardrails
 
-- [ ] Delegated skills checked before Step 1 (incl. `craft-game-floors`): a missing one offered, or named
-      in the report
-- [ ] Mode decided once; in paved, the manifest printed before the create launches
-- [ ] Brief captured; platforms + monetization recorded
-- [ ] Background create with `--install-editor` + modules, URP template (`--template 3d`/`2d`)
-      unless Built-in was requested; `--bare` only on the user's ask; result reconciled
-- [ ] Source control attached (Step 4), or local git + Unity `.gitignore`
-- [ ] Packages via `package add` (or the C# script pre-open); `manifest.json` verified; no
-      render-pipeline package atop the template
-- [ ] Identity confirmed from the result or wired in Step 6 (stated cost on a failed link)
-- [ ] `craft-game-floors` loaded (or its absence named); `unity-pipeline` read once the Editor was ready
-- [ ] Baseline applied: Volume + camera post on, quality tier, UI stack (no `OnGUI`), URP shaders,
-      capture checked (skipped on `--bare`; on 6000.5.0–6000.5.2, Editor updated first)
-- [ ] `.meta` files exist; first commit made; `Library/` excluded
-- [ ] Forward baton offered and written only on a yes (none on `--bare`); handoff done if applicable
+- **Do only what's asked. Don't change unrelated assets or files. Avoid long explanations.** Create one project and make only the changes the steps name, because the user will open this folder as their own.
+- **Never leave verification code in the user's script. Never build logging or detection they didn't ask for.**
+- **Restore point first.** Step 8's commit is the project's restore point. Make it before any gameplay work, and never rewrite or force-push it, so the user can return to a clean template.
+- **Ask before anything public or global**: signing in, installing agent skills, writing to `CLAUDE.md` or `AGENTS.md`, and publishing, because each is hard to undo or affects more than this project.
+- **Never run destructive commands** (`rm -rf`, `git reset --hard`, clearing the user's console) in the user's project.
+- **End with the Final report**, listing what was and was not done and anything skipped, so nothing is silent.
+
+## Scope
+
+No command reference (syntax lives in `unity-cli` / `unity-package-management`), and no
+re-deciding create's defaults: narrate them from the result.
 
 ## Common mistakes
 
-- **Blocking on the create** instead of backgrounding it: with `--install-editor` it waits for the
-  whole Editor install.
-- **Acting before the manifest prints** (paved), or burying an assumption outside it — if it isn't
-  in the manifest, it isn't assumed.
-- **Wiring auth twice** — if create's result shows identity, Step 6's wiring is a skip.
-- **Hand-editing `manifest.json`** instead of the package commands or the skill's script.
-- **Doing a required sub-skill's job from memory** when it isn't loaded, without telling the user
-  or offering the install.
-- **Committing `Library/`/`Temp/`/`obj/`/`Build/`**, or scripts without their `.meta` files.
-- **Missing Editor modules** — a mobile target needs `android`/`ios`; WebGL needs `webgl`.
-- **Picking `com.unity.template.2d` / `.3d` by name** — Built-in templates; use `--template 3d`/`2d`.
-- **Skipping the visual baseline** — flat template defaults, `OnGUI` HUDs, and
-  `Shader.Find("Standard")` under URP.
+Before you report, tick [references/checklist.md](references/checklist.md) and skim [references/common-mistakes.md](references/common-mistakes.md): backgrounding the create, hand-editing `manifest.json`, committing `Library/`, skipping the baseline, and publishing without a yes.

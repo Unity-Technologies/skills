@@ -1,10 +1,10 @@
 # Projects, releases & templates — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ### Contents
 
@@ -715,7 +715,7 @@ unity projects unlink vcs /path/to/MyProject
 unity projects unlink vcs /path/to/MyProject --unlink-workspace
 ```
 
-With piped or redirected stdout and no `--format` (so `tsv`), `link cloud` and `unlink cloud` print one row with six tab-separated columns: result (`linked`, `already-linked`, `unlinked`, `not-linked`), project path, cloud project ID, project name, organization ID, and `true`/`false` for whether a cloud project was created. For `link cloud` the name is the cloud project's. `unlink cloud` reports the link the project held before it was removed, with the name saved alongside it (the local project's title when the CLI made the link), and `not-linked` leaves the three cloud columns empty. For `link cloud`, `--format json` has the full payload (`cloudProject`, `cloudOrgSource`, `coppa`). `unlink cloud` JSON reports only `path` and `unlinked`, so read the removed link from its TSV row.
+With piped or redirected stdout and no `--format` (so `tsv`), `link cloud` and `unlink cloud` print a `key<TAB>value` table of the same members `--json` carries (`path`, and for `link cloud` `cloudProject`, `cloudOrgSource` and `coppa`), a header row first and one row per leaf, so a script selects a row by key and not by position. `--no-header` leaves the header out. `unlink cloud` reports the link it removed as `cloudProjectId`, `projectName` and `organizationId` (`null` when the registry row lacked one), beside `path` and `unlinked`. The other `projects` write commands follow the same rule: `pin`, `unpin`, `add`, `remove`, `import` and the `projects create` result under tsv start with a header row, as do `link vcs`, `unlink vcs`, `clone <url>`, `templates location`, `edit`, `delete`, `create` and `pack`, and `ci init` (whose `--dry-run` prints a `line` header, then one row per line of the workflow). A script that wants the bare value reads `--json` (its `data`), because `--format human` prints a sentence.
 
 `link vcs` shares the source-control flag set documented under `projects create`. `link cloud` / `link vcs` accept `--cloud-org <id-or-name>` (env `UNITY_CLOUD_ORG`), and `--coppa <status>` for the cloud project they create (see the COPPA declaration note under `projects create`).
 

@@ -1,6 +1,6 @@
 # Auth, license & cloud — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
@@ -85,10 +85,10 @@ Three behaviors worth knowing before scripting these:
 
 #### Access tokens for scripts and other tools
 
-`unity auth token` prints an access token from the CLI's sign-in, so a script, `curl` or another Unity tool can call Unity services as the signed-in user or service account without running its own sign-in. In the text formats stdout holds the token and nothing else (`--quiet` keeps it), so capture it directly.
+`unity auth token` prints an access token from the CLI's sign-in, so a script, `curl` or another Unity tool can call Unity services as the signed-in user or service account without running its own sign-in. With `--format human` stdout holds the token and nothing else (`--quiet` keeps it), so capture it with that flag. Piped, the CLI defaults to `--format tsv`, which prints a `key`/`value` table of the same data as `--json` (`accessToken`, `expiresAt`, `authMode`), so a bare `$(unity auth token)` captures the table.
 
 ```bash
-TOKEN=$(unity auth token)
+TOKEN=$(unity auth token --format human)
 curl -H "Authorization: Bearer $TOKEN" ...
 
 # The token, its expiry (ISO 8601) and the auth mode, in the envelope
@@ -245,7 +245,7 @@ unity cloud status --format json
 
 # Organizations
 unity cloud orgs --format json
-unity cloud org current                       # print the active default org (named when signed in)
+unity cloud org current                       # print the active default org (named when signed in); a script reads the id with --json
 unity cloud org set-default <id-or-name>      # set active default org
 unity cloud org clear-default                 # revert to "All Organizations"
 

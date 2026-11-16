@@ -39,8 +39,9 @@ the installer put it and read the skill file from there.
 It is the Pipeline package's own guide, and no client loads it from the package folder. If it is
 missing from your skills, read its skill file directly. It sits under
 `.claude/skills/unity-pipeline/` in the package: `Packages/com.unity.pipeline/` if the project embeds
-the package, otherwise the `Library/PackageCache/com.unity.pipeline@*` folder. List
-`Library/PackageCache` for the exact name, since the suffix is often a hash, not the version.
+the package, otherwise `<project-folder>/Library/PackageCache/com.unity.pipeline@*/`. List
+`Library/PackageCache` for the exact name, since the suffix is often a hash, not the version. Read
+only `.md` files, and only from that one package folder.
 
 To have your client load it in later sessions, `unity skill install <client> --local` can mirror it,
 but only for a client with a project scope (`unity skill install --list` shows which, and Claude

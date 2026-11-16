@@ -1,10 +1,10 @@
 # Run, test & build — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ### Contents
 
@@ -231,7 +231,7 @@ Outside GitHub Actions the format is inert — the `::`-prefixed lines are ordin
 
 #### Code coverage
 
-`--coverage` drives Unity's [Code Coverage package](https://docs.unity3d.com/Packages/com.unity.testtools.codecoverage@latest) by passing `-enableCodeCoverage -coverageResultsPath <path>` (plus `-coverageOptions` when `--coverage-options` is given). `--coverage-output` defaults to `CodeCoverage` relative to the working directory.
+`--coverage` drives Unity's [Code Coverage package](https://docs.unity3d.com/Packages/com.unity.testtools.codecoverage@<VERSION>/manual/index.html) by passing `-enableCodeCoverage -coverageResultsPath <path>` (plus `-coverageOptions` when `--coverage-options` is given). `--coverage-output` defaults to `CodeCoverage` relative to the working directory.
 
 Coverage **degrades gracefully**: if the project does not depend on `com.unity.testtools.codecoverage` (checked in `Packages/manifest.json`, then `Packages/packages-lock.json`), the CLI prints a warning naming the missing package, skips the coverage flags, and runs the tests normally. It never fails the test run for a missing coverage package — `-enableCodeCoverage` on a project without it silently produces nothing, which is the confusing outcome this replaces. `--coverage-output` / `--coverage-options` without `--coverage` is an error.
 
@@ -255,7 +255,7 @@ Precedence with the other options:
 | Option | When sharding |
 |---|---|
 | `--mode` | Unchanged — selects the platform, and is orthogonal to the split. |
-| `--filter` | Applied **by the CLI**, to narrow the inventory before the shard is taken from what survives. It has to be: the editor accepts a single `-testFilter`, and on a sharded run the slice's explicit name list already occupies it, so a `--filter` passed through would be dropped. Filtering here also makes the `tests` reported in `--format json` the ones that will actually run. It accepts the editor's own syntax — a semicolon-separated list of full names or regular expressions, each optionally negated with `!`. Note this ordering does **not** rebalance anything: assignment hashes each name independently, so filtering before or after the partition gives the same membership, and a filter can still leave a shard empty. |
+| `--filter` | Applied **by the CLI**, to narrow the inventory before the shard is taken from what survives. It has to be: the editor accepts a single `-testFilter`, and on a sharded run the slice's explicit name list already occupies it, so a `--filter` passed through would be dropped. Filtering here also makes the `tests` reported in `--format json` the ones that will actually run. It is a semicolon-separated list of full test names or regular expressions, each optionally negated with `!`. A regular expression uses the Rust `regex` syntax, searched anywhere in the name and case-sensitive; it has no lookahead, lookbehind or backreferences. An entry that is not a valid expression and is not a test's exact name is refused (exit 6) with the reason, instead of matching nothing. Note this ordering does **not** rebalance anything: assignment hashes each name independently, so filtering before or after the partition gives the same membership, and a filter can still leave a shard empty. |
 | `--output`, `--junit-output`, `--coverage-output` | Every artifact path gains a `.shard-N-of-M` suffix before its extension, so shards sharing a working directory never overwrite each other and a merge step can collect them by glob. |
 
 Two cases end the run early rather than producing something misleading. A slice with **no tests assigned** (more shards than tests) skips the editor entirely and exits 0 with a warning — launching with an empty filter would run the whole suite, turning `M` shards into `M` full runs. A slice whose assembled filter is **too long for a single editor argument** fails and tells you to raise the shard count, which shortens every slice. A test whose name contains a semicolon cannot be expressed in the editor's filter syntax at all, so it fails rather than silently not running.
@@ -380,7 +380,7 @@ It triggers an asset refresh plus script recompile, polls until compilation fini
 
 **Requires a running Editor with the Pipeline package.** That is what makes it fast (the Editor is already warm) and it means no build target has to be configured. There is no batch-mode fallback: with no reachable Editor it reports which Editors it found and what to do, and exits `12`, as `unity command` does.
 
-**It cannot report errors that put the Editor into Safe Mode.** An Editor that *boots* with compile errors loads no Pipeline package, so there is nothing to ask and you get exit `12`. This command reports errors you introduce into an Editor that is **already running** — the normal edit loop, where a failed compile keeps the server alive. See the Safe Mode note in `SKILL.md` for the recovery loop.
+**It cannot report errors that put the Editor into Safe Mode.** An Editor that *boots* with compile errors loads no Pipeline package, so there is nothing to ask and you get exit `12`. This command reports errors you introduce into an Editor that is **already running** — the normal edit loop, where a failed compile keeps the server alive. See the Safe Mode note in [integration-advanced.md](integration-advanced.md#recovering-from-safe-mode-connection-fails-because-of-compile-errors) for the recovery loop.
 
 **Exit codes are the whole point for CI.** `0` compiled (or nothing needed recompiling), `6` compilation reported errors, `12` **no Editor could be reached, so whether the code compiles is unknown**. Treat `6` as terminal and `12` as worth retrying after fixing the environment — you never have to match on the message text. Several Editors running is a `6`: pick one with `--project-path`.
 
@@ -513,7 +513,7 @@ unity build run /path/to/MyProject --build-path ./Build/other/MyGame.exe   # a d
 
 ### Unity Accelerator — shared asset-import cache
 
-The [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) is Unity's asset-import cache server: on import the Editor downloads a prebuilt artifact on a hash hit instead of re-importing. It pays off exactly where the CLI is used most — clean CI checkouts, ephemeral containers, branch switches, parallel agent worktrees.
+The [Unity Accelerator](https://docs.unity3d.com/<VERSION>/Documentation/Manual/UnityAccelerator.html) is Unity's asset-import cache server: on import the Editor downloads a prebuilt artifact on a hash hit instead of re-importing. It pays off exactly where the CLI is used most — clean CI checkouts, ephemeral containers, branch switches, parallel agent worktrees.
 
 **Persist the endpoint once** with `unity config accelerator <host:port>` (see [config-hub.md](config-hub.md)), and `run`, `test` and `build` inject it automatically. Per-invocation control:
 
