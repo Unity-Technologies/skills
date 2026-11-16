@@ -30,14 +30,14 @@ synchronize, plain Cloud Code modules are generally available and the better def
 
 | Requirement | Detail |
 | :-- | :-- |
-| `com.unity.services.cloudcode` **`3.1.0-exp.1`**+ | Confirm in the project with **Create > Services > Cloud Behaviour Script** in the create menu |
+| `com.unity.services.cloudcode` **`3.1.0-exp.1`**+ | Confirm that `unity command --query create_cloudbehaviour` lists `services.cloudcode create_cloudbehaviour`, or that **Assets > Create > Services > Cloud Behaviour Script** exists |
 | Editor is 6000.5 or newer | every CloudBehaviours assembly is gated on `UNITY_6000_5_OR_NEWER` |
 | Project is linked to a Unity Cloud project | required to deploy, and to authenticate at runtime |
 
 `Scope.MultiplayerSession` additionally needs `com.unity.services.multiplayer` installed. Player-scoped
 behaviours do not. One module can hold CloudBehaviours and native Cloud Code classes side by side.
 
-If the create-menu entry is missing, say so and do not write CloudBehaviour code: the installed version
+If both the command and the menu item are missing, say so and do not write CloudBehaviour code: the installed version
 does not carry CloudBehaviours and no amount of correct code will compile against it. Fall back to a plain
 stateful module unless the user asks for the experimental package.
 
@@ -61,20 +61,25 @@ stateful module unless the user asks for the experimental package.
 | client calls the generated method: `await behaviour.PlayTurn(move)` | `CallModuleEndpointAsync("Behaviour", "PlayTurn", args)` from a behaviour's client |
 | `Synchronized`, `ScopeChanged`, `Fatal`, `Error`, `MessageReceived` on the generated bindings | any other event name for connection or state callbacks |
 | read synchronized fields in a `ScopeChanged` handler -- the client hydrated before raising it | calling `Hydrate()` on connect or reconnect -- it already ran, and yours is a second RPC |
+| let the generated clients pre-warm the module host -- they arm the shared `ModuleHostWarmup.Default` when the game loads and it runs at sign-in | trying to call the warm route yourself -- `ModuleHostWarmup` is the only public entry and the generated code already arms it. A host without the warm route is skipped silently; a warm-up that runs out of retries raises `Fatal` with `InvokerUnavailable` and the client is disabled before it hydrates, until `EnableClient()` asks for another warm-up |
 | `List<T>`, `T[]`, `Dictionary<,>` across the boundary | a custom `IEnumerable<T>` type -- compile-time error |
 | model types carrying only fields and properties | methods or constructors on a model -- not regenerated client-side; a computed or get-only property is error `CCSG131` |
 | behaviour class names unique within a module | two behaviours sharing a simple name across namespaces -- generator error |
 
 ## Creating the module
 
-Always create a new module with **Create > Services > Cloud Behaviour Script**, because the creator writes
-the module's `.ccmu` asset along with both assemblies, and the Deployment window lists only modules that
-have a `.ccmu`. A module built from hand-written asmdefs alone compiles and generates bindings, but never
-appears in the Deployment window, and nothing reports why. An agent without computer-use tools asks the
-user to run this menu step; with them, it runs the step itself.
+```bash
+unity command services.cloudcode create_module --module-name MatchModule --path Assets/CloudCode
+unity command services.cloudcode create_cloudbehaviour --behaviour-name MatchState --module-path Assets/CloudCode/MatchModule/MatchModule.ccmu
+```
 
-The first behaviour in a folder opens the Cloud Behaviour Module Creator, which writes
-`<ModuleName>.ccmu` at the module root and scaffolds two assemblies:
+Always create the module with these commands, or, when they are missing, with **Assets > Create > Services > Cloud Code Module Script** and then **Cloud Behaviour Script**. Never hand-author the module's `.asmdef` files or its
+`.ccmu`, because the Deployment window lists only modules that have a `.ccmu` asset. A module built from
+hand-written asmdefs compiles, generates bindings and passes tests, but never appears in the Deployment
+window, and nothing reports why.
+
+The first command writes `<ModuleName>.ccmu` at the module root and scaffolds the module's assemblies; the
+second adds the behaviour and the CloudBehaviours assembly references. The module has two assemblies:
 
 | Folder | Assembly references | Platform |
 | :-- | :-- | :-- |
@@ -91,7 +96,7 @@ Two entries in that `Client/` row are easy to get wrong, and both fail as `CCSG1
   the generated client addresses its state through a `MultiplayerScopeProvider`. Installing
   `com.unity.services.multiplayer` is not sufficient on its own — the references have to be there too.
 
-Use the table to check what the creator generated. The creator also wires the cloud reference, which a
+Use the table to check what the commands generated. They also wire the cloud reference, which a
 hand-written client asmdef usually misses. The split matters: the cloud assembly has no engine
 references, so `UnityEngine` types are unavailable server-side, and the generator needs both assemblies to
 reference it.
@@ -103,13 +108,12 @@ assembly name, GUID and script reference as it is:
 1. Stop until the user confirms a rollback point, such as a commit in their version control or a backup
    copy of the project, so a failed repair has a clean way back.
 2. Check the cloud asmdef against the `Cloud/` row of the table above and add any missing references. The
-   create menu refuses to add behaviours to a module whose cloud assembly lacks them.
+   create command refuses to add behaviours to a module whose cloud assembly lacks them.
 3. Write `<ModuleName>.ccmu` in the folder that holds both assembly folders, in the format and with the
    GUID rules in the `.ccmu` File Format section of `references/cloud-code-modules.md`.
    Take each GUID from the `guid:` line of the matching `.asmdef.meta` in this project, never from
    anywhere else, because a GUID resolves only in the project that minted it.
-4. Verify: the `.ccmu` imports with zero console errors, and the module is listed in
-   **Services > Deployment** under the cloud asmdef's name. If either check fails, restore the rollback
+4. Verify: `unity command script recompile` finishes with no errors in `script recompile_status`, and `unity command services.deployment list_items` lists the module under the cloud asmdef's name. If either check fails, restore the rollback
    point and read the console error before trying again.
 
 ## The authoring model
@@ -419,17 +423,29 @@ endpoint, applies it, and only then raises `ScopeChanged`, with `Synchronized` i
 `ScopeChanged` handler can therefore read synchronized fields directly — they are already current,
 provided the hydrate succeeded (see below) — and a client that connects and does nothing else still holds server state.
 
-If that first hydrate fails, `Error` is raised with `HydrationFailedOnConnect` *before*
-`ScopeChanged`; `ScopeChanged` still follows, no `Synchronized` does, and the fields keep their
-previous or default values. An `Error` handler therefore runs on a client that has not yet announced
-its scope — `Scope` is already set, so calling `Hydrate()` from that handler is legal.
+Every generated client arms the shared `ModuleHostWarmup.Default` (`Unity.Services.CloudCode`) when the
+game loads, so the project's module host — the per-project process that runs every C# module, which the
+service calls the invoker — is warmed once a player signs in, and the client waits for the warm-up before
+its first hydrate. Read the warm-up's retry policy and idle timing in the installed package's docs, only
+the `.md` files in `<project-folder>/Library/PackageCache/com.unity.services.cloudcode@*/Documentation~/`,
+not from memory, because they change between package versions; read them again if a warm-up fails. If the host never becomes ready, the client
+stops through `Fatal` with `InvokerUnavailable`: it is disabled before it hydrates or raises
+`ScopeChanged`, and `EnableClient()` asks for another warm-up. A client on its own `IUnityServices`
+instance (a virtual player) gets a private warm-up that `DisableClient()` resets. A project without
+behaviour clients, or one that wants the host warm before the first native module call, arms the same
+instance itself with `ModuleHostWarmup.Default.Arm()`; it waits for services and sign-in on its own.
+Warming does not make a freshly deployed module callable any sooner.
+
+If that first hydrate fails the client stops the same way: `Fatal` with `HydrationFailedOnConnect`,
+the scope withdrawn, no `ScopeChanged` for it and no `Synchronized`. A `ScopeChanged` that finds
+`Scope` set therefore means the module host is up and the synchronized fields hold the server's
+current state — it is the safe point to start calling the behaviour.
 
 Every RPC return also carries the caller's fresh view of synchronized state, so a client that calls
 an RPC does not need to hydrate either.
 
-That leaves `Hydrate()` for two cases: catching up inside a live scope after a period of not
-listening, and recovering from `HydrationFailedOnConnect`. A reconnect is not one of them — it
-re-resolves the scope, which hydrates.
+That leaves `Hydrate()` for one case: catching up inside a live scope after a period of not
+listening. A reconnect is not one — it re-resolves the scope, which hydrates.
 
 Connecting costs one hydrate RPC per scope resolution, per client. A pooled client toggled
 repeatedly, or many behaviours on one player, pays it each time.
@@ -438,25 +454,49 @@ repeatedly, or many behaviours on one player, pays it each time.
 
 Two events, split by whether the client survives.
 
-`Fatal` carries a `CloudBehaviourException` whose `Reason` is one of `Unknown`, `SubscriptionError`,
-`Kicked`, or `AmbiguousSessions`. The client is **already disabled** by the time handlers run —
-`IsClientEnabled` is false and nothing further arrives until `EnableClient()` is called again. Do not
-call it from the handler: a failure that reproduces immediately would recurse. `AmbiguousSessions` in
-particular means the project has multiple active sessions and the binding cannot guess — set
-**Target Session Type** in the Inspector, or call `EnableClient(sessionType)`.
+`Fatal` carries a `CloudBehaviourException` whose `Reason` is one of `Unknown`,
+`SubscriptionError`, `Kicked`, `AmbiguousSessions`, `HydrationFailedOnConnect` or
+`InvokerUnavailable`. The client is **already disabled** by the time handlers run — `IsClientEnabled`
+is false, `Scope` is withdrawn and nothing further arrives until `EnableClient()` is called again. Do
+not call it from the handler: a failure that reproduces immediately would recurse; schedule the retry
+with a delay instead. `AmbiguousSessions` means the project has multiple active sessions and the
+binding cannot guess — set **Target Session Type** in the Inspector, or call `EnableClient(sessionType)`.
+`InvokerUnavailable` and `HydrationFailedOnConnect` are connect-time failures: the module host could
+not be warmed, or the first hydrate failed, so the client never announced that scope. A call that
+fails after the scope resolved throws to its caller and does not stop the client.
 
 `Error` carries a `CloudBehaviourError` and reports a failure the client **carries on from**: it keeps
-its `Scope` and stays enabled. Read `Reason` to decide whether to retry. Today the only value besides
-`Unknown` is `HydrationFailedOnConnect` — the client could not fetch server state when its scope
-resolved, so synchronized fields still hold their previous or default values. Call `Hydrate()` to try
-again.
+its `Scope` and stays enabled. Its one reason besides `Unknown` is `MessageError` — a synchronization
+or push-event message from the behaviour could not be read or applied, usually because the payload no
+longer matches the client's generated types after a redeploy. The message is dropped: synchronized
+fields are unchanged and neither the push event nor `MessageReceived` is raised for it. The detail
+names the message type. Regenerate the client against the deployed module; there is nothing to retry
+at runtime.
 
 ```csharp
-Fatal.AddListener(e => Debug.LogError($"client stopped: {e.Reason}"));
+Fatal.AddListener(e =>
+{
+    switch (e.Reason)
+    {
+        case CloudBehaviourExceptionReason.AmbiguousSessions:
+            // Configuration problem: pick a session type; re-enabling will not help.
+            break;
+        case CloudBehaviourExceptionReason.InvokerUnavailable:
+        case CloudBehaviourExceptionReason.HydrationFailedOnConnect:
+        case CloudBehaviourExceptionReason.SubscriptionError:
+        case CloudBehaviourExceptionReason.Kicked:
+            StartCoroutine(ReEnableAfterDelay()); // never EnableClient() from inside the handler
+            break;
+    }
+});
 Error.AddListener(e =>
 {
-    if (e.Reason == CloudBehaviourErrorReason.HydrationFailedOnConnect)
-        _ = Hydrate();
+    switch (e.Reason)
+    {
+        case CloudBehaviourErrorReason.MessageError:
+            // Client and module disagree on a payload; regenerate the client. Nothing to retry.
+            break;
+    }
 });
 ```
 
@@ -969,15 +1009,23 @@ breakpoints, and lets Play mode talk to real cloud logic without a round trip to
   failing at runtime.
 - A module whose source changed is **redeployed automatically** onto the running server — no stop/start
   cycle. Redeploy happens after a recompile, outside Play mode only. **Nothing deploys to the local server
-  during Play mode**, not even an explicit `services_deployment_item_deploy`, which is refused. A
+  during Play mode**, not even an explicit `services.deployment deploy_items`, which is refused. A
   `404 function-not-found` for an endpoint added while playing means the module isn't deployed yet: exit
   Play mode, wait for `Local Cloud Code server reloaded` in the Console, then re-enter. Same known limitation
   as modules: see
-  the Deploying via the Deployment Window section of `references/cloud-code-modules.md`.
+  the Deploying section of `references/cloud-code-modules.md`.
 - The server won't start without an active services environment: see
   the Running the Local Cloud Code Server section of `references/cloud-code-modules.md`.
 - On startup the server checks for port conflicts and a usable .NET runtime, and a server that dies during
   startup reports why.
+- **Local is not a sandbox, and not every design can be rehearsed on it.** It isolates the behaviour's own
+  state and push traffic; everything the behaviour then calls - Cloud Save, Secret Manager, Lobby -
+  is the live service for the active environment, and its writes are real. Player identity is not validated
+  locally. Session membership *is*, against the real Lobby service, so a session id with no lobby behind it
+  fails locally the same way it fails deployed. The full table is in
+  `<project-folder>/Library/PackageCache/com.unity.services.cloudcode@*/Documentation~/Authoring/cloud_code_local_server.md`.
+- Local or remote is decided **when Play mode is entered**, from whether the server is running, and the
+  server is stopped when the Editor quits - so the first Play session after reopening a project is remote.
 
 ### The binding Inspector
 
@@ -1009,10 +1057,10 @@ deployment or connection problem.
 
 ### Deployment
 
-CloudBehaviour modules appear in the **Deployment** window as Cloud Code modules and deploy from there to
-the linked UGS project. A module asset is a `.ccmu` file; its inspector offers deployment actions and a
-summary of the last successful deployment. The window finds modules only through their `.ccmu`, so a module
-that is missing from it has no `.ccmu`. Repair it by adding one (see
+CloudBehaviour modules deploy as Cloud Code modules, with
+`unity command services.deployment deploy_items --paths <path to .ccmu>`, to the linked UGS project. A module asset is a `.ccmu` file; its inspector offers deployment actions and a
+summary of the last successful deployment. Deployment finds modules only through their `.ccmu`, so a module
+missing from `services.deployment list_items` has no `.ccmu`. Repair it by adding one (see
 [Creating the module](#creating-the-module)).
 
 Names come from the **cloud assembly (asmdef) name**, not the `.ccmu` asset name. While the local server
@@ -1102,7 +1150,7 @@ These compile and then do nothing, which is what makes them expensive:
   returns, the hydrate on connect, and `Hydrate()`.
 - **A module without a `.ccmu` never reaches the Deployment window.** Hand-written asmdefs compile and
   generate bindings, but nothing lists the module for deployment and nothing warns. Create new modules
-  through the menu, and repair an existing one by adding its `.ccmu` (see
+  with the create commands, and repair an existing one by adding its `.ccmu` (see
   [Creating the module](#creating-the-module)).
 - **Model types are data only.** Methods and constructors are not regenerated on the client — the stub
   carries the public fields and properties, nothing else. A computed or get-only property is error

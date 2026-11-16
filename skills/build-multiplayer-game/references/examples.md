@@ -1,8 +1,8 @@
-## Examples: user-facing language
+# Examples: user-facing language
 
-These illustrate **User-facing questions and explanations** in the implementation-fit reference. They are for prose to the user, not for code or file edits (those may use real API names).
+These illustrate the user-facing language rules. They are for prose to the user, not for code or file edits (those may use real API names).
 
-### Clarifying questions
+## Clarifying questions
 
 **Bad (SDK / product vocabulary):**
 
@@ -16,7 +16,7 @@ These illustrate **User-facing questions and explanations** in the implementatio
 - "Should matchmaking be **automatic** (the game finds opponents for you) or **manual** (players choose a room)?"
 - "When two players are on different home networks, is **mediated connectivity** (no open ports on a router) a requirement?"
 
-### Explanations and plans
+## Explanations and plans
 
 **Bad (splitting named backend products):**
 
@@ -28,6 +28,6 @@ These illustrate **User-facing questions and explanations** in the implementatio
 - "We'll keep **room metadata** (map, rules) in one place, use **brokered connectivity** when direct links are unreliable, and **automatic pairing** for ranked."
 - "The **main multiplayer package API** can own **room state and joins** so you don't add a second room system on top."
 
-### When the user already named a product
+## When the user already named a product
 
 If they wrote e.g. "we're on **Relay** already," you may **mirror their wording** in discussion; still avoid **extra** product enumeration they did not ask for.

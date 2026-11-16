@@ -75,12 +75,14 @@ unity ugs fetch . -s remote-config -e production
 
 | Resource | Headless path |
 |---|---|
-| `.ccmu` (native C# module) | **Not the UGS CLI** — `unity ugs deploy` skips `.ccmu`. The Editor compiles the module and deploys it: the Deployment Window, or headlessly the `Deploy.cs` template in `references/deployment.md`. |
+| `.ccmu` (native C# module) | **Not the UGS CLI** — `unity ugs deploy` skips `.ccmu`. The Editor compiles the module and deploys it: `unity command services.deployment deploy_items --paths Assets/MyModule/MyModule.ccmu`. |
 | `.ccmr` (legacy module) | `unity ugs deploy` skips the `.ccmr` itself — pass the `.sln` it points at: `unity ugs deploy Module~/Module.sln`. The CLI runs `dotnet publish` (needs a .NET SDK on PATH). The Deployment Window deploys the `.ccmr` directly. |
 | `.ccm` (packaged module) | `unity ugs deploy <file>.ccm` |
 | `.rc`, `.ac`, `.lb`, `.js`, `.tr`, `.sched` | `unity ugs deploy <paths>` and `unity ugs fetch <path>`, or the Deployment Window. `--dry-run` first; `--reconcile` deletes remote content not in the deploy. `unity ugs tr new-file <name>` / `unity ugs sched new-file <name>` generate a default trigger / schedule config. |
-| `.ugo` (Game Overrides) | **Not the UGS CLI** — `unity ugs deploy` skips `.ugo`. Deploy through the Deployment Window, or headlessly the `Deploy.cs` template in `references/deployment.md`. |
+| `.ugo` (Game Overrides) | **Not the UGS CLI** — `unity ugs deploy` skips `.ugo`. Deploy with `unity command services.deployment deploy_items --paths Assets/MyOverrides.ugo`. |
 
 ## Credentials and Environment
 
 `unity ugs deploy`/`fetch` authenticate using whichever CLI credential is active — a service account (`unity ugs login` or its env vars) or, from 2.0.0+, Unity Hub sign-in (see [Auth and Project Setup](#auth-and-project-setup)) — never as the signed-in Editor user, and take the environment as an argument (`-e <name>`). An Editor deploy uses the Editor's own credentials and the project's *active* environment — except that while the local Cloud Code server runs, a Cloud Code module deploy goes to that server instead. Stop the local server before deploying a module remotely.
+
+The CLI keeps its own target, which can differ from the Editor's. Before a `unity ugs` command that writes to the backend, run `unity ugs config get project-id` and `unity ugs config get environment-name`, and confirm they match the project ID the Unity project is linked to and the environment the user asked for. If either differs, stop and ask the user.

@@ -30,7 +30,7 @@ references to a .NET solution built outside Unity) and JavaScript **scripts**. F
 - [Generated Client Bindings](#generated-client-bindings)
 - [Legacy Modules (.ccmr) - Maintenance Only](#legacy-modules-ccmr---maintenance-only)
 - [Code Templates](#code-templates)
-- [Deploying via the Deployment Window](#deploying-via-the-deployment-window)
+- [Deploying](#deploying)
 - [Running the Local Cloud Code Server](#running-the-local-cloud-code-server)
 - [Error Handling](#error-handling)
 - [Error Messages](#error-messages)
@@ -42,7 +42,8 @@ references to a .NET solution built outside Unity) and JavaScript **scripts**. F
 | Correct | Incorrect (do NOT use) |
 |---|---|
 | For a new C# module, author a `.ccmu` in the Editor | Scaffolding a `.sln`/`.csproj`/`.pubxml` for a new module -- that is legacy `.ccmr` |
-| Create a `.ccmu` module with **Create > Services > Cloud Code Module Script** | Hand-writing a new module's `.asmdef` files -- a module without a `.ccmu` never appears in the Deployment window |
+| Create a `.ccmu` module with `unity command services.cloudcode create_module`, or **Assets > Create > Services > Cloud Code Module Script** when the command is missing | Hand-writing the module's `.asmdef` files or `.ccmu` -- a module without a `.ccmu` from that command never appears in the Deployment window |
+| Set Api Compatibility Level with `unity command settings.player set` | Calling `PlayerSettings.SetApiCompatibilityLevel` from evaluated C# -- the command checks the value and reports the result |
 | A `.ccmu` module's name is its **cloud asmdef** `name` | The `.ccmu` filename -- it is only a fallback |
 | `.ccmu` client bindings are generated at **compile time** from `[CloudModuleClient]` | Clicking **Generate Bindings** -- that is the `.ccmr` flow |
 | `[CloudCodeService]` on an injected parameter of a `.ccmu` endpoint | A bare one -- the server still injects it, but it leaks into the generated client binding |
@@ -205,15 +206,48 @@ compile time. There is no solution to build, nothing to publish, and no NuGet re
 
 - Unity **6000.5** or newer.
 - `com.unity.services.cloudcode` **3.0.0** or newer.
-- **Api Compatibility Level set to `.NET Standard 2.1`** in Player Settings. Any other level makes the
-  module compile fine and then fail to deploy with "Unsupported API Compatibility Level".
+- **Api Compatibility Level set to `.NET Standard 2.1`**, because any other level makes the module
+  compile fine and then fail to deploy with "Unsupported API Compatibility Level". The API names this
+  level `NET_Standard`; `NET_Standard_2_0` is a deprecated alias for the same level. To set it:
+
+  1. Run `unity command settings.player get` and read `api-compatibility-level`. If it is `NET_Standard`
+     or `NET_Standard_2_0`, the level is already correct, so skip the remaining steps.
+  2. Run the command below. Use it instead of calling `PlayerSettings.SetApiCompatibilityLevel` from
+     evaluated C#, because the command checks the value and returns the setting as it stands after the
+     change. If it rejects the key or the value, run
+     `unity command --query settings.player --detail full --format json` and use the key and value
+     names in the `settings.player set` parameter schema.
+
+     ```bash
+     unity command settings.player set --settings '{"api-compatibility-level":"NET_Standard"}' --confirm true
+     ```
+
+  3. Check that `api-compatibility-level` in the response is `NET_Standard` or `NET_Standard_2_0`.
+  4. Run `unity status --until-ready`, because the change reloads the scripting domain and a command
+     sent before the reload finishes can fail.
 
 ### Create it
 
-Right-click a folder under `Assets/` -> **Create > Services > Cloud Code Module Script** and fill in the
-creation window. An agent without computer-use tools asks the user to run this menu step; with them, it
-runs the step itself. The rest of this section describes what the Editor generates for you, so you can
-recognise and check the result. It is not a list of files to write by hand.
+Run `unity command --query create_module` first. If it lists nothing, the installed package predates the
+Cloud Code commands: create the module with **Assets > Create > Services > Cloud Code Module Script**
+instead, which makes the module and its first script, and skip the commands below.
+
+```bash
+unity command services.cloudcode create_module --module-name MyModule --path Assets/CloudCode
+unity command services.cloudcode create_module_script --script-name MyCloudCodeScript --module-path Assets/CloudCode/MyModule/MyModule.ccmu
+```
+
+The first creates the module (cloud assembly `MyModule`, the deployed name; client `MyModuleClient`), the
+second its first script. Rerun `services.cloudcode create_module_script` against the module's `.ccmu` to add
+more script pairs.
+
+The rest of this section describes what the commands generate for you, so you can recognise and check the
+result. It is not a list of files to write by hand.
+
+Always use the commands, never hand-written asmdefs, because the Deployment window lists only modules that
+have a `.ccmu` asset. A hand-built module compiles, generates bindings and passes tests, but never appears
+in the Deployment window, and nothing reports why. If a module is missing from
+`services.deployment list_items`, check for its `.ccmu` first.
 
 Always use the menu for a new module, because it writes the module's `.ccmu` asset along with both
 assemblies, and the Deployment window lists only modules that have a `.ccmu`. A module built from
@@ -286,7 +320,14 @@ A GUID identifies an asset in one project only, so a value taken from anywhere e
 another module, a sample, an example in documentation -- resolves to nothing. Both keys are required; a
 `.ccmu` naming a GUID Unity cannot resolve fails to import and logs an error.
 
-Creating the module through the Editor writes the file with the right values already in it.
+Never write or edit a `.meta` file to get a GUID, because Unity replaces a GUID it rejects (malformed, or
+already used by another asset) with a new one on import, and a `.ccmu` that copied the hand-written value
+then resolves to nothing. If the `.asmdef.meta` does not exist yet, Unity has not imported the asmdef: run
+`unity command script recompile`, then `unity status --until-ready`, and read the GUID from the `.meta`
+Unity wrote.
+
+Creating the module with `services.cloudcode create_module` writes the file with the right values already in it. Do not write
+a `.ccmu` by hand for a new module; only a repair of an existing module adds one by hand (see the CloudBehaviours reference).
 
 ### Deployed Module Name
 
@@ -335,13 +376,13 @@ still compiles, and still deploys — it is simply wrong in ways you find out la
 | When | What is checked | How it surfaces |
 | :-- | :-- | :-- |
 | `.ccmu` import | only that both asmdef GUIDs resolve | console error, asset fails to import |
-| **Create > Services > Cloud Code Module Script** into an existing module's `Cloud/` folder | Editor-only, no engine references, not auto-referenced, references Core + Apis | modal dialog: *"This Cloud Code module's server Assembly Definition (.asmdef) is missing or misconfigured..."*, and the script is not created |
+| `services.cloudcode create_module_script` on an existing module | Editor-only, no engine references, not auto-referenced, references Core + Apis | the command fails with *"This Cloud Code module's server Assembly Definition (.asmdef) is missing or misconfigured..."*, and the script is not created |
 | Deploy | nothing about the asmdef flags; the only structural check is that two modules do not share a cloud assembly | per-item error status on each offending module in the Deployment window, logged as *"Assembly Failure -- Multiple CCMs reference the same assembly definition"* |
 
-So the asmdef flags are effectively enforced only when you add a script through the menu. A hand-edited
+So the asmdef flags are effectively enforced only when you add a script with the command. A hand-edited
 module is on the honour system — worth checking by eye, because nothing else will. (Deploy
 does make other checks unrelated to the asmdef — Api Compatibility Level and whether the project compiles —
-covered under [Deploying via the Deployment Window](#deploying-via-the-deployment-window).)
+covered under [Deploying](#deploying).)
 
 ### Client Assembly (`Client/MyModuleClient.asmdef`)
 
@@ -504,12 +545,6 @@ namespace MyModule.Client
     }
 }
 ```
-
-### Adding Another Script to an Existing Module
-
-Right-click the module's **`Cloud/` folder** -> **Create > Services > Cloud Code Module Script**. The same
-menu item detects the existing module and creates the cloud/client pair inside it instead of starting a
-new module. Creating a script in the `Client/` folder is rejected -- always start from `Cloud/`.
 
 ---
 
@@ -847,6 +882,12 @@ which cannot author `.ccmu`.
 A legacy module is a .NET class library (.NET 8, up to .NET 10) living outside `Assets/`, built and published by the Deployment
 Window, and referenced from Unity by a `.ccmr` file.
 
+If a project's `.ccmr` is missing, recreate the reference (not the module) with
+`unity command services.cloudcode create_module_reference --path Assets/MyModule.ccmr`. Not every
+`com.unity.services.cloudcode` release ships the Cloud Code CLI commands, so when
+`unity command --query create_module_reference` finds nothing, use
+**Assets > Create > Services > Cloud Code C# Module Reference** instead.
+
 ### Directory Structure
 
 Place the module at the **project root** (alongside `Assets/`). Unity does not scan the project root, so no `~` suffix is needed.
@@ -1161,11 +1202,11 @@ async Task Unsubscribe()
 
 ---
 
-## Deploying via the Deployment Window
+## Deploying
 
-1. Open **Services > Deployment** in the Unity Editor.
-2. All `.js`, `.ccmu` and `.ccmr` files under `Assets/` are listed. **Select only what you mean to deploy**
-   -- deploying everything can overwrite modules that are not ready to go out.
+1. Deploy with `unity command services.deployment deploy_items --paths <comma-separated paths>`.
+2. **Pass only what you mean to deploy** -- deploying everything can overwrite modules that are not ready
+   to go out.
 3. A `.ccmu` deploys the compiled cloud assembly, under the **cloud asmdef's name**. Its client bindings
    already exist -- they were generated when Unity compiled the module, so there is nothing to regenerate.
 4. A `.ccmr` builds and publishes its solution. After it deploys, generate or regenerate its bindings
@@ -1176,8 +1217,9 @@ it, and nothing is deployed to it while the Editor is in play mode. Edit and dep
 enter play mode. Changes made during play mode do not reach the local server until you exit play mode and
 deploy again.
 
-A `.ccmu` deploy fails with **"Unsupported API Compatibility Level"** unless the project's Player Settings
-have Api Compatibility Level on `.NET Standard 2.1`. It also fails if the project has compile errors --
+A `.ccmu` deploy fails with **"Unsupported API Compatibility Level"** unless the project's Api
+Compatibility Level is `.NET Standard 2.1` -- set it with `unity command settings.player set` (see
+[Requirements](#requirements)). It also fails if the project has compile errors --
 the module is deployed from its compiled assembly, so it has to build first.
 
 **Deploying a `.ccmu` needs a running Editor.** Nothing packages a `.ccmu` outside the Editor, and
@@ -1185,36 +1227,37 @@ the module is deployed from its compiled assembly, so it has to build first.
 to run the Editor. Only legacy `.ccmr` modules deploy without one, through their `.sln`; do not create a
 `.ccmr` to get around this.
 
-**Local development needs no deploy.** While the local Cloud Code server runs (Cloud Code button on the
-Editor toolbar > **Start Local Server**; it needs an active environment), each successful compile redeploys
+**Local development needs no deploy.** While the local Cloud Code server runs
+(`unity command services.cloudcode start_local_server`; it needs an active environment), each successful compile redeploys
 changed `.ccmu` modules onto it, outside Play mode. **Nothing deploys to the local server during Play mode**,
 not even an explicit deploy, which is refused: exit Play mode before recompiling and deploying. A
 `404 function-not-found` for an endpoint added while playing means exactly this; exiting Play mode redeploys
 it and logs `Local Cloud Code server reloaded`.
 
 **Known limitation.** An unfocused Editor doesn't notice file edits or run the local auto-deploy until it
-regains focus. After editing module code without focusing the Editor, run `unity command recompile`, then
-deploy with the `Deploy.cs` script from
-`references/deployment.md`: while the local
-server runs, the deploy targets it, not the environment. Stop the server before deploying remotely.
-
-To deploy without the window, run the deploy script in
-the Trigger Deployment Programmatically section of `references/deployment.md`.
+regains focus. After editing module code without focusing the Editor, run `unity command script recompile`, then
+deploy with `unity command services.deployment deploy_items --paths <path to .ccmu>`: while the local server runs, the deploy targets it, not the environment. Stop the server before
+deploying remotely.
 
 ---
 
 ## Running the Local Cloud Code Server
 
 The local server runs the project's modules in a process on this machine, and the SDK routes
-`CallModuleEndpointAsync` to it instead of the cloud. Start and stop it with the Cloud Code button on the
-Editor toolbar (**Start Local Server** / **Stop Local Server**), outside Play mode; it needs Unity 6000.3+.
-Redeploy on compile, and what to do when the Editor is unfocused, are covered in
-[Deploying via the Deployment Window](#deploying-via-the-deployment-window).
+`CallModuleEndpointAsync` to it instead of the cloud. Redeploy on compile, and what to do when the Editor is
+unfocused, are covered in [Deploying](#deploying).
+
+```bash
+unity command services.cloudcode start_local_server     # compiles the modules, spawns the server, mode becomes "Local"
+unity command services.cloudcode get_local_server_status    # mode, status, pid, port, last failure
+unity command services.cloudcode stop_local_server      # mode back to "Remote"
+```
+
+The local server needs Unity 6000.3+. Start and stop both refuse while the Editor is in Play mode.
 
 The server listens on port **14750** by default. To run several Editors, each with its own local server,
-give each project a distinct port in **Edit > Project Settings > Services > Cloud Code > Local Debugging >
-Port** while its server is stopped; a port already in use fails startup with *"Server Port <port> is not
-available."*
+give each project a distinct port with `unity command services.cloudcode set_local_server_port --port <port>`
+before starting its server; a port already in use fails startup with *"Server Port <port> is not available."*
 Play mode reads the port and whether a server is running from Editor preferences shared by every Editor on
 the machine, so calls go to the most recently started server, and stopping any Editor's server sends the
 others' calls to the cloud.
@@ -1227,7 +1270,16 @@ Startup validates the environment first, and a project with no active environmen
 > Selector, found under Edit → Project Settings → Services → Environments, to set it.
 
 A fresh clone or a CI checkout has no active environment, so this is usually the first thing that fails.
-Set one in **Edit > Project Settings > Services > Environments** (ask the user, or drive the Editor UI).
+Set one first:
+
+```bash
+unity command services.environment list                           # name + id + which is default
+unity command services.environment set_active_by_name --name <env>        # an environment from the list, not blindly production
+unity command services.environment get_active_name               # confirm
+```
+
+`services.environment set_active_by_name` refreshes the environment list before resolving the name, so it
+works on a project that has never fetched one. An unknown name throws `EnvironmentNotFoundException`.
 
 ---
 
@@ -1266,7 +1318,7 @@ have it.
 
 | Error string | Cause | Fix |
 | :-- | :-- | :-- |
-| `Unsupported API Compatibility Level` | The project's Api Compatibility Level is not `.NET Standard 2.1` | Set it in Player Settings, then redeploy the `.ccmu` |
+| `Unsupported API Compatibility Level` | The project's Api Compatibility Level is not `.NET Standard 2.1` | Set it with `unity command settings.player set` (see [Requirements](#requirements)), then redeploy the `.ccmu` |
 | `Invalid constructor: type X must have exactly one public constructor` | The module class has no public constructor or several | Keep exactly one public constructor |
 | `Function's ... class in module ... requires a scope and must be called with a scope` | A `[StateScope]` function was called without a scope, or with the wrong one | Pass a `CloudCodeScope` that matches the class's `[StateScope]`, or use the generated client |
 | `This Cloud Code module's server Assembly Definition (.asmdef) is missing or misconfigured...` | The cloud asmdef is not Editor-only, has engine references, is auto-referenced, or lacks the Core and Apis references | Fix the asmdef, then create the script again |

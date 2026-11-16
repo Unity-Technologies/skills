@@ -73,7 +73,7 @@ var adminClient = ApiService.CreateAdminClient();
 adminClient.SetServiceAccount(keyId, keySecret);
 ```
 
-Service account credentials are created in the Unity Dashboard under **Project Settings > Service Accounts**. The key ID and secret are passed at runtime — do not hard-code them.
+Service account credentials are created in the Unity Dashboard under **Project Settings > Service Accounts**. The key ID and secret are passed at runtime — read them from environment variables or a secret store, never hard-code them or pass them as command-line arguments, because source ships in builds and arguments show in shell history and process listings.
 
 ### IAdminClient Service Area Properties
 
@@ -199,8 +199,11 @@ Same service area properties as `IServerClient`, plus `PlayerAuthentication` and
 using Unity.Services.Apis;
 
 // Admin client is editor-only. Guard with #if UNITY_EDITOR in runtime assemblies.
+// The same variables the UGS CLI reads; set them from the shell or CI secret store, never commit the values.
 var adminClient = ApiService.CreateAdminClient();
-adminClient.SetServiceAccount("your-key-id", "your-key-secret");
+adminClient.SetServiceAccount(
+    System.Environment.GetEnvironmentVariable("UGS_CLI_SERVICE_KEY_ID"),
+    System.Environment.GetEnvironmentVariable("UGS_CLI_SERVICE_SECRET_KEY"));
 ```
 
 ### Write Game Data (Custom Data) from the Editor

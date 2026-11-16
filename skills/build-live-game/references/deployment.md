@@ -4,6 +4,7 @@
 
 - [Overview](#overview)
 - [Supported Service Integrations](#supported-service-integrations)
+- [Link the Project](#link-the-project)
 - [Workflow](#workflow)
 - [Deployment Definitions (.ddef)](#deployment-definitions-ddef)
   - [JSON Schema](#json-schema)
@@ -15,8 +16,8 @@
   - [SeverityLevel](#severitylevel)
   - [DeploymentProvider (Abstract)](#deploymentprovider-abstract)
   - [IDeploymentItem](#ideploymentitem)
-  - [Code Template -- Register a Custom Provider](#code-template--register-a-custom-provider)
-  - [Code Template -- Trigger Deployment Programmatically](#code-template--trigger-deployment-programmatically)
+  - [Code Template: Register a Custom Provider](#code-template-register-a-custom-provider)
+  - [Code Template: Trigger Deployment Programmatically](#code-template-trigger-deployment-programmatically)
 
 ## Overview
 
@@ -29,7 +30,7 @@ Editor-only package providing the **Deployment Window** (Services > Deployment).
 
 Each service package registers its own file types with the Deployment Window. Install the relevant service package to enable its file types.
 
-| Service | Package | File Type(s) | Min Version |
+| Service | Package | File Type(s) | Min Version to Deploy the File Type |
 |---|---|---|---|
 | Cloud Code Scripts | `com.unity.services.cloudcode` | `.js` | 2.1.0 |
 | Cloud Code C# Modules (native) | `com.unity.services.cloudcode` | `.ccmu` | 3.0.0 |
@@ -44,13 +45,15 @@ Each service package registers its own file types with the Deployment Window. In
 | Scheduler | `com.unity.services.tooling` | `.sched` | 1.4.2 |
 | Deployment Definitions | `com.unity.services.deployment` | `.ddef` | -- |
 
+## Link the Project
+
+Deploying and runtime service calls need the project linked to a Unity Cloud project. Follow `references/link-cloud.md`. Deploying through `unity ugs` with service-account keys needs no Editor sign-in.
+
 ## Workflow
 
 1. Add `com.unity.services.deployment` via Package Manager.
-2. Open **Services > Deployment**.
-3. Select the target environment in the dropdown.
-4. Choose files to deploy (or select all).
-5. Click **Deploy**.
+2. Set the target environment: `unity command services.environment set_active_by_name --name <env>`.
+3. Deploy the files: `unity command services.deployment deploy_items --paths <comma-separated paths>`.
 
 ## Deployment Definitions (.ddef)
 
@@ -58,7 +61,7 @@ A Deployment Definition scopes the Deployment Window to a subset of files. Usefu
 
 **File extension:** `.ddef`
 
-**Create via:** Right-click in Project window > Create > Unity Gaming Services > Deployment Definition
+**Create via:** `unity command services.deployment create_definition --path Assets/MyDefinition.ddef`
 
 ### JSON Schema
 
@@ -81,7 +84,7 @@ A Deployment Definition scopes the Deployment Window to a subset of files. Usefu
 
 - **Without a `.ddef`:** the Deployment Window discovers and deploys all UGS config files under `Assets/`.
 - **With a `.ddef` selected:** only files within the definition's scope (minus excluded paths) are shown and deployed.
-- Multiple `.ddef` files can exist in one project; select which one to use in the Deployment Window dropdown.
+- Multiple `.ddef` files can exist in one project; `unity command services.deployment list_definitions` lists them.
 
 ## Programmatic API
 
@@ -169,7 +172,7 @@ Subclass this to expose your own deployable assets to the Deployment Window.
 | `Status` | `DeploymentStatus` (message + severity) |
 | `States` | `ObservableCollection<AssetState>` -- local asset validation states |
 
-### Code Template -- Register a Custom Provider
+### Code Template: Register a Custom Provider
 
 ```csharp
 using UnityEditor;
@@ -194,23 +197,22 @@ static void RegisterProvider()
 > admin API (e.g. `adminClient.CloudSaveData.SetCustomItem` for Cloud Save game data).
 > See `references/apis.md` for the full `IAdminClient` interface and code templates.
 
-### Code Template -- Trigger Deployment Programmatically
+### Code Template: Trigger Deployment Programmatically
 
-Run it with `unity command run_script --file AgentScripts/Deploy.cs --entry Deploy.Run --args '[["Assets/MyConfig.rc"]]'`
-(needs the `com.unity.pipeline` and `com.unity.services.deployment.api` packages; keep the file outside `Assets/`). `DeploymentWindow` throws
-*"Deployment Window must be opened for this operation."* until the window is open, so the script opens it
-and waits.
+Prefer `unity command services.deployment deploy_items`; use this only from Editor code.
+`DeploymentWindow` throws *"Deployment Window must be opened for this operation."* until the window is
+open, so open it and wait first. Await the calls; never `.Wait()`, which deadlocks the main thread.
 
 ```csharp
-// AgentScripts/Deploy.cs — deploys to the active environment. Await; never .Wait(), which deadlocks the main thread.
 using System.Linq;
 using System.Threading.Tasks;
 using Unity.Services.DeploymentApi.Editor;
 using UnityEditor;
+using UnityEngine;
 
 public static class Deploy
 {
-    public static async Task<string> Run(string[] paths)
+    public static async Task Run(string[] paths)
     {
         var deployments = Deployments.Instance;
         if (!(deployments.DeploymentWindow is EditorWindow))
@@ -218,14 +220,14 @@ public static class Deploy
         for (var i = 0; i < 100 && !(deployments.DeploymentWindow is EditorWindow); i++)
             await Task.Delay(100);
 
-        var items = deployments.DeploymentWindow.GetFromFiles(paths);
-        var found = items.Where(item => item != null).ToList();
-        // Deploy all items instead: await deployments.DeploymentWindow.Deploy(deployments.DeploymentWindow.GetAllDeploymentItems());
+        var window = deployments.DeploymentWindow;
+        window.DeploymentStarting += items => Debug.Log($"Deploying {items.Count} items...");
+        window.DeploymentEnded += items => Debug.Log($"Deployment complete: {items.Count} items");
+
+        // Deploy everything instead: await window.Deploy(window.GetAllDeploymentItems());
+        var found = window.GetFromFiles(paths).Where(item => item != null).ToList();
         if (found.Count > 0)
-            await deployments.DeploymentWindow.Deploy(found);
-        return string.Join("\n", paths.Select((path, i) => items[i] == null
-            ? $"{path}: not a deployable item"
-            : $"{path}: {items[i].Status.MessageSeverity} {items[i].Status.Message} {items[i].Status.MessageDetail}"));
+            await window.Deploy(found);
     }
 }
 ```

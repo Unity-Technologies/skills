@@ -1,4 +1,4 @@
-## Underlying services (use only when necessary)
+# Underlying services (use only when necessary)
 
 **Agent-only reference** for implementation when the primary API is insufficient or the user explicitly requested these—**do not** surface this table or product names to the user unless they asked for them.
 

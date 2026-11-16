@@ -25,6 +25,7 @@ The Building Blocks and sample projects predate native module authoring. Their C
 - On Unity 6000.5+, do not copy their solution scaffolding, `.ccmr` files or raw `CallModuleEndpointAsync` calls into new work. On an older Editor, which cannot author `.ccmu`, `.ccmr` is the supported path.
 - On Unity 6000.5+, to reuse a block's server logic, move each `[CloudCodeFunction]` class into a new `.ccmu` module and call it through the module's generated client. The Creating a Cloud Code Module and Migrating a `.ccmr` to `.ccmu` sections of `references/cloud-code-modules.md` cover both steps.
 - An imported block's `.ccmr` still deploys and runs. Maintain it as legacy until you port it, rather than rewriting it unasked.
+- Read an imported block's Cloud Code before you deploy it, because it runs on the user's backend, and name every Building Block or sample you imported in the final report.
 
 ---
 

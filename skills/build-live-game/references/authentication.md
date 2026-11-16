@@ -5,6 +5,7 @@
 - [Anti-Hallucination Reference](#anti-hallucination-reference)
 - [Sign-In Methods](#sign-in-methods)
 - [Key Properties](#key-properties)
+- [Inspect State from the CLI](#inspect-state-from-the-cli)
 - [Events](#events)
 - [Player Info / Name](#player-info--name)
 - [Link / Unlink Methods](#link--unlink-methods)
@@ -112,6 +113,37 @@ Task DeleteAccountAsync()
 
 ---
 
+## Inspect State from the CLI
+
+Game code reads authentication state in C#. To check that state yourself while the game runs, use the `services.authentication` CLI commands. Never read `AuthenticationService.Instance` by evaluating C# with `script eval`. The commands return the same state without running code in the user's Editor.
+
+The following table lists each command and the property it returns.
+
+| Command | Returns |
+|---|---|
+| `get_state` | `SignedOut`, `SigningIn`, `Authorized`, `Refreshing`, or `Expired` |
+| `get_signed_in` | `IsSignedIn` |
+| `get_authorized` | `IsAuthorized` |
+| `get_player_id` | `PlayerId` |
+| `get_profile` | `Profile` |
+| `get_access_token` | `AccessToken` (the raw JWT) |
+| `get_player_name` | `PlayerName`. The game must call `GetPlayerNameAsync` first, otherwise it returns a cached name or nothing |
+| `get_player_info` | `PlayerInfo`. The game must call `GetPlayerInfoAsync` first, otherwise it can lack the creation time, linked identities, and username |
+
+These are runtime commands, so they fail outside Play mode and before the services initialize. To run one:
+
+1. Read each command's arguments from `unity command --query services.authentication --format json`, because the arguments can differ between package versions.
+2. Read the play state with `unity command editor status`. If its `playMode` reads `stopped`, enter Play mode with `unity command editor.playmode start`. Otherwise the session is the user's: inspect it and change nothing.
+3. Wait until `unity command services.core get_initialization_state` returns `Initialized`. If it returns `Failed` or stays `Uninitialized`, stop and read the Console, because the game never initialized the services.
+4. Run the command you need, for example `unity command services.authentication get_state`:
+   - `get_state`, `get_signed_in`, `get_authorized`, and `get_profile` work as soon as the services initialize. Report `SignedOut` or `SigningIn` as the player's state, not as an error.
+   - `get_player_id`, `get_access_token`, `get_player_name`, and `get_player_info` need a signed-in player. Run them only when `get_signed_in` returns `true`, otherwise they return an empty value.
+5. If you entered Play mode in step 2, exit it with `unity command editor.playmode stop`. Never stop the user's session, because stopping it discards its runtime state.
+
+The Editor command `services.authentication add_player_authentication_component` adds a scene component that signs the player in without game code. Never add it when the game's own code already signs in, because the player would sign in twice.
+
+---
+
 ## Events
 
 | Event | Signature | When fired |
@@ -195,7 +227,7 @@ void ClearSessionToken()
 void ProcessAuthenticationTokens(string accessToken, string sessionToken = default)
 ```
 
-Use `SwitchProfile(string profile)` before sign-in to store separate cached credentials per-profile (useful for multiple accounts on one device). Must be called BEFORE signing in -- call `SignOut()` first if already signed in.
+Use `SwitchProfile(string profile)` before sign-in to store separate cached credentials per-profile (useful for multiple accounts on one device). Must be called BEFORE signing in -- call `SignOut()` first if already signed in. It is not a second player for testing a multiplayer feature: one game instance holds one signed-in player at a time, so test shared play with one Multiplayer Play Mode instance per player.
 
 ---
 
@@ -261,10 +293,20 @@ Task UpdatePasswordAsync(string currentPassword, string newPassword)
 | Steam | Publisher Web API Key | Session ticket + identity | `SignInWithSteamAsync(sessionTicket, identity)` |
 | Oculus | App ID, App Secret | Nonce + user ID | `SignInWithOculusAsync(nonce, userId)` |
 | OpenID Connect | Client ID, Client Secret, Issuer URL | ID token | `SignInWithOpenIdConnectAsync(providerName, idToken)` |
-| Unity Player Accounts | Enable in dashboard | Access token | `SignInWithUnityAsync(token)` |
+| Unity Player Accounts | Turn on Player Accounts (`references/player-account.md`) | Access token | `SignInWithUnityAsync(token)` |
 | Username / Password | Enable in dashboard | Username + password | `SignInWithUsernamePasswordAsync(u, p)` |
 
-All social identity providers are configured in the **Unity Dashboard**: Your project > Products > Authentication > Identity Providers > Add provider.
+Identity providers are configured per project, outside the game code, and a sign-in method fails with `InvalidProvider` until its provider is configured.
+
+### Configure a Provider
+
+1. Check that the UGS CLI plugin runs: `unity ugs --version`. If it fails, install it with `unity plugin install ugs`. Do this first, because without the plugin the next check fails too, which would wrongly read as the commands being unavailable.
+   The `id-provider` commands need UGS CLI 2.1.0 or later. If the version is older, run `unity plugin upgrade ugs`. If it still reports an older version, the plugin registry does not offer 2.1.0 yet. Tell the user, and either use the Dashboard (step 5) or, if they agree, download the 2.1.0 build for their platform from the UGS CLI GitHub releases and put it on PATH as `ugs`: `unity ugs` runs a `ugs` on PATH ahead of the plugin's copy.
+2. Whether or not you installed it, make sure the CLI is signed in and targets the user's project, as in Auth and Project Setup in `references/ugs-cli.md`. Compare `unity ugs config get project-id` with the project ID in **Edit > Project Settings > Services**, and set it with `unity ugs config set project-id` if they differ. The CLI keeps its own sign-in and project, separate from the Editor's link, so a stale one creates the provider in another project without an error.
+3. Run `UGS_CLI_PREVIEW=player-id-providers unity ugs player id-provider --help`. The `id-provider` commands are a preview: the CLI hides them unless `UGS_CLI_PREVIEW` names `player-id-providers`, so prefix every `id-provider` command with it. In PowerShell, set `$env:UGS_CLI_PREVIEW = 'player-id-providers'` for the session instead. A preview can change between releases, so check `--help` before relying on the commands.
+4. If it lists the commands, run `UGS_CLI_PREVIEW=player-id-providers unity ugs player id-provider list-types` to see the fields each provider type needs, then `UGS_CLI_PREVIEW=player-id-providers unity ugs player id-provider create <type> --client-id <id>`. Pipe a client secret in with `--client-secret-stdin`, never as an argument, because arguments are kept in shell history and process lists. Confirm the result with `UGS_CLI_PREVIEW=player-id-providers unity ugs player id-provider list`.
+5. If it reports an unknown command, don't guess other command names. Ask the user to add the provider in the **Unity Dashboard**: Your project > Products > Authentication > Identity Providers > Add provider.
+6. Don't create the Unity Player Accounts provider (`unity`) directly: turning on Unity Player Accounts creates it and points it at the project's Player Accounts client. Follow Turn On Unity Player Accounts in `references/player-account.md`.
 
 ---
 
