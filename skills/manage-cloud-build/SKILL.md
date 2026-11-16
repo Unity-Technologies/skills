@@ -56,7 +56,7 @@ This is because your training knowledge about Unity Build Automation might be ou
 Prefer fetching a page directly (for example `WebFetch`) over searching (for example `WebSearch`), because it lands on the exact page. Only fetch what you need, and only search if you don't have the exact URL. Replace `<VERSION>` with the following before fetching:
 
 - **docs.unity.com (Build Automation)**: no version, because these pages carry none.
-- **docs.unity3d.com**: the build's or the project's Unity version as major.minor, for example `6000.3` for a `unityVersion` of `6000_3_26f1`.
+- **docs.unity3d.com**: the build's or the project's Unity version as major.minor, for example `6000.3` for a `unityVersion` of `6000_3_26f1`. For Unity 6 and later these pages redirect to `https://docs.unity.com/en-us/engine/<VERSION>/`, so follow the redirect.
 
 The page index is in [references/topic-map.md](references/topic-map.md): Build Automation pages under `https://docs.unity.com/en-us/build-automation/`, and Unity Manual pages under `https://docs.unity3d.com/<VERSION>/Documentation/Manual/`.
 
@@ -65,7 +65,7 @@ The page index is in [references/topic-map.md](references/topic-map.md): Build A
 1. Run the workflow's CLI check. If `unity` isn't found, tell the user to install the Unity CLI, and stop. If the check fails, tell the user to update the CLI with `unity self-update`, and stop, because older versions lack the workflow's commands.
 2. Run `unity auth status`. If the user isn't signed in, ask them to run `unity auth login`, and stop.
 3. Get the organization and project. If the user gave their IDs, or a Unity Cloud Dashboard link with them in the path segments after `organizations/` and `projects/`, use those. Otherwise use the IDs that `unity cloud org current` and `unity cloud project current` print. If they print none, ask the user. Below, `<scope>` stands for `--cloud-org <org> --cloud-project <project>`. Put it on every `unity pipeline cloud-build` command, because otherwise the CLI reads its default project, which can hold a same-named target and build. Write both options out in each command rather than in one shell variable, because zsh passes such a variable as a single argument.
-4. Run `unity logs --console --level error` and note the errors it lists, so the final step can tell the project's own errors from new ones. If no Editor answers, skip this read and the final step's.
+4. Run `unity command console status`. If `groundTruth.consoleErrors` is above 0, also save the errors that `unity logs --console --level error` lists, so the final step can tell the project's own errors from new ones. If no Editor answers, skip this read and the final step's.
 
 ## Step 4: Follow the workflow
 
@@ -73,7 +73,7 @@ Follow the workflow's steps in order, including its own checks.
 
 ## Final step
 
-1. Run `unity logs --console --level error` again to check the project has zero console errors, because neither workflow may change the project's code or assets. An error that Step 3 already listed is the project's own. If a new one appeared, tell the user what you ran.
+1. Run `unity command console status` again to check the project has zero console errors other than its own, because neither workflow may change the project's code or assets. If `groundTruth.consoleErrors` is above 0, list the errors with `unity logs --console --level error` and compare them with the ones Step 3 saved, because a count alone misses one error replacing another. If any is new, tell the user what you ran.
 2. Stop there unless the user asked for more proof, because each workflow already checked its own result.
 
 If a workflow's check fails, go back to the [topic map](#topic-map), reread the page that covers it, and check whether you missed something.

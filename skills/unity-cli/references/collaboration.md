@@ -39,9 +39,11 @@ Relative links in this file resolve to the skill directory's `references/` folde
 **Project scoping — `--cloud-project` OR an inferred project.** The project-scoped commands
 (`annotations`, `attachments`, `reactions`, `thumbnail`, `read`, `subscribe`, `unsubscribe`, and
 `jira issues create/get/link/unlink/search/types`) take both `--cloud-project <id>` (Unity Cloud
-project id — find one with `unity cloud projects`, see [auth-license-cloud.md](auth-license-cloud.md))
-and `--project-path <path>`. It takes an id only, not a project name. Neither is required: resolution
-order is
+project id or name — find one with `unity cloud projects`, see [auth-license-cloud.md](auth-license-cloud.md))
+and `--project-path <path>`. A UUID is used as the project id. Any other value is a name, looked up
+in the organization in scope: `--cloud-org`, else `UNITY_CLOUD_ORG`, else the stored default
+organization. With no organization in scope a name is a usage error that names `--cloud-org`. An
+ambiguous name fails and lists its matches. Neither option is required: resolution order is
 
 1. explicit `--cloud-project`, else
 2. the `UNITY_CLOUD_PROJECT` env var, else
@@ -232,7 +234,7 @@ Annotation objects returned by `get`/`list`/`replies` (`--format json`) carry: `
 | `annotations create` | `<target>` | `--text`, `--reply-to <id>`, `--status Active\|Draft`, `--metadata k=v`…, `--target-context k=v`…, `--camera`, `--local`, `--time`, `--attachments`, `--unresolve-root-annotation` |
 | `annotations delete` | `<annotationId>` | (confirmation — see Shared behavior) |
 | `annotations delete-fields` | `<annotationId> <field...>` | removes metadata fields; variadic; confirmation |
-| `annotations export` | — | `--target <path>` — omitted, no target is sent and the export covers the whole project, see below; `--out <file>` (else stdout), `--resolve-users`; the service returns `assetId` + `assetName` here that `list` does not — the CLI copies the response page verbatim, so treat those as service behavior |
+| `annotations export` | — | `--target <path>` — **defaults to `assets/projects/<id>/**` only**, see below; `-o, --output <file>` (else stdout), `--resolve-users`; the service returns `assetId` + `assetName` here that `list` does not — the CLI copies the response page verbatim, so treat those as service behavior |
 | `annotations get` | `<annotationId>` | `--fields a,b,c` or `--fields all` (table output only), `--resolve-users` |
 | `annotations` | — | `--query <json>` (optional — defaults to root threads only), `--next <cursor>`, `--limit 1-100` (default 10), `--all`, `--sort Ascending\|Descending`, `--sort-field annotationId\|latestReply`, `--include-fields a,b`, `--fields a,b` or `--fields all` (table output only), `--full`, `--resolve-users` |
 | `annotations replies` | `<annotationId>` | `--next`, `--limit 1-100`, `--all`, `--sort`, `--status-filter All\|Active\|Sending\|Draft` (repeat flag), `--fields a,b` or `--fields all` (table output only), `--full`, `--resolve-users` |
@@ -259,18 +261,20 @@ unity collaboration annotations --include-fields replyCount,latestReply --format
 unity collaboration annotations --cloud-project $PROJ \
   --query '[{"type":"hasNot","field":"annotationParentId"}]' --all --format ndjson
 
-# Export for offline analysis: the bare command sends no target (the whole project)
-unity collaboration annotations export --cloud-project $PROJ --out annotations.json
-# Restrict it to one asset
+# Export for offline analysis — ONE prefix tree per run; the bare command covers
+# only assets/**, so an Editor-annotated project needs both invocations.
 unity collaboration annotations export --cloud-project $PROJ \
-  --target "unity/projects/$PROJ/assets/<assetId>/**" --out annotations-asset.json
+  --target "assets/projects/$PROJ/**" --output annotations-assets.json
+unity collaboration annotations export --cloud-project $PROJ \
+  --target "unity/projects/$PROJ/**"  --output annotations-editor.json
 ```
 
-**`export` with no `--target` sends no target.** The request carries only the page size, which asks
-the service for the whole project; no path prefix decides what is included. Compare its `count` with
-`annotations count --grouped` per prefix when completeness matters. A `--target` the service finds no
-assets for fails with HTTP 500 "No assets found for the provided ids"; the error then names the target
-and suggests running without `--target`.
+**`export` is not a whole-project export.** With no `--target` the command defaults to
+`assets/projects/<projectId>/**`, so annotations under the separate `unity/projects/<projectId>/**`
+tree are silently absent from the archive — and nothing in the output says so. Always pass `--target`
+explicitly, once per prefix, when completeness matters. (Note the default differs from
+`annotations count`, which defaults to the `unity/**` tree instead.) The CLI's own `--target` help
+text says "the whole project", which contradicts the actual default — trust the prefix above.
 
 When the service answers an export with HTTP 500 "No assets found for the provided ids", an annotation points
 at an asset that no longer exists and the service refuses the whole export without naming it. The CLI
@@ -327,7 +331,7 @@ over a camera view), **spatial** (labeled 3D anchor) — payload shapes in
 |---|---|---|
 | `attachments` | `<annotationId>` | `--resolve-users` |
 | `attachments delete` | `<annotationId> <attachmentId>` | (confirmation — see Shared behavior) |
-| `attachments download` | `<annotationId> <attachmentId>` | `--out <path>` (default: the attachment's original filename in CWD, falling back to `<attachmentId>` when it has no file path), `--force` (overwrite), `--width <px>` (resize image) |
+| `attachments download` | `<annotationId> <attachmentId>` | `-o, --output <path>` (default: the attachment's original filename in CWD, falling back to `<attachmentId>` when it has no file path), `--force` (overwrite), `--width <px>` (resize image) |
 | `attachments upload` | `<annotationId> <file>` | `--name` (display name), `--content-type` (override inferred MIME) |
 | `attachments add file` | `<annotationId> <file>` | same options and **same handler** as `upload`; only the reported command label, the success message, and the JSON error code (`COLLAB_ATTACHMENTS_ADD_ERROR`) differ — use either |
 | `attachments add sketch` | `<annotationId>` | `--sketch-data <json>` **(required)**, `--camera <json>` **(required)**, `--time <json>`, `--preview <file>`, `--sketch-image <file>`: pass **both files or neither** (one alone exits 2, `COLLAB_SKETCH_FILES_INCOMPLETE`, before any request) |
@@ -347,7 +351,7 @@ unity collaboration attachments add spatial $ANNOTATION_ID --cloud-project $PROJ
 
 # Download; refuses to overwrite an existing file unless --force
 unity collaboration attachments download $ANNOTATION_ID $ATTACHMENT_ID --cloud-project $PROJ \
-  --out ./shot.png --force
+  --output ./shot.png --force
 ```
 
 Notes:
@@ -374,7 +378,7 @@ else inferred from the current project (see [Shared behavior](#shared-behavior))
 |---|---|---|
 | `reactions add` / `reactions remove` | `<annotationId> <emoji>` | emoji is a single Unicode emoji, e.g. `👍` |
 | `thumbnail upload` | `<annotationId> <file>` | image file; MIME inferred from extension (jpg/png/gif/webp) |
-| `thumbnail download` | `<annotationId>` | `--out <path>` (default `./thumbnail`), `--width <pixels>` (an integer of at least 50); **no `--force`** — errors if the file exists ("Delete it first") |
+| `thumbnail download` | `<annotationId>` | `-o, --output <path>` (default `./thumbnail`), `--width <pixels>` (an integer of at least 50); **no `--force`** — errors if the file exists ("Delete it first") |
 | `read` | `<annotationId>` | `--timestamp <iso8601>` (default now) — marks the thread read up to that time (per-user read receipt) |
 | `subscribe` / `unsubscribe` | `<annotationId>` | per-thread notification subscription for the current user |
 
@@ -388,7 +392,7 @@ unity collaboration unsubscribe $ANNOTATION_ID --cloud-project $PROJ
 
 # Thread thumbnails
 unity collaboration thumbnail upload $ANNOTATION_ID ./shot.png --cloud-project $PROJ
-unity collaboration thumbnail download $ANNOTATION_ID --out ./thumb.png
+unity collaboration thumbnail download $ANNOTATION_ID --output ./thumb.png
 ```
 
 ---
@@ -417,9 +421,10 @@ Connects Collaboration annotations to Jira. Three layers, three id types — don
 | `jira issues create/get/link/unlink/search/types` | `--cloud-project` / `--project-path`, or inferred — see [Shared behavior](#shared-behavior) |
 
 **The organization** of `jira server *`, `jira project add`/`delete`/`update` and `jira issues`
-is `--cloud-org <id>`, else the `UNITY_CLOUD_ORG` env var, else the stored default organization
+is `--cloud-org <id-or-name>`, else the `UNITY_CLOUD_ORG` env var, else the stored default organization
 (`unity cloud org set-default`, see [auth-license-cloud.md](auth-license-cloud.md)). It takes an
-organization id only, not a name. An empty or whitespace-only flag or variable counts as not set.
+organization id or name, and a name is matched against your organizations. An empty or whitespace-only
+flag or variable counts as not set.
 Only when none of the three gives one is it missing.
 `jira configs` is the exception: it reads its scope only from what you type, apart from
 `UNITY_CLOUD_PROJECT` when you type neither option.

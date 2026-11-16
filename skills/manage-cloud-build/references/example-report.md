@@ -15,7 +15,7 @@ Build 56 succeeded on Unity `2022_3_62f1`, and build 57, at the same revision, i
 ```text
 Build #57 of android-release failed in "Building Unity player (android)" because Assets/Scripts/Rendering/OutlineFeature.cs doesn't compile against Unity 6000.3. Confidence: high.
 
-Evidence: Missing Reference Error, Script Compiler Error. Line 8389: OutlineFeature.cs uses RenderTargetHandle, which no longer compiles from Unity 2023.1. Build 56 succeeded on 2022.3 at the same revision, so the upgrade started the failure. The steps read returned not found. Docs read: Troubleshoot common issues.
+Evidence: Missing Reference Error, Script Compiler Error. Line 8389: "OutlineFeature.cs(22,17): error CS0619: 'RenderTargetHandle' is obsolete: 'Deprecated in favor of RTHandle. #from(2022.1) #breakingFrom(2023.1)'". Build 56 succeeded on 2022.3 at the same revision, and the target's change history shows the Unity version set to 6000.3 just before build 57, so the upgrade started the failure. The steps read returned not found. Docs read: Troubleshoot common issues.
 
 Fix:
 1. Move OutlineFeature.cs to the current render pass API (RTHandle), or build with Unity 2022.3 until it's ported.
@@ -23,5 +23,5 @@ Fix:
 
 Next step: after the fix, rebuild with `unity pipeline cloud-build builds start --build-target android-release --cloud-org my-studio --cloud-project my-game`. Your agent can apply the fix if you ask.
 
-Side effects: I only read this build's record, log and history. I saved the log to /tmp/build-57.log and the build list to /tmp/builds-android-release.json. I changed nothing.
+Side effects: I only read this build's record, log and build history, and the target's settings and change history. I saved the log to /tmp/build-57.log and the build list to /tmp/builds-android-release.json. I changed nothing.
 ```

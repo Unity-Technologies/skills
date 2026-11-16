@@ -20,7 +20,7 @@ of these as powerful capabilities. They are intentional, and limited by the safe
   writes and the cloud-link narration included — prints in one block before the create launches,
   and any line reverses on a word. Consent in the strict sense comes from guided mode's per-step
   asks; paved mode's bar is that nothing runs unannounced and nothing is irreversible.
-- **Human gates are never consumed.** Sign-in, license activation (including accepting the Unity Personal EULA) and publishing each run only after the user says yes to a question the agent asks and waits on.
+- **Human gates are never consumed.** Sign-in, license activation (including accepting the Unity Personal EULA and the Unity Editor Software Terms, which `unity terms accept --yes` records only after that yes) and publishing each run only after the user says yes to a question the agent asks and waits on.
 - **Only the user's own Editor and account.** Everything runs on this machine as this user.
 - **No remote code.** All executed C# comes from this skill's text and its delegated skills.
 - **Named commands first.** Where a dedicated `unity` command covers a step, the skill uses it.

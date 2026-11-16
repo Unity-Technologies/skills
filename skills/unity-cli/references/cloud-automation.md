@@ -17,6 +17,8 @@ and to start, follow, and act on builds and jobs.
 - Set up a build target
 - Create an app
 - Add a version to an app
+- Add an action to an app version
+- Create a pipeline
 - Read results
 - Handle failures
 
@@ -34,7 +36,7 @@ and to start, follow, and act on builds and jobs.
 | An app's or pipeline's version history | `unity pipeline automation apps versions` / `pipelines versions` |
 | How many jobs are running or queued | `unity pipeline automation jobs stats` |
 | A build's steps, failures, artifacts, or log | `unity pipeline cloud-build builds steps` / `failures` / `artifacts` / `log` |
-| How long each phase of a build took (staging only) | `unity pipeline cloud-build builds timeline` |
+| How long each phase of a build took | `unity pipeline cloud-build builds timeline` |
 | One artifact file on disk | `unity pipeline cloud-build builds download` |
 | Start a build, wait for it, or cancel builds | `unity pipeline cloud-build builds start` / `cancel` |
 | Run a pipeline, or follow a job to its end | `unity pipeline automation pipelines trigger` / `jobs watch` |
@@ -43,6 +45,8 @@ and to start, follow, and act on builds and jobs.
 | Create or change a build target | `unity pipeline cloud-build targets create` / `update` |
 | Create a Pipeline Automation app | `unity pipeline automation apps create` |
 | Add a version to an app | `unity pipeline automation apps versions create` |
+| Add an action to an app version | `unity pipeline automation apps actions create` |
+| Create a Pipeline Automation pipeline | `unity pipeline automation pipelines create` |
 | What changed in a target's configuration, and who changed it | `unity pipeline cloud-build targets auditlog` |
 | Connect the project to a repository, or list its connections | `unity pipeline cloud-build connections` / `connections create` |
 | Check that Build Automation can reach a repository | `unity pipeline cloud-build scm check-url` |
@@ -55,9 +59,11 @@ stop](#confirm-wait-and-stop) before running them for a user. `targets create`
 and `update`, `connections create` and `credentials upload` change the project's
 configuration: read [Set up a build target](#set-up-a-build-target) first.
 `apps create` adds an app to the organization: read [Create an app](#create-an-app)
-first, and [Add a version to an app](#add-a-version-to-an-app) before
-`apps versions create`. They don't require a running Editor or
-the local Pipeline package. Local `unity pipeline install|upgrade|list|list-versions`
+first, [Add a version to an app](#add-a-version-to-an-app) before
+`apps versions create`, and [Add an action to an app
+version](#add-an-action-to-an-app-version) before `apps actions create`. Read
+[Create a pipeline](#create-a-pipeline) before `pipelines create`. They don't
+require a running Editor or the local Pipeline package. Local `unity pipeline install|upgrade|list|list-versions`
 commands manage the Editor package, not cloud resources.
 
 Check availability with `unity pipeline cloud-build --help` or
@@ -383,12 +389,10 @@ unity pipeline cloud-build builds log "<build-number>" --build-target "<target-i
 file's signed `href` is masked as `***` in machine output and never appears in a
 table; use `builds download` to fetch a file.
 
-`builds timeline` shows how many seconds each phase of a build took. Only
-staging serves it, so pass `--cloudEnvironment staging`; on production it is
-refused before any request with `AUTOMATION_COMMAND_STAGING_ONLY` (exit `2`).
+`builds timeline` shows how many seconds each phase of a build took.
 
 ```sh
-unity --cloudEnvironment staging pipeline cloud-build builds timeline "<build-number>" --build-target "<target-id>" --format json
+unity pipeline cloud-build builds timeline "<build-number>" --build-target "<target-id>" --format json
 ```
 
 JSON returns the API response under `data`, one key per phase in the order the
@@ -613,6 +617,100 @@ service answers `AUTOMATION_FORBIDDEN`, exit `3`.
 
 `apps versions create` doesn't ask before it acts and takes no `--yes`: confirm
 the app and version with the user first.
+
+## Add an action to an app version
+
+```sh
+unity pipeline automation apps actions create "<app-id>" 1.1.0 --file action.json --cloud-org "<org-id>" --format json
+unity pipeline automation apps actions create "<app-id>" 1.1.0 --file action.json --name "Run Tests" --cloud-org "<org-id>" --format json
+```
+
+`apps actions create` adds an action, the unit a pipeline step runs, to one
+version of an app. The version must be a draft: add a new one with
+`apps versions create` to change an app whose versions are published.
+
+`--file` is required (`-` reads stdin) and holds the action as JSON: `name`,
+`description`, `definition`, and optionally `inputParameters`,
+`outputParameters`, `secrets`, `requirements`, `metadata`, `timeout`, `storages`
+and `terminationGracePeriodSeconds`. `--name` and `--description` override the
+file's. The `definition`'s `type` is `docker` (a container: `imageName`,
+`command`, `args`, `artifacts`, `environmentMapping`, ...) or `httprequest` (one
+HTTP call); the service checks the rest. The CLI doesn't create `templateref`
+actions. A saved action, or the
+`--format json` envelope around one, works as the file; its `actionId` is left
+out.
+
+```json
+{
+  "name": "Run Script",
+  "description": "Runs a Python script in a container",
+  "definition": {
+    "type": "docker",
+    "imageName": "python:3.12",
+    "command": ["/bin/sh", "-c"],
+    "args": ["python /workspace/main.py"]
+  }
+}
+```
+
+The name is 2 to 64 letters, digits, spaces or hyphens, since the action's ID
+is `<app-id>-<version>-<name>` with hyphens for spaces. The description is 20
+to 256 characters, and the version takes the form `1.0.0`, `1.0.0-rc.1` or
+`1.0.0-sha.abc1234`. These, a missing or unknown `definition` type, and a
+field the file sets twice are checked before any request (exit `2`). The service refuses a name the version
+already has, or a version that isn't a draft, and the CLI shows its details.
+Put credentials in the action's `secrets`, never in `environmentMapping`,
+which the service returns in plain text. It needs the same role and
+organization setting as `apps create`; otherwise the service answers
+`AUTOMATION_FORBIDDEN`, exit `3`.
+
+`apps actions create` doesn't ask before it acts and takes no `--yes`: confirm
+the app, version and action with the user first.
+
+## Create a pipeline
+
+```sh
+unity pipeline automation pipelines create --file pipeline.json --cloud-org "<org-id>" --format json
+unity pipeline automation pipelines create --file pipeline.json --name "Nightly Build" --version 1.0.0 --tag nightly --cloud-org "<org-id>" --format json
+unity pipeline automation pipelines create --file saved-version.json --name "Nightly Copy" --version 1.0.0 --cloud-org "<org-id>" --format json
+```
+
+`pipelines create` creates a pipeline in the organization and its first
+version, a draft. The result is that version, shaped as `pipelines get` shows
+one: the new pipeline's ID is `data.pipeline.id`, not the version object's
+`id`. Pass that ID to `pipelines get`, `pipelines versions` and, once the
+version is published, `pipelines trigger`.
+
+| Option | Sets |
+|---|---|
+| `--name`, `--description`, `--version` | Required, from the option or `--file`. Name 2 to 57 letters, digits, spaces or hyphens, description 20 to 256 characters, version like `1.0.0`, `1.0.0-rc.1` or `1.0.0-sha.abc1234` |
+| `--tag` (repeatable) | Tags, replacing the file's |
+| `--id <uuid>` | The pipeline's ID, instead of a generated one |
+| `--file <path>` | The pipeline as JSON (`-` reads stdin); options override its fields |
+
+The file holds what no option sets: `steps`, `inputParameters`,
+`outputParameters`, `secrets`, `storages` and `metadata`. Each step has an `id`
+(lowercase letters, digits and hyphens), a `name`, and exactly one of `action`,
+`pipeline` or `suspend`; copy a step's shape from `pipelines versions get
+--format json` rather than guessing it. Any other field in the file is left
+out. A saved `pipelines versions get --format json` result works as `--file`:
+the CLI takes its pipeline's name, description and tags and its version's
+steps, parameters, secrets, storages and metadata, and leaves the existing
+pipeline's ID behind. Pass a new `--name` and a `--version` for the copy.
+`--format json` prints secret values and `masked` parameter values as `***`
+and leaves out credential fields, so a copy refuses (exit `2`) while any value
+is still `***`: put the real values back, or remove those fields, and add back
+any credentials the copy needs.
+
+Lengths, the name's characters, the version, the ID, and `steps` being an
+array are checked before any request (exit `2`). The service checks the steps
+themselves, and refuses an `--id` already in use, with exit `6` and its
+details. Creating a pipeline needs the Automation Developer role; otherwise the
+service answers `AUTOMATION_FORBIDDEN`, exit `3`. Only organization-wide
+pipelines are created; the CLI doesn't create a project's pipelines.
+
+`pipelines create` doesn't ask before it acts and takes no `--yes`: confirm the
+name and organization with the user first.
 
 ## Trigger a pipeline and watch a job
 

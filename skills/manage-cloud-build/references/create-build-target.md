@@ -22,10 +22,10 @@ Set up a Unity Build Automation build target for the local project and start its
 
 - **CLI check:** `unity pipeline cloud-build targets create --help`, because older CLI versions can't create targets.
 - Keep stderr out of any JSON you parse, because the CLI writes notices there.
-- **Reads**, which you may run at any point: `unity auth status`, `unity cloud org current`, `unity cloud project current`, `unity logs --console --level error`, `--help` on any command, `unity vcs status` and `unity vcs doctor` (Git only), `unity vcs setup --dry-run`, and `unity pipeline cloud-build project get`, `connections`, `targets`, `targets get`, `tooling platforms`, `tooling unity`, `tooling os`, `tooling machine-types`, `org free-tier` and `scm check-url`.
+- **Reads**, which you may run at any point: `unity auth status`, `unity cloud org current`, `unity cloud project current`, `unity command console status`, `unity logs --console --level error`, `--help` on any command, `unity vcs status` and `unity vcs doctor` (Git only), `unity vcs setup --dry-run`, and `unity pipeline cloud-build project get`, `connections`, `targets`, `targets get`, `tooling platforms`, `tooling unity`, `tooling os`, `tooling machine-types`, `org free-tier` and `scm check-url`.
 - **Writes**, which you may run only after the user approves the summary in Step 6, because each one adds something to their organization or repository: `unity vcs setup`, `connections create`, `credentials <platform> upload`, `targets create` and `builds start`. The one exception is `unity projects add`, which Step 2 runs only when the user agrees to it. Run each one once. If it fails, report its error instead of running it again, because a second run can add a duplicate.
 - Never run `targets update`, `builds cancel`, `unity vcs doctor --fix` or any other command that changes something that already exists, because this workflow only adds.
-- Read the checkout only with read-only commands, such as those in Step 2, `git ls-files` and those in [references/source-control.md](source-control.md), because the user decides what changes in it. Never fetch, because that changes the checkout too.
+- Read the checkout only with read-only commands, such as those in Step 2, `git ls-files` and the reads in [references/source-control.md](source-control.md), because the user decides what changes in it. Never fetch, because that changes the checkout too.
 - Never ask the user to type a password, token or key into the conversation, and never put one on a command line, because both end up in logs. Step 7 reads each one from a file the user creates.
 
 ## Glossary
@@ -178,7 +178,7 @@ Then: upload the keystore, create the target, start build 1.
    - iOS: `unity pipeline cloud-build credentials ios upload --label <label> --certificate '<p12>' --provisioning-profile '<profile>' --certificate-password-from-stdin <scope> --format json < '<certificate-password-file>'`. Then compare `data.provisioningProfile.bundleId` with the bundle ID. If they differ, and the profile's ID isn't a `*` wildcard that covers it, stop, because the signed app wouldn't install.
    - Keep `data.credentialid`, and tell the user to delete the password files.
 5. Run `unity pipeline cloud-build targets create <options> <scope> --format json`, and keep `data.buildtargetid`. If it fails, report its `errors[].message`, which carries the service's reason, and stop.
-6. Run `unity pipeline cloud-build targets get <buildtargetid> <scope> --format json`, and compare each setting in the summary with the one stored. Tell the user about any that differ. `targets get` shows neither the development-build setting nor the signing credential, so those can't be compared, and settings the service adds on its own, such as `xcodeVersion`, aren't differences.
+6. Run `unity pipeline cloud-build targets get <buildtargetid> <scope> --format json`, and compare each setting in the summary with the one stored. Tell the user about any that differ. `targets get` doesn't show the signing credential, so it can't be compared, and settings the service adds on its own, such as `xcodeVersion`, aren't differences.
 
 ## Step 8: Start the first build
 
