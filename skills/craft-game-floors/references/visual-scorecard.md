@@ -34,9 +34,19 @@ For a 2D build, grade the same six questions through their 2D equivalents: palet
 - **3** — a polished jam entry: simple assets, but deliberate light, consistent style, styled UI. **The paved floor — the minimum any build under these floors ships at.**
 - **1** — untextured primitives under one white directional with default-gray UI: the documented starting point this gate exists to abolish.
 
+## The build proof
+
+On a **build session** — a creation run, or any session whose claim is a finished game — the gate ends with a player build, because "it runs in Play mode" and "it ships" are different claims: player-only compile errors, stripped code and missing platform modules all pass Play mode and fail the build. After the fix pass (so the build is of the final state, not a draft):
+
+1. Run the CLI's player build for the project's primary target — the platform the project was created for, or the Editor's active build target when nothing states one. Desktop targets build with `--target` alone (`unity build --target <target> --output-path <path>`); every other target, WebGL included, needs a Unity 6+ build profile: `unity build --create-profile <target>` once (commit the created asset with the project), then `unity build --profile <profile-path> --output-path <path>`. `unity build --help` has the full option set.
+2. The proof is three facts: the command exited success, the console/log carries zero build errors, and the artifact exists at the reported output path with a nonzero size. Record all three; a green exit alone is not the proof.
+3. On a failure, read the build log's first error before trying variations — build-only failures are usually a missing module or a player-incompatible API, not taste.
+
+A single-floor touch-up skips the build the same way it scopes the board; the build's minutes belong to sessions that claim a finished game. The artifact this step proves is what a later publish step uploads.
+
 ## Report
 
-Print the board in one fixed grammar — one line per axis, `axis: <score>/5 — <one-line evidence>` — so a later session can parse it, then what the fix pass changed, and attach the final captures. The scored frames are the session's proof-of-done artifact.
+Print the board in one fixed grammar — one line per axis, `axis: <score>/5 — <one-line evidence>` — so a later session can parse it, then what the fix pass changed, and attach the final captures; on a build session, add one line for the build proof (target, artifact path, size). The scored frames and, on a build session, the build artifact are the session's proof-of-done.
 
 ## Expansion scope
 

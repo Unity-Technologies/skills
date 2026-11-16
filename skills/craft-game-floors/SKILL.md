@@ -1,6 +1,6 @@
 ---
 name: craft-game-floors
-description: "Makes a Unity game look and feel finished: art style, lighting, juice, sound, menus, saves and look scoring. Use when building a new game's first playable version, or when a game looks like programmer art, feels flat or silent, or needs polish."
+description: "Makes a Unity game playable and finished: core loop, art style, lighting, juice, sound, menus, saves, look scoring. Use for a first playable version, or one with no goal or win state, programmer art, a flat or silent feel, or polish needs."
 allowed-tools:
   - Bash
   - Read
@@ -65,13 +65,13 @@ developer has made, and ask before adding one mid-project.
 4. [camera-rigs](references/camera-rigs.md) — first gameplay camera (has a 2D section)
 5. [placeholder-assets](references/placeholder-assets.md) — first missing asset
 6. [character-motion](references/character-motion.md) — first moving character (3D-leaning)
-7. *(the playable loop lands here — loop before content, one system per pass)*
+7. [playable-loop](references/playable-loop.md) — once the character moves: close the loop (one verb, one goal, one pressure, win/lose, restart) before any content; a default, so a stated shape without win or lose (a sandbox, a toy) wins
 8. [game-feel](references/game-feel.md) — the feel pass, after the loop
 9. [vfx](references/vfx.md) — with the feel pass (has a 2D section)
 10. [game-audio](references/game-audio.md) — before done
 11. [game-shell](references/game-shell.md) — before done (2D backdrop delta). Before the first TextMeshPro text, import TMP Essentials (see the reference's failure table).
 12. [live-floor](references/live-floor.md) — with the shell (services before gameplay code)
-13. [visual-scorecard](references/visual-scorecard.md) — **the done gate, always last; run it once a playable loop exists.** During project creation, stop at the lit-baseline capture and skip the gate.
+13. [visual-scorecard](references/visual-scorecard.md) — **the done gate, always last; run it once a playable loop exists — or, on a stated shape without win or lose, once the parts of floor 7 that fit are in** — creation runs included, since floor 7 closes theirs.
 
 Mid-project asks enter at the matching number and pull earlier floors only as the mid-flow check
 requires (the bible, the pipeline, the identity probe).
@@ -108,10 +108,19 @@ frames, not a green compile. In order:
 2. **Fix pass** — anything below 3 gets its fix before done (assessment-only asks: scores and
    recommendations, no fixes). If a fix doesn't work, reread the relevant reference and its
    linked documentation before trying variations.
-3. **Console** — confirm zero console errors.
-4. **Play check** — enter Play mode and check the touched behavior with `Debug.Log` lines you
-   added for the purpose. If the fix pass or this check fails, reread the relevant reference and
-   its linked documentation before trying variations.
+3. **Console** — confirm zero console errors with `unity command console status`, and go no
+   further with console checks unless the user asked for proof or a specific fault is in play.
+   Command names come from the project's Pipeline package and vary by version (older ones name
+   it `console_status`), so confirm the installed name with `unity command` first.
+4. **Play check** — enter Play mode once and read the touched behavior's state through
+   `unity command script eval` (the `unity-cli` skill's play-mode verification reference has the
+   loop), adding no logging or screenshots for the purpose. Never leave verification code in the
+   user's script. Never build logging or detection they didn't ask for. If the fix pass or this
+   check fails, reread the relevant reference and its linked documentation before trying
+   variations.
+5. **Build proof** — on a build session (a creation run, or any session whose claim is a finished
+   game), run the player build and confirm the artifact exists, per the scorecard's build-proof
+   section. A single-floor touch-up skips this step, the same way it scopes the board.
 
 ## Final report
 
