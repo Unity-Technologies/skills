@@ -1,13 +1,13 @@
 # Play-mode verification loop
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and the general "drive a running Editor" workflow. All global
 flags (`--format json`, `--non-interactive`, `--yes`, `--proxy`, ...) apply to every command below.
 [integration-advanced.md](integration-advanced.md) covers the Pipeline command surface generally;
 this page is the recipe for one specific loop: enter Play mode, confirm the game is actually
 running (not frozen), look at it, read its console, and tune it, all without leaving the CLI.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ## Contents
 

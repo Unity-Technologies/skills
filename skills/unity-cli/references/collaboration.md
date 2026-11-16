@@ -1,6 +1,8 @@
 # Collaboration — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--proxy`, …) apply to every command below. **`--yes` is not a global flag** —
 it is bound per-command elsewhere in the CLI and no collaboration command accepts it, so passing it
@@ -22,8 +24,6 @@ including the 3D pins and sketch overlays whose payloads are described under
 `com.unity.cloud.collaboration` — the service SDK, a separate package id — as a dependency. The CLI
 needs no package: it talks to the collaboration service directly, so it works with or without the
 Editor open. Annotations created either way are visible to both.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ### Contents
 
@@ -379,7 +379,7 @@ else inferred from the current project (see [Shared behavior](#shared-behavior))
 | `reactions add` / `reactions remove` | `<annotationId> <emoji>` | emoji is a single Unicode emoji, e.g. `👍` |
 | `thumbnail upload` | `<annotationId> <file>` | image file; MIME inferred from extension (jpg/png/gif/webp) |
 | `thumbnail download` | `<annotationId>` | `-o, --output <path>` (default `./thumbnail`), `--width <pixels>` (an integer of at least 50); **no `--force`** — errors if the file exists ("Delete it first") |
-| `read` | `<annotationId>` | `--timestamp <iso8601>` (default now) — marks the thread read up to that time (per-user read receipt) |
+| `read` | `<annotationId>` | `--timestamp <iso8601>` (default now) — marks the thread read up to that time (per-user read receipt). Accepts `YYYY-MM-DD` or an RFC 3339 / ISO 8601 date-time (`2026-01-02T03:04:05Z`, `2026-01-02T03:04:05+02:00`); any other form exits 2 |
 | `subscribe` / `unsubscribe` | `<annotationId>` | per-thread notification subscription for the current user |
 
 ```bash

@@ -1,6 +1,8 @@
 # Version control — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
@@ -19,8 +21,6 @@ Unity coat of paint, the Unity part is the point.
 `--project-path <path>`, or from `UNITY_PROJECT_PATH`, and falls back to the current directory. Give
 the argument or the flag, not both: both is a usage error (exit `2`). Verbs whose argument is a file
 (`diff`, `blame`, `explain`, `resolve`) or a worktree (`git worktree remove`) don't take the flag.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ## Contents
 

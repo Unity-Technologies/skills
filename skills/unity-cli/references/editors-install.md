@@ -1,6 +1,6 @@
 # Editors, install & modules — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
 
@@ -94,7 +94,7 @@ unity editors path 6000.0.47f1
 unity editors path 6000.0.47f1 --architecture arm64 --json
 ```
 
-Honors `--architecture` and `--format` / `--json`, and reports ambiguous matches so you can narrow by version or architecture.
+Honors `--architecture` and `--format` / `--json`, and reports ambiguous matches so you can narrow by version or architecture. `--format ndjson` prints the same `data` as `--json`, as one result line.
 
 #### editors install-path
 
@@ -172,7 +172,7 @@ unity editors prune --remove-missing
 unity editors prune --remove-missing --yes
 ```
 
-Unlike `--remove`, this never touches the filesystem — the folder is already gone, so there is nothing to delete, and confirming only updates the registry. It doesn't require the running-editor check to succeed, since nothing can be running out of a folder that no longer exists. The two flags are independent and neither implies the other; `--format json`/`ndjson` carry the missing-path rows under `data.missing`.
+Unlike `--remove`, this never touches the filesystem — the folder is already gone, so there is nothing to delete, and confirming only updates the registry. It doesn't require the running-editor check to succeed, since nothing can be running out of a folder that no longer exists. The two flags are independent and neither implies the other; `--format json`/`ndjson` carry the missing-path rows under `data.missing`. Under `--format tsv` (the default when piped) a run that finds missing editors prints its json `data` as one `key<TAB>value` record: a `key value` header, then one row per json key path, such as `editors.0.version` or `missing.0.path`. A removal that was never attempted prints no `removed` row. A run with nothing missing prints the plain `editors` table.
 
 #### editors verify
 

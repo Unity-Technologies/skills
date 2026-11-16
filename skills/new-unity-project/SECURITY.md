@@ -2,15 +2,17 @@
 
 This skill has the agent install Unity Editors and packages, create a cloud-linked project, run C#
 inside the user's Editor (the visual baseline), write one small bootstrap script into the project,
-and append one line to the project's CLAUDE.md or AGENTS.md. Automated skill scanners flag several
-of these as powerful capabilities. They are intentional, and limited by the safeguards below.
+append one line to the project's CLAUDE.md or AGENTS.md, and — only on the user's yes — upload a
+WebGL build to Unity Play as a public listing. Automated skill scanners flag several of these as
+powerful capabilities. They are intentional, and limited by the safeguards below.
 
 ## Accepted risks
 
 | Risk | Capability | Why it is accepted |
 |---|---|---|
 | `SEC_POWER_CAP` | Runs C# in the user's Editor | It only reaches the Editor the user already has open, on their own machine, as that user; the commands sit behind the Pipeline capability gate. No code fetched from a remote source is run — the agent runs C# it writes from this skill's and its delegated skills' own recipes. |
-| `SEC_FILE_WRITE` | Writes one bootstrap script (Step 6) and appends one line to CLAUDE.md/AGENTS.md (Step 9) | Both writes land inside the project the skill just created and both are surfaced before they run: in paved mode as notice with an opt-out on the assumptions manifest ("say the word to change any of these"), in guided mode as per-step asks that are true consent. Both are reversible on a word, and the scope section caps the skill at exactly one bootstrap script. |
+| `SEC_FILE_WRITE` | Writes one bootstrap script (Step 6) and appends one line to CLAUDE.md/AGENTS.md (Step 11) | Both writes land inside the project the skill just created and both are surfaced before they run: in paved mode as notice with an opt-out on the assumptions manifest ("say the word to change any of these"), in guided mode as per-step asks that are true consent. Both are reversible on a word, and the scope section caps the skill at exactly one bootstrap script. |
+| `SEC_PUBLISH` | Uploads a WebGL build to Unity Play as a public listing on the user's account (Step 10) | Publishing is a human gate that is never consumed: the agent asks once after Step 9's commit, says plainly that a yes uploads the scene as it currently stands publicly (Step 9's playable loop on the paved path, the raw template on a `--bare` run), and waits. The upload runs only through the CLI's own publishing command on the signed-in account — network egress of the build and nothing else — and its confirmation flag is passed only because the user just answered that same question. An editing URL in the result is handed over as the author's page to finish, never presented as a playable link, and an accepted upload is never retried (a retry would create a second public listing); a timeout or unclear outcome is reported as uncertain and checked on the user's listings page, never retried blind. |
 | `SEC_INSTALL` | Installs Editors, modules, packages, and (with the user's yes) agent skills | Installs go through the Unity CLI's own commands and the PackageManager API — never `curl \| sh`, never hand-edited manifests. Skill installs always ask first (Before Step 1). Versions and the package list are declared before installing. |
 | `SEC_CLOUD` | Creates a cloud-linked Unity project with diagnostics per the CLI's defaults | The link is `projects create`'s own default behavior, narrated to the user from the create result. Sign-in is a human gate: it runs only after the user's yes, and the user completes it in the browser. `--bare` and the link opt-outs are honored on the user's word. |
 

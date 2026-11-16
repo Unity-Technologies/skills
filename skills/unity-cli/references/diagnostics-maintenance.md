@@ -1,10 +1,10 @@
 # Diagnostics & maintenance — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ### Contents
 
@@ -133,6 +133,8 @@ unity ci init --dry-run
 unity ci init --project-path ./MyProject --overwrite
 ```
 
+Piped or redirected with no `--format`, `--dry-run` prints tsv: a `line` header, then one row per line of the workflow. To save the bare YAML to a file, pass `--format human` (`unity ci init --dry-run --format human > workflow.yml`).
+
 The generated workflow installs the CLI, restores the editor download cache and the project's `Library/` folder, installs the editor version from `ProjectSettings/ProjectVersion.txt`, activates a license, runs `unity doctor --ci` as a preflight, runs the tests with a JUnit report, builds, uploads the report and the build, and returns the license seat in a teardown step that runs even when the job failed or was cancelled.
 
 What it derives from the project: the editor version (rejected unless it parses as a real Unity version, since it is interpolated into an install command on the runner), and the editor module the build target needs where that is unambiguous — `Android`, `iOS`, `tvOS`, `WebGL`, `WindowsStoreApps`, `VisionOS`, `Lumin`. The standalone desktop targets get no module, because each has il2cpp / mono / server variants and picking one from the target alone would be a guess; asking for `StandaloneOSX` or `StandaloneWindows64` warns that the install step needs a `--module` you choose.
@@ -199,7 +201,7 @@ unity doctor --ci --skip-license
 
 Every check carries a machine-readable `code` (`LICENSE_NONE`, `EDITOR_NOT_INSTALLED`, `DISK_SPACE_LOW`, `NETWORK_UNREACHABLE`, …) plus a remediation `hint`. In `--format json` the per-check results stay in `data` even on failure, with one coded entry per failure in `errors`. Output is redacted and carries no tokens and no absolute user paths, so it is safe to paste into a public CI log.
 
-`--ci` is always explicit — it is never inferred from `CI=true`, because a report that silently changed shape and exit code on a runner would be a trap. Note that the CLI already defaults to `--format tsv` whenever stdout is redirected, which in CI it usually is; that output leads with a `verdict` row.
+`--ci` is always explicit — it is never inferred from `CI=true`, because a report that silently changed shape and exit code on a runner would be a trap. Note that the CLI already defaults to `--format tsv` whenever stdout is redirected, which in CI it usually is; that output is a `key<TAB>value` header, then one row per `--format json` field under its key path: `verdict`, then `checks.0.id`, `checks.0.status`, `checks.0.code`, `checks.0.message` and so on. A script that read `verdict<TAB>...` or `check.<id>` rows reads those keys now; `--no-header` drops the header row.
 
 ---
 
@@ -273,7 +275,7 @@ unity version --format json
 unity --format json --version
 ```
 
-`unity version` reports the CLI version, release channel (`stable`, `beta`, …), commit, platform, architecture, and runtime — the same version fact `env` and `doctor` carry, as one parseable object. It honors `--format` (`human`, `json`, `tsv`, `ndjson`); human output is the bare version string.
+`unity version` reports the CLI version, release channel (`stable`, `beta`, …), commit, platform, architecture, and runtime — the same version fact `env` and `doctor` carry, as one parseable object. It honors `--format` (`human`, `json`, `tsv`, `ndjson`); human output is the bare version string, and `tsv` is a `key<TAB>value` table with one row per field.
 
 A bare `unity --version` still prints only the version string, so scripts that parse it are unaffected. The `--version` flag switches to the structured object only when an explicit machine format is given *before* it (`unity --json --version`, `unity --format json --version`, or `UNITY_FORMAT=json unity --version`) — the flag terminates parsing, so a trailing format after `--version` is not seen. For order-independent machine output, prefer the `unity version` subcommand.
 
@@ -306,13 +308,13 @@ unity cache key --target Android
 unity cache key ./MyProject
 ```
 
-Whenever stdout is not an interactive terminal — a pipe, a redirect, or any CI runner — the key is the only thing written to it, so it drops straight into a shell substitution or a workflow expression. (On an interactive colour terminal the CLI's usual one-line banner still prints above it, as it does for every command; `--quiet` suppresses that.)
+Whenever stdout is not an interactive terminal — a pipe, a redirect, or any CI runner — the format defaults to `tsv`, a `key<TAB>value` table of the same members `--json` carries (the `key` row holds the hash). To get the bare key for a shell substitution or a workflow expression, pass `--format human`: it prints the key and nothing else. (On an interactive colour terminal the CLI's usual one-line banner still prints above it, as it does for every command; `--quiet` suppresses that.)
 
 Pass the project path if the workflow's working directory isn't the project:
 
 ```yaml
 - id: cachekey
-  run: echo "key=$(unity cache key MyProject --target Android)" >> "$GITHUB_OUTPUT"
+  run: echo "key=$(unity cache key MyProject --target Android --format human)" >> "$GITHUB_OUTPUT"
 - uses: actions/cache@v4
   with:
     path: MyProject/Library
@@ -602,6 +604,8 @@ unity completion powershell
 ```
 
 After `unity command` (and its aliases `cmd` and `request`), Tab offers the connected Editor's commands, then a group's commands, then the chosen command's parameters not yet typed. The shell asks the CLI at Tab time, for the Editor of the project in the working directory or `UNITY_PROJECT_PATH`, and waits at most 1 second. With no Editor, or a slow one, Tab offers nothing there. Nothing is cached. Scripts generated before this need regenerating to get it.
+
+With `--json` or `--format ndjson`, the script comes inside the standard envelope: `data.shell` names the shell and `data.script` holds the script text. Every other format prints the script itself.
 
 ---
 

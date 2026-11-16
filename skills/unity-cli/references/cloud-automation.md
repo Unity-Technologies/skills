@@ -405,7 +405,8 @@ table has one `phase` and `seconds` row per phase, with empty `seconds` for a
 
 `builds log` prints the whole log there is now. `--compact` asks for the short
 log. `--follow` keeps reading every 15 seconds and prints only new lines until
-the build finishes. In NDJSON each line is a `{"type":"log","line":<n>,"text":<string>}`
+the build finishes. In `--format tsv` the first row is `line` (`--no-header`
+leaves it out), then one row per log line. In NDJSON each line is a `{"type":"log","line":<n>,"text":<string>}`
 frame and the result's `data` is `{"lines":<n>,"complete":<bool>}`; JSON returns
 one envelope with `{"log":<text>,"complete":<bool>}`. `complete` says whether
 the build had finished when the read ended.
@@ -759,7 +760,8 @@ unity pipeline automation jobs logs "<job-id>" --step "<step-id>" --follow
 ```
 
 Without `--step` it reads every step's log, printing each under a header naming
-its step. `--step` reads one step. `--follow` reads that step's log as it's
+its step (under `--format tsv`, one `line` header and a row per line, with
+no step headers). `--step` reads one step. `--follow` reads that step's log as it's
 written, until it ends; it needs `--step` (exit `2` without it). In NDJSON each
 line is `{"type":"log","stepId":<id>,"line":<n>,"text":<string>}`, numbered
 within its step, and the result's `data` is `{"lines":<n>}`, so text isn't

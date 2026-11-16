@@ -1,14 +1,14 @@
 # Docs workflow: find, cite and match Unity documentation
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags, environment
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags, environment
 variables and exit codes. The full flag list for `unity docs` and `unity docs toc` is in
 [diagnostics-maintenance.md](diagnostics-maintenance.md#docs--version-matched-unity-documentation); this file
 is the order an agent follows, with 2D examples.
 
 **Why use it:** the pages `unity docs` resolves match the Editor version of the project you are in. An API
 remembered from another Unity version is a common source of wrong code, 2D physics and Tilemap included.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ## Contents
 
@@ -54,6 +54,10 @@ unity docs --url Tilemap.SetTile              # another 2D member
 unity docs --url UnityEngine.SpriteRenderer   # a qualified name matches exactly
 unity docs --url --manual "2D physics"        # the manual is a search, so this returns a search address
 ```
+
+Run in a terminal, these print the bare address. Piped or captured, the CLI defaults to `--format tsv`, a
+`key`/`value` table of the same data `--format json` carries (`url` is one row). To capture the address alone,
+add `--format human`: `URL=$(unity docs --url Rigidbody2D --format human)`.
 
 A bare class name or `Class.member` matches the page whose path ends with it (preferring `UnityEngine`, then
 `UnityEditor`). A name two pages tie on goes to search rather than a guess. The lookup never fails the

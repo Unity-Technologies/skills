@@ -1,10 +1,10 @@
 # Config & Hub — unity-cli command reference
 
-Part of the **`unity-cli`** skill. See that skill's `SKILL.md` for CLI install, global flags,
+Relative links in this file resolve to the skill directory's `references/` folder.
+
+Part of the **`unity-cli`** skill. See the main skill page for CLI install, global flags,
 environment variables, exit codes, and common workflows. All global flags (`--format json`,
 `--non-interactive`, `--yes`, `--proxy`, …) apply to every command below.
-
-Relative links in this file resolve to the skill directory's `references/` folder, so `../SKILL.md` is the skill's main page.
 
 ### Contents
 
@@ -78,13 +78,13 @@ Print where the CLI keeps its configuration: the settings file every `config` ke
 
 ```bash
 unity config path                  # Config file: ... / Config directory: ...
-unity config path --format tsv     # file<TAB>... and directory<TAB>... rows
+unity config path --format tsv     # key<TAB>value header, then file and directory rows
 unity config path --json           # {file, directory}
 ```
 
 #### config accelerator
 
-View or change the [Unity Accelerator](https://docs.unity3d.com/Manual/UnityAccelerator.html) (asset-import cache server) endpoint. Once persisted, `unity run`, `unity test` and `unity build` inject it into the Editor automatically — see [build-run-test.md](build-run-test.md).
+View or change the [Unity Accelerator](https://docs.unity3d.com/<VERSION>/Documentation/Manual/UnityAccelerator.html) (asset-import cache server) endpoint. Once persisted, `unity run`, `unity test` and `unity build` inject it into the Editor automatically (see the run, test and build reference).
 
 ```bash
 # Show the resolved endpoint and its source
