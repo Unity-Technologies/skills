@@ -8,7 +8,7 @@
 - [.rc File Format](#rc-file-format)
 - [Game Overrides](#game-overrides)
 - [Common Patterns](#common-patterns)
-- [Code Template -- Load JSON Config](#code-template--load-json-config)
+- [Code Template: Load JSON Config](#code-template-load-json-config)
 
 ## Overview
 
@@ -59,7 +59,7 @@ var obj = token.ToObject<MyType>();
 ```
 
 - **Create via:** Right-click in Project window > Assets > Create > Services > Remote Config
-- **Deploy via:** the Deployment Window (Services > Deployment)
+- **Deploy via:** `unity command services.deployment deploy_items --paths <path to .rc>`
 - The `types` block is needed only for JSON entries; `string`, `int`, `bool`, `float`, and `long` are auto-detected.
 
 ## Game Overrides
@@ -77,7 +77,7 @@ Game Overrides (via `com.unity.services.tooling`) override Remote Config values 
 - **Feature flags** stored as booleans for toggling game features server-side.
 - **Version-specific config** with server-side updates -- change game balance without shipping a new client build.
 
-## Code Template -- Load JSON Config
+## Code Template: Load JSON Config
 
 ```csharp
 using Unity.Services.RemoteConfig;

@@ -28,7 +28,7 @@ Tooling provides two cloud resource file types deployed through the Deployment W
 | Access Control | `.ac` | Permit or deny player/service-account access to UGS services on a URN basis |
 | Game Overrides | `.ugo` | A/B testing and audience targeting by overriding Remote Config values for player segments |
 
-Both file types are created via right-click in the Project window → **Create > Unity Gaming Services** and deployed via **Services > Deployment**.
+Both file types are created via right-click in the Project window → **Create > Unity Gaming Services** and deployed with `unity command services.deployment deploy_items`.
 
 ---
 

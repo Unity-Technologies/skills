@@ -212,6 +212,18 @@ Namespace: `Unity.Services.Authentication.PlayerAccounts`. Access via `PlayerAcc
 
 If using any authentication other than anonymous, it requires the Unity identity provider to be enabled in **Project Settings > Services > Authentication > Identity Providers**.
 
+### Turn On Unity Player Accounts
+
+Unity sign-in needs the project's Player Accounts client and the Authentication `unity` identity provider that points at it. Turning Player Accounts on creates both, so never add the `unity` provider any other way.
+
+1. Read the commands' arguments with `unity command --query services.authentication.player_accounts --format json`, because they can differ between package versions. If the group isn't listed, the project's Authentication package doesn't include these commands: ask the user to add Unity Player Accounts in the Unity Dashboard (Authentication > Identity Providers > Add provider > Unity Player Accounts), then continue at step 4.
+2. Check that the project is linked to a Unity project ID (**Edit > Project Settings > Services**), because the commands act on the linked project. If it isn't, follow Link the Project in `references/deployment.md`.
+3. Run `unity command services.authentication.player_accounts enable --name "<game name>" --platforms <platforms>`. The name is what players see when they sign in; ask the user if you can't tell it from the project. The platforms are the ones the game signs players in on (`mobile`, `desktop`). The command is safe to run again: it creates the client or updates it, and waits until the client is ready.
+4. Get the Client ID into the project. `PlayerAccountService` reads it from `Assets/Resources/UnityPlayerAccountSettings.asset`, and `enable` doesn't write that asset. Ask the user to open **Edit > Project Settings > Services > Authentication**, which copies the `unity` provider's Client ID into it when it lists the identity providers, or to enter the ID in **Edit > Project Settings > Services > Unity Player Accounts**. Don't write the asset by hand.
+5. Confirm that the `clientId` in `Assets/Resources/UnityPlayerAccountSettings.asset` matches the project's Client ID, because an empty one makes sign-in fail with `MissingClientId`.
+   - With the commands, run `unity command services.authentication.player_accounts get`, check that `Status` is `Ready`, and compare its Client ID. If it reports `NotSetUp` or `ClientMissing`, run `enable` again.
+   - Without them (the Dashboard route in step 1), ask the user for the Client ID the Dashboard shows for Unity Player Accounts and compare that. Tell the user this check depended on them.
+
 ### PlayerAccountService API
 
 | Member | Type | Description |
@@ -440,10 +452,16 @@ if (result.TryGetValue("player_level", out var item))
 
 Writes to Protected and Custom buckets must go through a Cloud Code module. The module uses `IGameApiClient` with the service token to call Cloud Save server-side APIs.
 
-Create it with the Editor rather than by hand: right-click a folder under `Assets/` →
-**Create > Services > Cloud Code Module Script** and name it `PlayerAccountModule`. See
+Create it with these commands:
+
+```bash
+unity command services.cloudcode create_module --module-name PlayerAccountModule --path Assets/CloudCode
+unity command services.cloudcode create_module_script --script-name PlayerAccountModule --module-path Assets/CloudCode/PlayerAccountModule/PlayerAccountModule.ccmu
+```
+
+See
 the Creating a Cloud Code Module section of `references/cloud-code-modules.md`.
-The Editor generates the following — use the list to check what you got, not as files to type out. There is
+The commands generate the following — use the list to check what you got, not as files to type out. There is
 no `.sln`, `.csproj`, `.pubxml` or test project.
 
 - [ ] `Assets/CloudCode/PlayerAccountModule/PlayerAccountModule.ccmu` (holds the two asmdef GUIDs)
@@ -452,7 +470,7 @@ no `.sln`, `.csproj`, `.pubxml` or test project.
 - [ ] `Client/PlayerAccountModuleClient.asmdef` — references the cloud assembly
 - [ ] `Client/PlayerAccountModuleClient.cs` — `[CloudModuleClient(typeof(PlayerAccountModule))]` partial
 
-One file the Editor does **not** generate, which this module needs because its endpoints inject
+One file the commands do **not** generate, which this module needs because its endpoints inject
 `IGameApiClient`:
 
 - [ ] `Cloud/CloudSetup.cs` — an `ICloudCodeSetup` calling `config.AddGameApiClient()`

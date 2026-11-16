@@ -468,11 +468,17 @@ public class AchievementManager : MonoBehaviour
 
 The `AchievementModule` reads and writes to the **Protected** Cloud Save bucket using its service token, bypassing Access Control restrictions imposed on the player client.
 
-> **Create the module with the Editor, not by hand.** Right-click a folder under `Assets/` ->
-> **Create > Services > Cloud Code Module Script** and name it `AchievementModule`. See
+> Create it with these commands:
+>
+> ```bash
+> unity command services.cloudcode create_module --module-name AchievementModule --path Assets/CloudCode
+> unity command services.cloudcode create_module_script --script-name AchievementModule --module-path Assets/CloudCode/AchievementModule/AchievementModule.ccmu
+> ```
+>
+> See
 > the Creating a Cloud Code Module section of `references/cloud-code-modules.md`.
 >
-> The Editor generates the following. Use the list to check what you got — there is nothing here to
+> The commands generate the following. Use the list to check what you got — there is nothing here to
 > type out, and no `.sln`, `.csproj`, `.pubxml` or test project:
 >
 > - [ ] `Assets/CloudCode/AchievementModule/AchievementModule.ccmu` (holds the two asmdef GUIDs)
@@ -481,7 +487,7 @@ The `AchievementModule` reads and writes to the **Protected** Cloud Save bucket 
 > - [ ] `Client/AchievementModuleClient.asmdef` — references the cloud assembly
 > - [ ] `Client/AchievementModuleClient.cs` — `[CloudModuleClient(typeof(AchievementModule))]` partial
 >
-> One file the Editor does **not** generate, which this module needs because its endpoints inject
+> One file the commands do **not** generate, which this module needs because its endpoints inject
 > `IGameApiClient`:
 >
 > - [ ] `Cloud/CloudSetup.cs` — an `ICloudCodeSetup` calling `config.AddGameApiClient()`
@@ -678,7 +684,7 @@ Right-click in the Project window → **Assets > Create > Services > Remote Conf
 - `ProgressTarget > 1` means multi-stage (call `AddProgressAsync`).
 - `IsHidden = true` — show obfuscated title/description until unlocked.
 
-Deploy via **Services > Deployment** — the Deployment Window auto-discovers `.rc` files under `Assets/`.
+Deploy with `unity command services.deployment deploy_items --paths Assets/Config/Achievements.rc`.
 
 ### Cloud Code Module
 
@@ -686,7 +692,7 @@ Deploy via **Services > Deployment** — the Deployment Window auto-discovers `.
 > See the Creating a Cloud Code Module section of `references/cloud-code-modules.md`
 > for the generic templates; replace `MyModule` with `AchievementModule`.
 >
-> The `.ccmu` is deployed by the Deployment Window like any other cloud asset, but its code is compiled by
+> The `.ccmu` is deployed like any other cloud asset, but its code is compiled by
 > Unity — a project that does not compile has nothing to deploy.
 
 ### Access Control -- `Assets/Config/DenyPlayerCloudSaveWrites.ac`
@@ -715,21 +721,21 @@ Right-click in the Project window → **Assets > Create > Services > Access Cont
 
 **Without this policy:** `m_UseTrustedWrites = false` works fine — suitable for development or games where anti-cheat is not a concern.
 
-Deploy via **Services > Deployment** alongside your other files.
+Deploy it with `services.deployment deploy_items` alongside your other files.
 
 ---
 
 ## Deployment Checklist
 
-Deploy all cloud resources via **Services > Deployment** before testing:
+Deploy all cloud resources with `services.deployment deploy_items` before testing:
 
 - [ ] All packages added to `Packages/manifest.json` with correct minimum versions
 - [ ] `Assets/Config/Achievements.rc` -- Remote Config achievement definitions
 - [ ] `Assets/Config/DenyPlayerCloudSaveWrites.ac` -- Access Control policy blocking direct player writes
 - [ ] Cloud Code module authored as a `.ccmu`: module asset, `Cloud/` + `Client/` asmdefs, endpoint class, `CloudSetup.cs` (see file list in [Cloud Code Module](#cloud-code-module))
 - [ ] `AchievementModule.cs` added to the module project with `UnlockAchievement`, `UpdateAchievementProgress`, `ResetAchievements` functions
-- [ ] Environment selected in the Deployment Window dropdown
-- [ ] All resources deployed via the Deployment Window
+- [ ] Active environment set with `unity command services.environment set_active_by_name --name <env>`
+- [ ] All resources deployed with `services.deployment deploy_items`
 - [ ] Project linked in **Edit > Project Settings > Services**
 
 ---
@@ -754,4 +760,4 @@ After implementing achievements, verify:
 5. **One record definition:** `AchievementRecord` is declared only in the Cloud Code module, as `{ get; set; }` properties, and the client uses the generated stub of that type.
 6. **Access Control deployed:** The `.ac` file denies direct player writes to Cloud Save. Without this, the trusted-write path has no enforcement advantage.
 7. **Remote Config key matches:** The `.rc` file key (`"achievements"`) matches the key used in `result.config["achievements"]` on the client and `AchievementsKey` in the module.
-8. **All cloud resources deployable:** The `.rc`, `.ac`, and `.ccmu` files are in the `Assets/` folder hierarchy and appear in the Deployment Window.
+8. **All cloud resources deployable:** The `.rc`, `.ac`, and `.ccmu` files are in the `Assets/` folder hierarchy and are listed by `unity command services.deployment list_items`.

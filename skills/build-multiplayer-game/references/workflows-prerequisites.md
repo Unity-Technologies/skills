@@ -1,6 +1,6 @@
-## Workflow prerequisites (packages and cloud setup)
+# Workflow prerequisites (packages and cloud setup)
 
-Relative links in this file resolve to the skill directory's `references/` folder.
+Links in this file resolve to the skill directory's `references/` folder, the folder this file is in. Project and package paths in code spans are relative to the user's project or the package root.
 
 **Agent-only sanity check** before recommending a path: match the user's **intent** to **dependencies** and **live services / deployment** (see **`llms.txt`** install, init, deployment, and tutorial pages for authoritative steps). Package IDs can vary slightly by Unity/editor version—verify in Package Manager or docs when implementing.
 
@@ -8,10 +8,12 @@ Relative links in this file resolve to the skill directory's `references/` folde
 
 Unity Gaming Services **initialization** and **authentication** are required for all workflows.
 
+Check current service availability and pricing for the chosen hosting and matchmaking setup before committing to it.
+
 | Workflow (what the product is doing) | Typically required |
 |--------------------------------------|-------------------|
 | Rooms / join-in-progress **without** starting the session **gameplay network** (metadata, codes, lists, properties only) | `com.unity.services.multiplayer`. **No** Netcode gameplay package required unless they add a custom **`INetworkHandler`** or later start **`StartRelayNetworkAsync`** / **`StartDirectNetworkAsync`**. |
-| **Gameplay** simulation synced over the session **Network** (host/client or server roles with Relay or direct transport) | **Exactly one** gameplay stack: **NGO** — `com.unity.netcode.gameobjects` **or** **NFE** — `com.unity.netcode.entities` (Netcode for Entities). Integrate transport with session network APIs per Unity's session + Netcode guides; do not assume both stacks. |
+| **Gameplay** simulation synced over the session **Network** (host/client or server roles with Relay or direct transport) | **One** gameplay stack, chosen per [choosing-netcode.md](choosing-netcode.md): NGO (`com.unity.netcode.gameobjects`) for games with no prediction, rollback or lag-compensation need, or `com.unity.netcode` (GhostObject/GhostBehaviour when the installed package has a public `GhostObject` type, otherwise direct ECS ghosts) for games that need them. NGO 3.x itself installs `com.unity.netcode` and the Entities packages, so read its `package.json` for the minimum Editor and keep NGO 2.x on older Editors; it also needs Burst-capable targets. An existing project keeps its stack. Never let two stacks write the same state. Integrate transport with session network APIs per Unity's session + Netcode guides. |
 | **Quick join** (filter-based auto pick / create) | Session **type** and **indexed** properties for filters; **`QuickJoinOptions`** in code. |
 | **Ticket matchmaking** into a **player-hosted** match | A deployed **Matchmaker queue (MMQ)** (name matches **`MatchmakerOptions`**), Matchmaker **environment** / dashboard setup, and authenticated players. |
 | **Ticket matchmaking** with a **dedicated game server (DGS)** | **MMQ** configured for the **DGS / server allocation** flow, a **server build** and **hosting** setup (e.g. Game Server Hosting / Multiplay—see **`llms.txt`** hosting and deployment topics), server process using the **server** session role where applicable, and often **`WithBackfillingConfiguration`** + **`StartBackfillingAsync`** / **`StopBackfillingAsync`** when refilling player slots on an existing allocation. |

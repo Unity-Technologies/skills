@@ -1,9 +1,13 @@
-## Table of Contents
+# Dedicated game server entrypoint
+
+## Contents
+
+Links in this file resolve to the skill directory's `references/` folder, the folder this file is in. Project and package paths in code spans are relative to the user's project or the package root.
 
 - [Overview](#overview)
 - [Build and assembly constraints](#build-and-assembly-constraints-unity_server)
 - [`IMultiplayerServerService` capabilities](#imultiplayerserverservice-capabilities)
-- [Method signatures](#method-signatures)
+- [API reference](#api-reference)
 - [Matchmaker server extensions](#matchmaker-server-extensions-matchmakerserverextensions)
 - [Session options (shared types)](#session-options-shared-types)
 - [Errors](#errors)
@@ -29,7 +33,7 @@ Any **game or tool code** that references **`Unity.Services.Multiplayer.Server`*
 | **Scripting define** | Wrap references (types, calls, `using` that pulls server-only APIs) in **`#if UNITY_SERVER`** … **`#endif`** (or a define that implies the same server build), so non-server targets do not compile that code. |
 | **Assembly Definition** | In the **`.asmdef`** of the assembly that references **`Unity.Services.Multiplayer.Server`**, set **`defineConstraints`** to include **`UNITY_SERVER`** so the dependent assembly is not built for client-only targets. |
 
-Use one or both so client/player builds never require the Server assembly to be present or linked incorrectly.
+Default to `#if UNITY_SERVER` around the calls. Use the assembly definition instead when a whole assembly is server-only, because then no `#if` is needed in its files. Either way, client and player builds must not need the Server assembly.
 
 ## `IMultiplayerServerService` capabilities
 
@@ -41,34 +45,15 @@ Use one or both so client/player builds never require the Server assembly to be 
 
 > **`GetSessionAsync`** exists on **`IMultiplayerServerService`** for package-internal use and is **`internal`** in the SDK source; treat the three **`Create*`** methods above as the supported public server entry surface for session creation from game code.
 
-## Method signatures
+## API reference
 
-```csharp
-// Creates a new dedicated-server session. Returns IServerSession. Throws SessionException on failure.
-Task<IServerSession> CreateSessionAsync(SessionOptions sessionOptions)
-
-// Creates or joins a server session using an explicit session id.
-Task<IServerSession> CreateSessionAsync(string sessionId, SessionOptions sessionOptions)
-
-// Creates a server session from a Matchmaker match id and session options.
-Task<IServerSession> CreateMatchSessionAsync(string matchId, SessionOptions sessionOptions)
-```
+The three `Create*` methods above take `SessionOptions` and return `IServerSession`. Read [game server hosting support](https://docs.unity.com/en-us/mps-sdk/game-server-hosting-support.md) before writing server code, and the [Multiplayer Services package scripting API](https://docs.unity3d.com/Packages/com.unity.services.multiplayer@<VERSION>) for exact signatures.
 
 ## Matchmaker server extensions (`MatchmakerServerExtensions`)
 
 All members below are declared in **`Unity.Services.Multiplayer.Server`** (`MatchmakerServerExtensions`).
 
-```csharp
-// Configure backfill behavior on SessionOptions before create/match session.
-T WithBackfillingConfiguration<T>(this T options, bool enable, bool automaticallyRemovePlayers,
-    bool autoStart, int playerConnectionTimeout, int backfillingLoopInterval) where T : SessionOptions
-
-// Start backfilling on a matchmade session (server / session handle).
-Task StartBackfillingAsync(this ISession session)
-
-// Stop backfilling on a matchmade session.
-Task StopBackfillingAsync(this ISession session)
-```
+`WithBackfillingConfiguration` on `SessionOptions` configures backfill before create or match session, and `StartBackfillingAsync` / `StopBackfillingAsync` on a matchmade `ISession` control it. Read [Matchmaker backfill](https://docs.unity.com/en-us/mps-sdk/matchmaking/mm-backfill.md) for the parameters.
 
 ## Session options (shared types)
 
@@ -76,4 +61,13 @@ Task StopBackfillingAsync(this ISession session)
 
 ## Errors
 
-Async methods on **`IMultiplayerServerService`** throw **`SessionException`** on failure (same family as the client **`IMultiplayerService`** session APIs).
+Async methods on `IMultiplayerServerService` throw `SessionException` on failure, the same as the client session APIs. Read `SessionException`'s `SessionError` value, then resolve it:
+
+| `SessionError` | Root cause | Resolution |
+| --- | --- | --- |
+| `InvalidParameter` | A parameter is missing or malformed, for example `SessionOptions.MaxPlayers` left at `0` or an empty match id | 1. Print the options and match id you passed. 2. Set `MaxPlayers` above 0 and pass the match id from the allocation unchanged. 3. Retry. |
+| `NotAuthorized` or `Forbidden` | The server is not signed in, or its credentials lack permission for the project or environment | 1. Confirm Unity Services initialized and the server signed in with a service account (`ServerAuthenticationService.Instance.SignInWithServiceAccountAsync`) before the call; backfill also needs the service account to have the Matchmaker Backfill Admin role. 2. Check the server's project and environment match the matchmaker's. 3. Retry. |
+| `SessionNotFound` or `AllocationNotFound` | The match id does not name a live allocation, often because it expired or came from another environment | 1. Log the match id the server received. 2. Create the match session as soon as the allocation arrives. 3. If it still fails, rerun the matchmaking flow and use the new id. |
+| `RateLimitExceeded` | Too many session calls in a short time | 1. Remove retry loops without a delay. 2. Back off and retry once. |
+
+For other values, read the `lobby-error-messages` page in the Multiplayer Services docs.

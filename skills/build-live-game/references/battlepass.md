@@ -518,11 +518,17 @@ public class BattlePassTester : MonoBehaviour
 
 ## Cloud Code Module Implementation
 
-> **Create the module with the Editor, not by hand.** Right-click a folder under `Assets/` ->
-> **Create > Services > Cloud Code Module Script** and name it `BattlePassModule`. See
+> Create it with these commands:
+>
+> ```bash
+> unity command services.cloudcode create_module --module-name BattlePassModule --path Assets/CloudCode
+> unity command services.cloudcode create_module_script --script-name BattlePassModule --module-path Assets/CloudCode/BattlePassModule/BattlePassModule.ccmu
+> ```
+>
+> See
 > the Creating a Cloud Code Module section of `references/cloud-code-modules.md`.
 >
-> The Editor generates the following. Use the list to check what you got — there is nothing here to
+> The commands generate the following. Use the list to check what you got — there is nothing here to
 > type out, and no `.sln`, `.csproj`, `.pubxml` or test project:
 >
 > - [ ] `Assets/CloudCode/BattlePassModule/BattlePassModule.ccmu` (holds the two asmdef GUIDs)
@@ -531,7 +537,7 @@ public class BattlePassTester : MonoBehaviour
 > - [ ] `Client/BattlePassModuleClient.asmdef` — references the cloud assembly
 > - [ ] `Client/BattlePassModuleClient.cs` — `[CloudModuleClient(typeof(BattlePassModule))]` partial
 >
-> One file the Editor does **not** generate, which this module needs because its endpoints inject
+> One file the commands do **not** generate, which this module needs because its endpoints inject
 > `IGameApiClient`:
 >
 > - [ ] `Cloud/CloudSetup.cs` — an `ICloudCodeSetup` calling `config.AddGameApiClient()`
@@ -829,7 +835,7 @@ Place at `Assets/BattlePasses.rc`. Contains pass definitions as a JSON array und
 > See the Creating a Cloud Code Module section of `references/cloud-code-modules.md`
 > for the generic templates; replace `MyModule` with `BattlePassModule`.
 >
-> The `.ccmu` is deployed by the Deployment Window like any other cloud asset, but its code is compiled by
+> The `.ccmu` is deployed like any other cloud asset, but its code is compiled by
 > Unity — a project that does not compile has nothing to deploy.
 
 ### Access Control
@@ -874,8 +880,8 @@ Ensure these packages are listed in `Packages/manifest.json`:
 - [ ] Remote Config `.rc` file created with `"battle_passes"` entry and at least one active pass
 - [ ] Cloud Code module authored as a `.ccmu`: module asset, `Cloud/` + `Client/` asmdefs, endpoint class, `CloudSetup.cs` (see file list in [Cloud Code Module Implementation](#cloud-code-module-implementation))
 - [ ] `BattlePassModule.cs` added to the module project with `AwardXp`, `ClaimReward`, `PurchasePremium` functions
-- [ ] Environment selected in **Services > Deployment** settings
-- [ ] Deploy all via the Deployment Window: select `BattlePasses.rc` and `BattlePassModule.ccmu`, click **Deploy**
+- [ ] Active environment set with `unity command services.environment set_active_by_name --name <env>`
+- [ ] Deploy with `unity command services.deployment deploy_items --paths Assets/BattlePasses.rc,Assets/CloudCode/BattlePassModule/BattlePassModule.ccmu`
 - [ ] Project linked in **Edit > Project Settings > Services**
 
 ---
@@ -892,7 +898,7 @@ After implementing the battle pass feature, verify:
 6. **No direct client writes** to `"battle_pass_progress"` -- all mutations go through Cloud Code.
 7. **No client-supplied tier data**: `AwardXp` and `ClaimReward` use the module's server-side `PassTiers`, which matches the `XpRequired` values in `BattlePasses.rc`, and reject passes outside the server-side `PassWindows` (matching `StartDate`/`EndDate`).
 8. **Date filtering** uses `DateTime.UtcNow` with `DateTimeStyles.RoundtripKind` for consistent UTC parsing.
-9. **Cloud resources** are present and deployable: `BattlePasses.rc` and `BattlePassModule.ccmu` appear in the Deployment Window.
+9. **Cloud resources** are present and deployable: `BattlePasses.rc` and `BattlePassModule.ccmu` are listed by `unity command services.deployment list_items`.
 10. **PurchasePremium is an integration stub** -- it returns existing progress when `HasPremium` is already true and otherwise throws until you add purchase validation.
 11. **ClaimReward validates** the pass window (`PassWindows`), tier reach (against `PassTiers`) and premium ownership before recording the claim.
 12. **Premium purchasing is not deployable until a validated purchase flow sets `HasPremium`** -- keep the fail-closed throw until then.
