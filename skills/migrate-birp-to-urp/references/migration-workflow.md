@@ -19,13 +19,15 @@ Use this workflow to follow the official Unity migration flow and identify when 
 
 ## Official References
 
-- [Upgrading from the Built-in Render Pipeline to URP](https://docs.unity3d.com/Manual/urp/upgrading-from-birp.html)
-- [Convert assets using the Render Pipeline Converter](https://docs.unity3d.com/Manual/urp/features/rp-converter.html)
-- [Upgrade material assets to URP or HDRP](https://docs.unity3d.com/Manual/upgrade-material.html)
-- [URP asset](https://docs.unity3d.com/Manual/urp/urp-asset-and-renderer.html)
-- [Prepare and upgrade sprites for 2D lighting in URP](https://docs.unity3d.com/Manual/urp/PrepShader.html)
-- [Set up a render pipeline](https://docs.unity3d.com/Manual/render-pipelines-set-up.html)
-- [Update believable visuals in URP and HDRP](https://docs.unity3d.com/Manual/BestPracticeMakingBelievableVisuals0.html)
+Read each page's local copy from `<editor-install>/Editor/Data/Documentation/en/Manual/<local file>` (or `en/ScriptReference/` for API pages) when it exists, otherwise the online `.md` page. Replace `<VERSION>` with the project's Unity version, e.g. `6000.3`.
+
+- [Upgrading from the Built-in Render Pipeline to URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp.md) — local `urp/upgrading-from-birp.html`
+- [Convert assets using the Render Pipeline Converter](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/rp-converter.md) — local `urp/features/rp-converter.html`
+- [Upgrade material assets to URP or HDRP](https://docs.unity.com/en-us/engine/<VERSION>/manual/materials-and-shaders/materials/upgrade-material.md) — local `upgrade-material.html`
+- [URP asset](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/urp-quality-settings/urp-asset-and-renderer.md) — local `urp/urp-asset-and-renderer.html`
+- [Prepare and upgrade sprites for 2D lighting in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/unity2d/2d-urp/2d-index/prep-shader.md) — local `urp/PrepShader.html`
+- [Set up a render pipeline](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/choose-a-render-pipeline/set-up.md) — local `render-pipelines-set-up.html`
+- [Update believable visuals in URP and HDRP](https://docs.unity3d.com/<VERSION>/Documentation/Manual/BestPracticeMakingBelievableVisuals0.html)
 
 ## Safety First
 

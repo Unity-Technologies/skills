@@ -2,6 +2,8 @@
 
 Use this triage for shader and material cases that the Render Pipeline Converter cannot solve automatically.
 
+Links to other reference files point to files in this `references/` folder. Any other relative paths resolve to the skill directory.
+
 ## Table of Contents
 
 - [Official Reference](#official-reference)
@@ -15,9 +17,11 @@ Use this triage for shader and material cases that the Render Pipeline Converter
 
 ## Official Reference
 
-- [Upgrade custom shaders for URP compatibility](https://docs.unity3d.com/Manual/urp/urp-shaders/birp-urp-custom-shader-upgrade-guide.html)
-- [Upgrade material assets to URP or HDRP](https://docs.unity3d.com/Manual/upgrade-material.html)
-- [Render pipeline feature comparison](https://docs.unity3d.com/Manual/render-pipelines-feature-comparison.html)
+Read each page's local copy from `<editor-install>/Editor/Data/Documentation/en/Manual/<local file>` (or `en/ScriptReference/` for API pages) when it exists, otherwise the online `.md` page. Replace `<VERSION>` with the project's Unity version, e.g. `6000.3`.
+
+- [Upgrade custom shaders for URP compatibility](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/upgrade-shaders/birp-urp-custom-shader-upgrade-guide.md) — local `urp/urp-shaders/birp-urp-custom-shader-upgrade-guide.html`
+- [Upgrade material assets to URP or HDRP](https://docs.unity.com/en-us/engine/<VERSION>/manual/materials-and-shaders/materials/upgrade-material.md) — local `upgrade-material.html`
+- [Render pipeline feature comparison](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/choose-a-render-pipeline/feature-comparison.md) — local `render-pipelines-feature-comparison.html`
 
 ## Ground Truth
 

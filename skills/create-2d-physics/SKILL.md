@@ -114,7 +114,7 @@ Prefer in order: the C# example on the type or member page you are using; existi
 
 Physics changes alter runtime behaviour, so a clean compile isn't enough. Run these checks in order. If any check fails, reread the [docs pages](#full-topic-map) to find out what you missed, fix it, and run the checks again.
 
-1. Use `console_status` to check the project has zero console errors.
+1. Use `console status` to check the project has zero console errors.
 2. Read back what you changed, because a change can compile cleanly and still do nothing:
    - For components you added or configured in the scene, use `script eval` to check each one exists on its GameObject and its properties hold the values you set, such as a Collider 2D's `isTrigger` or the members listed on a Core component's type page.
    - For a script, read it back and check it uses the system and namespace from [Step 0](#step-0-which-physics-system), and sets each Core body's `type` explicitly.

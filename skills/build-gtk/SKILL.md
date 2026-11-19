@@ -16,6 +16,10 @@ public API in the `Unity.GraphToolkit.Editor` namespace.
 
 - Use the unity cli (`unity command --format json`) and the `unity-cli` and `unity-pipeline` skills for
   each step.
+- Run C# with `unity command script eval --code '<snippet>'`. Don't use `using` directives or
+  unqualified types in the snippet, because the compiler only reads `using UnityEngine`, and a bare
+  `AssetDatabase` or `Object` causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read;
+  it arrives at `data.result.result`.
 - Create a restore point you can roll back to if your changes fail.
 - Do only what's asked. Don't change unrelated assets or files.
 - Never leave verification code in the user's script. Never build logging or detection they didn't ask

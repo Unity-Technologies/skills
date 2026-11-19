@@ -1,5 +1,7 @@
 # Unity Sprite Editor API Reference
 
+Markdown links in this file are relative to this file. Any other relative path resolves to the skill directory, the parent of this `references` folder.
+
 ## Table of Contents
 - [Core Interface: ISpriteEditorDataProvider](#core-interface-ispriteeditordataprovider)
   - [Properties](#properties)

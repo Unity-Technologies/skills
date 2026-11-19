@@ -9,11 +9,11 @@ required_editor_version: ">=6000.3"
 ## Important
 
 - Use the unity cli (`unity command --format json`) and the `unity-cli` and `unity-pipeline` skills for each step.
-- Don't use `using` directives or unqualified types in the `snippet` for `eval`, because the compiler only reads `using UnityEngine`, and a bare `AssetDatabase` or `Object` causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read; it arrives at `data.result.result`.
+- Run C# with `unity command script eval --code '<snippet>'`. Don't use `using` directives or unqualified types in the snippet, because the compiler only reads `using UnityEngine`, and a bare `AssetDatabase` or `Object` causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read; it arrives at `data.result.result`.
 - Create a restore point you can roll back to if your changes fail.
 - Do only what's asked. Don't change unrelated assets or files.
 - Avoid long explanations.
-- Never leave verification code in the user's script. Never build logging or detection they didn't ask for, because it clutters their project and console. Read state through `eval` instead, as described in [Final step](#final-step).
+- Never leave verification code in the user's script. Never build logging or detection they didn't ask for, because it clutters their project and console. Read state through `script eval` instead, as described in [Final step](#final-step).
 
 ## Full topic map
 
@@ -178,9 +178,9 @@ If the user's Console shows one of these errors, apply the fix in its row, becau
 
 Run these checks in order. If any check fails, reread the [docs pages](#full-topic-map) to find out what you missed, fix it, and run the checks again.
 
-1. Use `console_status` to check the project has zero console errors.
+1. Use `console status` to check the project has zero console errors.
 2. If the user didn't ask for proof and you don't suspect a fault, stop here.
-3. Otherwise, enter Play mode once and reproduce the case. Read the outcome the user asked for through `eval`, such as whether the bullet's Rigidbody position stopped at the wall, not just the field you changed. Don't add logging or take screenshots, because they cost time and leave changes behind.
+3. Otherwise, enter Play mode once and reproduce the case. Read the outcome the user asked for through `script eval`, such as whether the bullet's Rigidbody position stopped at the wall, not just the field you changed. Don't add logging or take screenshots, because they cost time and leave changes behind.
 4. Exit Play mode and check again that the console has zero errors.
 
 ## Final report

@@ -75,13 +75,13 @@ Pick the matching reference doc based on what the user wants, then follow it:
 
 Do the following checks:
 
-1. Check the project has zero console errors. Use `console_status` for counts.
-2. Read the assets back with `eval` (fully qualified), because an asset can exist without its settings having stuck:
+1. Check the project has zero console errors. Use `console status` for counts.
+2. Read the assets back with `script eval` (fully qualified), because an asset can exist without its settings having stuck:
    - If you created a tile palette, check that `AssetDatabase.LoadAllAssetsAtPath` on the palette returns a `GridPalette` sub-asset, and that the `Grid` on the palette's root GameObject has the `cellLayout` and `cellSize` you chose.
    - If you created a RuleTile, check that `AssetDatabase.LoadAssetAtPath` with the RuleTile type you created returns the asset, that `m_TilingRules.Count` equals the number of rules you created, and that each rule's `m_Sprites` has exactly one entry: `null` for an empty RuleTile, or the assigned sprite for one built from sprites.
 3. If you built a RuleTile from sprites, check that it picks the right sprite as it's painted, because correct fields don't prove the rules match the art. Open a temporary scene with `EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive)`, add a Grid with a Tilemap, use `Tilemap.SetTile` to paint a 3x3 block of the RuleTile, and check that `Tilemap.GetSprite` at each cell returns the sprite of the rule that matches that cell's neighbours. For example, the centre cell gets the fully surrounded rule's sprite, if the RuleTile has that rule. Then close the scene with `EditorSceneManager.CloseScene(scene, true)` without saving it.
 4. If a value doesn't match, fix the asset and repeat the check.
-5. Stop there unless the user asked you to prove it works or you suspect a specific fault. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `eval` rather than adding logging. Take no screenshots, because they take too much time.
+5. Stop there unless the user asked you to prove it works or you suspect a specific fault. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `script eval` rather than adding logging. Take no screenshots, because they take too much time.
 
 If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.
 

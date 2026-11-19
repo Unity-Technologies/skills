@@ -27,7 +27,7 @@ The camera is half of game feel and the first thing a hand-rolled implementation
 
 ## 2D follow
 
-`CinemachineCamera` + **Position Composer**: dead zone ~0.1×0.1 (breathing room for small motion), look-ahead 0.5–1 s along velocity, damping asymmetric (loose horizontal, tight vertical for platformers). Pixel-art projects: pair with `2d-pixel-perfect`.
+`CinemachineCamera` + **Position Composer**: dead zone ~0.1×0.1 (breathing room for small motion), look-ahead 0.5–1 s along velocity, damping asymmetric (loose horizontal, tight vertical for platformers). Pixel-art projects: pair with `configure-2d-pixel-perfect`.
 
 ## Feel hooks
 
