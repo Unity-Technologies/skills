@@ -453,7 +453,7 @@ var camera = System.Linq.Enumerable.FirstOrDefault(cameras, c => c.name == "Main
              ?? UnityEngine.Camera.main;
 if (camera != null)
 {
-    // GetUniversalAdditionalCameraData() is an extension method and needs a `using`, which eval
+    // GetUniversalAdditionalCameraData() is an extension method and needs a `using`, which script eval
     // rejects — read the component it wraps instead.
     var data = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
     report.Add(data != null

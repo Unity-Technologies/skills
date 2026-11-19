@@ -1,7 +1,14 @@
 ## Code Templates
 
+### Contents
+
+- [Creating a Global Volume with Effects](#creating-a-global-volume-with-effects)
+- [Enabling Post-Processing on Camera](#enabling-post-processing-on-camera)
+- [Modifying an Existing Volume Profile](#modifying-an-existing-volume-profile)
+- [Making a change undoable through `script eval`](#making-a-change-undoable-through-script-eval)
+
 Each template is a snippet to run through the Editor's `script eval` command. Hard stops `throw`,
-so the eval fails loudly; anything the caller needs to read is `return`ed.
+so `script eval` fails loudly; anything the caller needs to read is `return`ed.
 
 **`script eval` compiles a statement block, not a file.** `using` directives are rejected there — the
 compiler reads `using UnityEngine;` as a resource-disposal statement and fails. So these

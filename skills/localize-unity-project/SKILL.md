@@ -227,10 +227,10 @@ If an error appears in the console or the game UI, look it up in [references/tro
 
 Run these checks in order. If any check fails, reread the [docs pages](#full-topic-map) to find out what you missed, fix it, and run the checks again.
 
-1. Run `unity command console status` (the `console_status` check) and confirm `groundTruth.consoleErrors` is 0 and `compilationFailed` is false.
+1. Run `unity command console status` (the `console status` check) and confirm `groundTruth.consoleErrors` is 0 and `compilationFailed` is false.
 2. Run the [table completeness check](references/table-completeness-check.md) and keep its output for the report.
 3. Stop there unless the user asked for proof or a specific fault is suspected, such as a label that doesn't change when the locale changes.
-4. If a fault is suspected and the change affects runtime behaviour, enter Play mode once to chase it. Read the world through `eval`, for example `LocalizationSettings.SelectedLocale` and the `text` of the label in question, rather than adding logging. Take no screenshots, because they take too much time. Exit Play mode when you're done.
+4. If a fault is suspected and the change affects runtime behaviour, enter Play mode once to chase it. Read the world through `script eval`, for example `LocalizationSettings.SelectedLocale` and the `text` of the label in question, rather than adding logging. Take no screenshots, because they take too much time. Exit Play mode when you're done.
 
 ## Final report
 

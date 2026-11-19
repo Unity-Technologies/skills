@@ -1,123 +1,37 @@
 # Common Errors and Invalid Patterns
 
-This document covers invalid V2 patterns, API corrections, and common mistakes to avoid.
+Errors that SpriteAtlas V2 scripts commonly hit, with their cause and fix.
+
+Relative paths in this file resolve to the skill directory — the folder that holds the skill's main instructions.
 
 ## Table of Contents
 
-- [Invalid V2 Patterns (Do Not Use)](#invalid-v2-patterns-do-not-use)
-- [Critical API Corrections](#critical-api-corrections)
-  - [❌ Format Casting in TextureImporterPlatformSettings](#-format-casting-in-textureimporterplatformsettings)
-  - [❌ SetMasterAtlasPath() - Method Does Not Exist](#-setmasteratlaspath---method-does-not-exist)
-  - [⚠ Platform-Specific Format Limitations](#-platform-specific-format-limitations)
-  - [⚠ PackAtlases() Requires Runtime SpriteAtlas[]](#-packatlases-requires-runtime-spriteatlas)
-  - [⚠ Always scope AssetDatabase.FindAssets to the folders you mean](#-always-scope-assetdatabasefindassets-to-the-folders-you-mean)
-  - [⚠ AssetImporter.GetAtPath() Takes Single Argument](#-assetimportergetatpath-takes-single-argument)
+- [Errors with a message](#errors-with-a-message)
+- [Mistakes with no error message](#mistakes-with-no-error-message)
 
-## Invalid V2 Patterns (Do Not Use)
+## Errors with a message
 
-```csharp
-// ❌ WRONG - V1 pattern (scripting SpriteAtlas in editor)
-SpriteAtlas atlas = new SpriteAtlas();
-atlas.Add(sprites);  // Invalid in V2
-atlas.SetTextureSettings(settings);  // Invalid in V2
+Match the message the Console or compiler shows against the first column. Compiler messages start with the code shown, followed by the member names from the user's code.
 
-// ❌ WRONG - Deprecated/invalid SpriteAtlasAsset methods
-atlasAsset.SetTextureSettings(settings);  // Use importer instead
-atlasAsset.SetPackingSettings(settings);  // Use importer instead
-atlasAsset.SetIncludeInBuild(true);       // Use importer instead
+| Error message | Root cause | Fix |
+|---|---|---|
+| Inspector: `Sprite Atlas packing is disabled` | `EditorSettings.spritePackerMode` is `Disabled`, its default value | Set it to `SpritePackerMode.SpriteAtlasV2` with [scripts/enablespritepacking.cs](../scripts/enablespritepacking.cs), then read it back |
+| `CS0266: Cannot implicitly convert type 'int' to 'UnityEditor.TextureImporterFormat'. An explicit conversion exists (are you missing a cast?)` | `format = (int)TextureImporterFormat.ASTC_6x6` casts the enum to `int` | Assign the enum directly: `format = TextureImporterFormat.ASTC_6x6` |
+| `CS1061: 'SpriteAtlasAsset' does not contain a definition for 'SetMasterAtlasPath'` | `SetMasterAtlasPath` doesn't exist | Load the master with `AssetDatabase.LoadAssetAtPath<SpriteAtlas>(masterPath)` and pass it to `SetMasterAtlas` |
+| `CS1503: Argument 1: cannot convert from 'string' to 'UnityEngine.U2D.SpriteAtlas'` on `SetMasterAtlas` | `SetMasterAtlas` takes the runtime `SpriteAtlas`, not a path or a `SpriteAtlasAsset` | Load the master as `SpriteAtlas` first, then pass that instance |
+| `CS1929: 'SpriteAtlasAsset' does not contain a definition for 'GetPackables' and the best extension method overload 'SpriteAtlasExtensions.GetPackables(SpriteAtlas)' requires a receiver of type 'SpriteAtlas'` | `GetPackables` is an extension method on the runtime `SpriteAtlas`, not on `SpriteAtlasAsset` | Load the master as `SpriteAtlas` and call `GetPackables()` on it |
+| `CS1503: Argument 1: cannot convert from 'UnityEditor.U2D.SpriteAtlasAsset[]' to 'UnityEngine.U2D.SpriteAtlas[]'` on `PackAtlases` | `SpriteAtlasUtility.PackAtlases` takes runtime `SpriteAtlas[]` | Load each atlas with `AssetDatabase.LoadAssetAtPath<SpriteAtlas>(path)` and pass that array |
+| `CS1501: No overload for method 'GetAtPath' takes 2 arguments` | `AssetImporter.GetAtPath` takes only a path | Call `AssetImporter.GetAtPath(path) as SpriteAtlasImporter` |
+| `CS0103: The name 'SearchMode' does not exist in the current context` on `AssetDatabase.FindAssets` | `FindAssets` has no `SearchMode` overload; the second parameter is `string[] searchInFolders` | Pass the folders to search: `AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Assets" })` |
+| `CS0618: 'SpriteAtlasAsset.SetTextureSettings(SpriteAtlasTextureSettings)' is obsolete: 'SetTextureSettings is no longer supported and will be removed. Use SpriteAtlasImporter.SetTextureSettings instead.'` (same for `SetPackingSettings`, `SetIncludeInBuild`, `SetPlatformSettings`) | These `SpriteAtlasAsset` setters are deprecated in V2 | Set the matching `SpriteAtlasImporter` member, then call `SaveAndReimport()`. Despite the warning text, the importer exposes `textureSettings`, `packingSettings` and `includeInBuild` as properties, not `Set...` methods; only `SetPlatformSettings` is a method. The deprecated-methods table in the API reference file maps each one |
 
-// ❌ WRONG - Creating variants from runtime SpriteAtlas
-SpriteAtlasAsset masterAsset = ...;
-atlasVariant.Add(masterAsset.GetPackables()); // GetPackables() doesn't exist on SpriteAtlasAsset!
+## Mistakes with no error message
 
-// ❌ WRONG - Incorrect packable handling in variants
-SpriteAtlasAsset variant = new SpriteAtlasAsset();
-variant.SetMasterAtlas(atlasPath); // WRONG: SetMasterAtlas expects a Runtime SpriteAtlas, not path or SpriteAtlasAsset!
+These compile and import cleanly, so check for them in the code you write.
 
-// ❌ WRONG - Format cast in TextureImporterPlatformSettings
-var settings = new TextureImporterPlatformSettings {
-    format = (int)TextureImporterFormat.ASTC_6x6  // ❌ Explicit cast causes compile error
-};
-
-// ❌ WRONG - Using deprecated/invalid method
-variant.SetMasterAtlasPath(path); // Method doesn't exist - use SetMasterAtlas() with runtime SpriteAtlas
-```
-
-## Critical API Corrections
-
-### ❌ Format Casting in TextureImporterPlatformSettings
-
-```csharp
-// ❌ WRONG - Explicit cast causes compile error
-var settings = new TextureImporterPlatformSettings {
-    format = (int)TextureImporterFormat.ASTC_6x6
-};
-
-// ✅ CORRECT - Direct enum assignment
-var settings = new TextureImporterPlatformSettings {
-    format = TextureImporterFormat.ASTC_6x6
-};
-```
-
-### ❌ SetMasterAtlasPath() - Method Does Not Exist
-
-```csharp
-// ❌ WRONG - Method doesn't exist
-variant.SetMasterAtlasPath(path);
-
-// ✅ CORRECT - Load runtime SpriteAtlas and pass to SetMasterAtlas()
-SpriteAtlas masterRuntime = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(masterPath);
-variant.SetMasterAtlas(masterRuntime);
-```
-
-### ⚠ Platform-Specific Format Limitations
-
-- **PVRTC is NOT supported** in SpriteAtlas V2
-- Use **ASTC** for Android (`ASTC_6x6`, `ASTC_4x4`)
-- Use **ASTC or ETC2** for iOS (`ASTC_4x4`, `ETC2_RGBA8`)
-- Use **ETC2** for desktop (`ETC2_RGBA8`)
-
-### ⚠ PackAtlases() Requires Runtime SpriteAtlas[]
-
-```csharp
-// ❌ WRONG - Passing SpriteAtlasAsset[] causes compilation error
-SpriteAtlasUtility.PackAtlases(atlasAssets, ...);
-
-// ✅ CORRECT - Load runtime SpriteAtlases first
-SpriteAtlas[] atlases = AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Assets" })
-    .Select(g => AssetDatabase.LoadAssetAtPath<SpriteAtlas>(AssetDatabase.GUIDToAssetPath(g)))
-    .Where(a => a != null)
-    .ToArray();
-SpriteAtlasUtility.PackAtlases(atlases, EditorUserBuildSettings.activeBuildTarget, false);
-```
-
-### ⚠ Always scope AssetDatabase.FindAssets to the folders you mean
-
-```csharp
-// ❌ WRONG - does not compile. There is no SearchMode overload.
-string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas", SearchMode.AllAssets);
-
-// ❌ RISKY - compiles, but searches the WHOLE project including read-only packages
-string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas");
-
-// ✅ CORRECT - the second parameter is string[] searchInFolders
-string[] guids = AssetDatabase.FindAssets("t:SpriteAtlas", new[] { "Assets" });
-```
-
-`AssetDatabase.FindAssets` has exactly two overloads, `FindAssets(string filter)` and
-`FindAssets(string filter, string[] searchInFolders)`. Verified on Unity 6000.5.8f1.
-
-Scoping matters because an unscoped search reaches into `Packages/`, and those assets are usually
-read-only. Measured on a real project: an unscoped `t:Scene` search returned 20 scenes where the
-project itself has 1, and all 19 extras were package test fixtures. A batch operation that then
-writes to what it found will fail, or worse, target assets it must not modify.
-
-### ⚠ AssetImporter.GetAtPath() Takes Single Argument
-
-```csharp
-// ❌ WRONG - No such overload
-SpriteAtlasImporter importer = AssetImporter.GetAtPath(path, typeof(SpriteAtlasImporter));
-
-// ✅ CORRECT - Single argument, cast result
-SpriteAtlasImporter importer = AssetImporter.GetAtPath(path) as SpriteAtlasImporter;
-```
+| Mistake | Why it matters | Fix |
+|---|---|---|
+| V1 pattern: `atlas.Add(...)` or other `SpriteAtlasExtensions` calls on a `SpriteAtlas` in editor code | These compile, because they resolve to the `SpriteAtlasExtensions` editor methods, so nothing warns you that you've bypassed V2 authoring | Author with `SpriteAtlasAsset` and configure with `SpriteAtlasImporter`. See [scripts/dontscriptspriteatlasineditor.cs](../scripts/dontscriptspriteatlasineditor.cs) |
+| Unscoped `AssetDatabase.FindAssets("t:SpriteAtlas")` | It also searches `Packages/`, whose assets are read-only, so a batch write targets assets it must not modify | Always pass `new[] { "Assets" }` or the specific folders you mean |
+| PVRTC formats in a V2 platform override | PVRTC is not supported in SpriteAtlas V2 | Use ASTC (`ASTC_4x4`, `ASTC_6x6`) for Android and iOS, or ETC2 (`ETC2_RGBA8`) for iOS |
+| Importer properties changed without `SaveAndReimport()` | The change never reaches the imported atlas | Call `importer.SaveAndReimport()` after every change |

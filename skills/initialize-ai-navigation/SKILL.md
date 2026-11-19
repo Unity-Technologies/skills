@@ -68,7 +68,7 @@ The agent and query API is `UnityEngine.AI` (`NavMeshAgent`, `NavMesh`, `NavMesh
 
 Always use the docs for the installed package and Unity version rather than relying on training knowledge, since APIs are frequently marked obsolete between versions (e.g. the `OffMeshLink` component is deprecated in favour of `NavMeshLink`).
 
-### Passing C# to `eval`
+### Passing C# to `script eval`
 
 `script eval` compiles a **statement block, not a file**, so these are compile errors rather than warnings:
 
@@ -139,7 +139,7 @@ Follow this general order. See the Component Setup Guide in the reference for de
 6. **Scripts** — movement, patrol, click-to-move, animation coupling (see Common Recipes in reference)
 
 ### 4. Validation
-After setup, read these values with `eval` (fully qualified) rather than checking the Scene view by eye, because a NavMesh that looks right can still be missing or mismatched:
+After setup, read these values with `script eval` (fully qualified) rather than checking the Scene view by eye, because a NavMesh that looks right can still be missing or mismatched:
 
 1. Each `NavMeshSurface` has baked data: `navMeshData` isn't null.
 2. Each `NavMeshSurface.agentTypeID` matches the `NavMeshAgent.agentTypeID` of the agents that walk on it.
@@ -156,9 +156,9 @@ If a check fails, fix it and run the checks again before the Final step.
 
 Do the following checks:
 
-1. Check the project has zero console errors. Use `console_status` for counts.
+1. Check the project has zero console errors. Use `console status` for counts.
 2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
-3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `eval` rather than adding logging, for example each agent's `pathStatus` and `remainingDistance` to see whether it reaches its destination. Take no screenshots as they take too much time.
+3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `script eval` rather than adding logging, for example each agent's `pathStatus` and `remainingDistance` to see whether it reaches its destination. Take no screenshots as they take too much time.
 
 If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.
 

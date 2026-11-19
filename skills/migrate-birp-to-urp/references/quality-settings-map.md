@@ -4,10 +4,12 @@ Use this map to explain where common Built-in quality settings end up after URP 
 
 ## Official References
 
-- [Convert Built-in quality settings to URP](https://docs.unity3d.com/Manual/urp/birp-onboarding/quality-presets.html)
-- [Find Built-in quality settings in URP](https://docs.unity3d.com/Manual/urp/birp-onboarding/quality-settings-location.html)
-- [Universal Render Pipeline asset](https://docs.unity3d.com/Manual/urp/urp-asset-and-renderer.html)
-- [Change how lights fade to match the Built-In Render Pipeline](https://docs.unity3d.com/Manual/urp/birp-onboarding/birp-light-falloff-in-urp.html)
+Read each page's local copy from `<editor-install>/Editor/Data/Documentation/en/Manual/<local file>` (or `en/ScriptReference/` for API pages) when it exists, otherwise the online `.md` page. Replace `<VERSION>` with the project's Unity version, e.g. `6000.3`.
+
+- [Convert Built-in quality settings to URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/quality-presets.md) — local `urp/birp-onboarding/quality-presets.html`
+- [Find Built-in quality settings in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/quality-settings-location.md) — local `urp/birp-onboarding/quality-settings-location.html`
+- [Universal Render Pipeline asset](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/urp-quality-settings/urp-asset-and-renderer.md) — local `urp/urp-asset-and-renderer.html`
+- [Change how lights fade to match the Built-In Render Pipeline](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/birp-light-falloff-in-urp.md) — local `urp/birp-onboarding/birp-light-falloff-in-urp.html`
 
 ## Common Mappings
 

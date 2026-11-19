@@ -16,11 +16,13 @@ Use deliberate URP migration strategies for higher-risk Built-in rendering patte
 
 ## Official References
 
-- [Render pipeline feature comparison](https://docs.unity3d.com/Manual/render-pipelines-feature-comparison.html)
-- [Upgrade custom shaders for URP compatibility](https://docs.unity3d.com/Manual/urp/urp-shaders/birp-urp-custom-shader-upgrade-guide.html)
-- [Camera.OnRenderImage](https://docs.unity3d.com/ScriptReference/Camera.OnRenderImage.html)
-- [Custom post-processing in URP](https://docs.unity3d.com/Manual/urp/post-processing/custom-post-processing.html)
-- [Make a shader compatible with the Deferred rendering path in URP](https://docs.unity3d.com/Manual/urp/rendering/make-shader-compatible-with-deferred.html)
+Read each page's local copy from `<editor-install>/Editor/Data/Documentation/en/Manual/<local file>` (or `en/ScriptReference/` for API pages) when it exists, otherwise the online `.md` page. Replace `<VERSION>` with the project's Unity version, e.g. `6000.3`.
+
+- [Render pipeline feature comparison](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/choose-a-render-pipeline/feature-comparison.md) — local `render-pipelines-feature-comparison.html`
+- [Upgrade custom shaders for URP compatibility](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/installing-and-configuring-urp/upgrading-from-birp/upgrade-shaders/birp-urp-custom-shader-upgrade-guide.md) — local `urp/urp-shaders/birp-urp-custom-shader-upgrade-guide.html`
+- [Camera.OnRenderImage](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unityengine/camera/onrenderimage.md) — local `Camera.OnRenderImage.html`
+- [Custom post-processing in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/custom-post-processing.md) — local `urp/post-processing/custom-post-processing.html`
+- [Make a shader compatible with the Deferred rendering path in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/render-pipelines/universal-render-pipeline/introduction/urp-concepts/rendering-paths/deferred-rendering-path/make-shader-compatible-with-deferred.md) — local `urp/rendering/make-shader-compatible-with-deferred.html`
 
 ## Ground Truth
 

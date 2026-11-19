@@ -36,6 +36,6 @@ To efficiently translate an existing project, follow this multi-step workflow:
    - **Grammar & Tone:** Ensure the tone matches the game's style. For example, use imperative verbs for buttons (e.g., German: "Lauf!" instead of "Laufen") and correct pluralization for labels (e.g., "Punkte" instead of "Punkt").
 
 3. **Quality Assurance (QA):**
-   - **Switch locale:** Through `eval`, run `LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.GetLocale("de");` for each target locale in turn, because a script call is repeatable and doesn't depend on an Editor window being open.
+   - **Switch locale:** Through `script eval`, run `LocalizationSettings.SelectedLocale = LocalizationSettings.AvailableLocales.GetLocale("de");` for each target locale in turn, because a script call is repeatable and doesn't depend on an Editor window being open.
    - **Visual Inspection:** Methodically inspect every prefab and scene in the base language and all target languages.
    - **Layout Fit:** Check for text overflows or "tofu" (missing glyphs). Adjust font sizes or use `ContentSizeFitter` if strings are too long.

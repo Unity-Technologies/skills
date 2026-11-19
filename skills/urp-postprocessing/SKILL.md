@@ -1,6 +1,6 @@
 ---
 name: urp-postprocessing
-description: Sets up, configures, and debugs URP post-processing with the Volume framework. Use for bloom, tonemapping, color adjustments, depth of field, vignette, or other Volume overrides.
+description: Sets up, configures, and debugs URP post-processing with the Volume framework. Use when asked to add or tune effects such as bloom, tonemapping, depth of field, or to fix Volume overrides that don't display.
 required_packages:
   com.unity.render-pipelines.universal: ">=14.0.0"
 ---
@@ -9,7 +9,59 @@ Help the user set up, configure, and debug post-processing effects using URP's V
 
 **Goal: The user should have a working visual result with zero console errors after setup.**
 
-## 0. Prerequisite: an Editor you can run C# in
+## Important
+
+- Use the unity cli (`unity command --format json`) and the `unity-cli` and `unity-pipeline` skills for each step.
+- Run C# with `unity command script eval --code '<snippet>'`. Don't use `using` directives or unqualified types in the snippet. The compiler reads using `UnityEngine` and a bare AssetDatabase, Volume, or Object causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read; it arrives at `data.result.result`.
+- Create a restore point you can roll back to if your changes fail.
+- Do only what's asked. Don't change unrelated assets or files.
+- Never leave verification code in the user's script. Never build logging or detection they didn't ask for. See [Final step](#final-step).
+- Avoid long explanations.
+
+## Step 1
+
+Before you go forward with a workflow or diagnosis:
+
+1. Open and read the [documentation page(s)](#full-topic-map) that cover the specific subject related to what you intend to do or fix and check if you've missed anything.
+2. Name the file(s) you read in your response.
+
+This is because your training knowledge about Unity might be out of date, incorrect, or for the wrong Unity version.
+
+## Full topic map
+
+Where the URP manual lives depends on the Unity version, so check the version first. Read the Unity version from `ProjectSettings/ProjectVersion.txt` (for example `6000.0` from `6000.0.58f1`), and each package's major.minor from `Packages/packages-lock.json` (for example `17.0` from `17.0.4`).
+
+**Unity 6000.0 or later:** if the Editor install folder has a `Data/Documentation` folder (eg `...Unity/Hub/Editor/6000.6.0b2/Editor/Data/Documentation`), read the html files from the `en/Manual` folder. Otherwise the docs pages are online at `https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/`.
+
+**Earlier than Unity 6000.0:** the docs pages are local markdown conversions of the URP manual, stored at `<project-folder>/Library/PackageCache/com.unity.render-pipelines.universal@*/`. Read only the .md files in that specific `PackageCache` subfolder. You must not look at non-.md files, or look outside at other Library or PackageCache folders, otherwise it takes too much time. Some page names differ from the list below, so find each page by its title. If that folder has no `.md` files, use the online pages at `https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@<VERSION>/manual/` instead, because some package versions don't ship their docs.
+
+Prefer fetching the page directly (for example `WebFetch`) over searching (for example `WebSearch`) — faster and lands on the exact reference. Only fetch what you need, and only search if you don't have the exact URL. Replace `<VERSION>` with the following before fetching:
+
+- **docs.unity3d.com**: The Unity version, eg `6000.6`
+- **Package on docs.unity3d.com**: The package version, eg `@6.6` or `@2.0`. Check the package version if unsure.
+- **Engine on docs.unity.com**: The Unity version, eg `6000.3`
+- **docs.unity.com**: The product version, eg `7000.0`
+
+Before fetching, check that `<VERSION>` is listed as a `## Version` heading in https://docs.unity.com/en-us/engine/llms.txt. If it isn't, use the docs.unity3d.com Manual instead. The two sites use different page names, so don't reuse the paths below. Instead, find each page by its title in `https://docs.unity3d.com/<VERSION>/Documentation/Manual/docdata/toc.js`, then fetch `https://docs.unity3d.com/<VERSION>/Documentation/Manual/<link>.html`, where `<link>` is the `link` value next to the title.
+
+- [Add post-processing in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/add-post-processing.md) — local `urp/add-post-processing.html`: enabling post-processing on a camera and adding a Volume.
+- [Understand volumes in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/volumes-landing-page/volumes.md) — local `urp/Volumes.html`: Global and Local Volumes and how they blend.
+- [Set up a volume in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/volumes-landing-page/set-up-a-volume.md) — local `urp/set-up-a-volume.html`: creating a Volume and setting its mode.
+- [Create a Volume Profile in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/volumes-landing-page/volume-profile.md) — local `urp/Volume-Profile.html`: creating and assigning Volume Profiles.
+- [Configure Volume Overrides in URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/volumes-landing-page/volume-overrides.md) — local `urp/VolumeOverrides.html`: adding overrides and enabling their properties.
+- [Volume component reference for URP](https://docs.unity.com/en-us/engine/<VERSION>/manual/post-processing-and-full-screen-effects/urp/volumes-landing-page/volume-component-reference.md) — local `urp/volume-component-reference.html`: Volume component properties.
+
+### API reference
+
+The API is `UnityEngine.Rendering.Universal` (effects such as `Bloom`, and `UniversalAdditionalCameraData`), part of the `com.unity.render-pipelines.universal` package, and `UnityEngine.Rendering` (`Volume`, `VolumeProfile`, `VolumeComponent`), part of the `com.unity.render-pipelines.core` package. It is versioned by package version, not Unity version (e.g. `@14.0`, `@17.0`), so check the project's installed package versions before relying on a specific class or method.
+
+1. Read the installed package versions from `Packages/packages-lock.json`.
+2. For each package, fetch and cache `https://docs.unity3d.com/Packages/<package-name>@<version>/xrefmap.yml` (replace `<version>` with the installed package version, e.g. `17.0`). This file maps every public API member's fully qualified name to its docs page `href` (e.g. `href: api/UnityEngine.Rendering.Universal.Bloom.html` => `https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/api/UnityEngine.Rendering.Universal.Bloom.html`).
+3. Grep the yml file locally for a class or method instead of refetching per lookup. Don't read the whole file.
+
+Always fetch the version matching the installed package rather than relying on training knowledge, since APIs are frequently marked obsolete between major versions.
+
+## Step 2. Prerequisite: an Editor you can run C# in
 
 Volume profiles, `VolumeParameter.overrideState`, and the camera's post-processing flags are
 Editor/runtime object state — the checks and edits below all run C# inside a live Editor.
@@ -25,7 +77,7 @@ Run C# through the connected Editor with the `script eval` command. Discover its
 from `unity command --format json` rather than assuming one — the inline form is
 `unity command script eval --code '<snippet>'`, and some Pipeline versions also register
 `script eval_file` for running a snippet from a file. **Check the catalog before reaching for
-`script eval_file`; it is frequently absent.** `unity command` defaults to a 30 second timeout.
+`script eval_file`; it is frequently absent.** `script eval`'s default timeout depends on the Pipeline version, so read it from the command's schema (`unity command --detail full --format json`) and pass `--timeout <seconds>` for a slow call.
 
 ### Passing C# to `script eval`
 
@@ -40,7 +92,7 @@ compile error rather than a warning:
 Where a snippet below is written as a file — with usings, for readability, or because it is
 meant to be saved into the project — qualify the types before passing it to `script eval`.
 
-## 0. Pre-Flight Checks
+## Step 3. Pre-Flight Checks
 
 Before configuring any effect, **verify all checks**. Fix failures first.
 
@@ -59,7 +111,7 @@ Run this to verify the setup programmatically:
 // allowed, so every type is fully qualified.
 var report = new System.Text.StringBuilder();
 
-// 1. Check URP is active — a hard stop, so throw: it fails the eval loudly
+// 1. Check URP is active — a hard stop, so throw: it fails `script eval` loudly
 var urpAsset = UnityEngine.Rendering.Universal.UniversalRenderPipeline.asset;
 if (urpAsset == null)
     throw new System.Exception("URP is not the active render pipeline.");
@@ -95,7 +147,7 @@ foreach (var vol in volumes)
 return report.Length == 0 ? "Post-processing setup looks correct." : report.ToString();
 ```
 
-## 1. Volume Setup
+## Step 4. Volume Setup
 
 Effects are added as **VolumeComponent overrides** on a **VolumeProfile** (a `ScriptableObject`).
 
@@ -106,7 +158,7 @@ Effects are added as **VolumeComponent overrides** on a **VolumeProfile** (a `Sc
 - `blendDistance` (float) — outer distance in world units to start blending from (0 = no blend, instant transition at collider boundary).
 - `weight` (float, 0–1) — scales the volume's overall influence.
 
-## 2. Post-Processing Effects
+## Step 5. Post-Processing Effects
 
 All effects are `VolumeComponent` subclasses added as overrides on a `VolumeProfile` via `profile.Add<T>()`. Check existence with `profile.Has<T>()` or `profile.TryGet<T>(out var t)`. Remove with `profile.Remove<T>()`.
 
@@ -118,7 +170,7 @@ When configuring a specific effect, load the full API reference:
 For code templates:
 - [references/code-templates.md](references/code-templates.md) — Global Volume setup, camera post-processing, and profile modification templates
 
-## 3. Anti-Hallucination Rules
+## Step 6. Anti-Hallucination Rules
 
 ### Required Usings
 
@@ -147,7 +199,7 @@ using UnityEngine.Rendering.Universal;  // Bloom, Tonemapping, ColorAdjustments,
 - **`sharedProfile`** = returns the asset directly (edits persist to disk). **`profile`** = auto-clones into an instance if needed (safe for runtime edits). Check with `volume.HasInstantiatedProfile()`.
 - **`profile.Add<T>(bool overrides = false)`** — pass `true` to auto-enable `overrideState` on all parameters of the added component.
 
-## 4. Debugging Checklist
+## Step 7. Debugging Checklist
 
 When post-processing isn't working, check in order:
 
@@ -160,7 +212,7 @@ When post-processing isn't working, check in order:
 7. `UniversalRenderPipeline.asset.supportsHDR` is `true`? Required for Bloom and Tonemapping.
 8. Viewing in **Game view**? Scene view has a separate post-processing toggle in its toolbar.
 
-## 5. Common Recipes
+## Step 8. Common Recipes
 
 Format: Effect property=value. Bloom values are threshold/intensity/scatter.
 
@@ -172,9 +224,19 @@ Format: Effect property=value. Bloom values are threshold/intensity/scatter.
 
 **Clean/Mobile:** Tonemapping mode=Neutral, ColorAdjustments postExposure=0.2, Bloom threshold=1.0 intensity=0.3 (subtle). Avoid FilmGrain, MotionBlur, DepthOfField on mobile.
 
-## 6. Final Confirmation
+## Final step
 
-After setup, report to user:
+Do the following checks:
+
+1. Check the project has zero console errors. Use `console status` for counts.
+2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
+3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `script eval` rather than adding logging. Take no screenshots as they take too much time.
+
+If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.
+
+## Final report
+
+Give the user a concise but not dense checklist of what you did and why, including any incidental side effects (for example, settings you toggled to test something, or temporary files you created). If the user needs to follow up with more steps or decisions, list them. After setup, report to user:
 
 ```
 Post-Processing Setup Complete

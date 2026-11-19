@@ -1,4 +1,5 @@
 # Late-Binding via Addressables (On-Demand Loading)
+Relative paths in this file resolve to the skill directory — the folder that holds the skill's main instructions.
 
 This approach creates SpriteAtlases that are NOT included in the build and are instead loaded on-demand via the Addressables system.
 
@@ -25,19 +26,19 @@ When using Addressables, you MUST create all three scripts:
 
 ## Script 1: Prebuild Atlas Generator with Addressables
 
-See [resources/spriteatlasprebuildgenerator.cs](../resources/spriteatlasprebuildgenerator.cs).
+See [scripts/spriteatlasprebuildgenerator.cs](../scripts/spriteatlasprebuildgenerator.cs).
 
 ## Script 2: Build Addressables Content (REQUIRED)
 
 This script runs AFTER atlas generation to build the Addressables content bundle.
 
-See [resources/buildaddressablespostprocess.cs](../resources/buildaddressablespostprocess.cs).
+See [scripts/buildaddressablespostprocess.cs](../scripts/buildaddressablespostprocess.cs).
 
 ## Script 3: Late-Binding Runtime Loader (REQUIRED)
 
 This script handles automatic on-demand loading of atlases via SpriteAtlasManager callbacks.
 
-See [resources/spriteatlaslatebinding.cs](../resources/spriteatlaslatebinding.cs).
+See [scripts/spriteatlaslatebinding.cs](../scripts/spriteatlaslatebinding.cs).
 
 ## Setup Instructions
 
