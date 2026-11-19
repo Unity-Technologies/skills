@@ -1,6 +1,6 @@
 # Game Audio
 
-> Craft reference for the `craft-game-floors` skill. Relative links in this file resolve to the skill directory. **Load:** during the feel pass, or whenever a game has zero or unrouted audio. Routing sources into *existing* mixer groups lives in `audio-setup-mixers`; import/memory settings in `optimize-audio`; everything else about the mixer is owned here. Confirm engine behavior against the linked documentation for the installed version before acting on it.
+> Craft reference for the `craft-game-floors` skill. Relative links in this file resolve to the skill directory. **Load:** during the feel pass, or whenever a game has zero or unrouted audio. Routing sources into *existing* mixer groups lives in `route-audio-to-mixer-groups`; import/memory settings in `optimize-audio`; everything else about the mixer is owned here. Confirm engine behavior against the linked documentation for the installed version before acting on it.
 
 ## The floor rule
 
@@ -21,7 +21,7 @@ Always apply a 5 ms fade-in/out envelope to every clip — raw edges click.
 
 One AudioMixer: `Master → Music, SFX, Ambient`. Every AudioSource routes to a group — nothing on Master directly.
 
-- **Creation is editor-UI work** in the [Audio Mixer window](https://docs.unity.com/en-us/engine/<VERSION>/manual/audio/mixer/overview.md) — there is no public scripting API for creating mixers or groups; the mechanics live under that manual section. Once the groups exist, `audio-setup-mixers` routes every source into the right one — that skill *routes only*: it does not create mixers or groups, set volumes, expose parameters, or configure ducking. Those are this file's recipes.
+- **Creation is editor-UI work** in the [Audio Mixer window](https://docs.unity.com/en-us/engine/<VERSION>/manual/audio/mixer/overview.md) — there is no public scripting API for creating mixers or groups; the mechanics live under that manual section. Once the groups exist, `route-audio-to-mixer-groups` routes every source into the right one — that skill *routes only*: it does not create mixers or groups, set volumes, expose parameters, or configure ducking. Those are this file's recipes.
 - **Exposed parameters.** Expose each group's Volume to script (mechanics on the Audio Mixer manual page above) and name the parameters **MusicVol** and **SFXVol** — the shell's settings sliders bind to these names. Set from script with [`mixer.SetFloat("MusicVol", dB)`](https://docs.unity.com/en-us/engine/<VERSION>/script-reference/unityengine/audio/audiomixer/setfloat.md) — its call-timing constraint and its snapshot interaction are documented on that page; the ducking rule below exists because of that interaction.
 - **Ducking — never through the parameter the sliders own.** Once a settings slider calls
   `SetFloat("MusicVol", …)`, snapshots stop controlling that parameter, so snapshot ducking of the

@@ -1,5 +1,12 @@
 # Audio Import API Recipes
 
+## Contents
+
+- Read AudioClip Importer Settings; Force To Mono and Reimport; Set Load Type; Enable Load In Background
+- Set Compression Format and Quality; Override Sample Rate (Mobile); Read AudioSource Properties (Batch)
+- Read DSP Buffer Size; Check Source File Format (Lossy Warning); Resolving `audioSource` / `clip` inside a snippet
+- Enumerate scene components; Enumerate mixer assets
+
 C# code recipes for `unity command script eval --code '<snippet>'`. All examples target the Unity 6
 AudioImporter API.
 
@@ -16,7 +23,7 @@ return $"forceToMono={importer.forceToMono}, loadType={importer.defaultSampleSet
           $"compressionFormat={importer.defaultSampleSettings.compressionFormat}, " +
           $"quality={importer.defaultSampleSettings.quality}, " +
           $"sampleRateSetting={importer.defaultSampleSettings.sampleRateSetting}, " +
-          $"sampleRateOverride={importer.defaultSampleSettings.sampleRateOverride}");
+          $"sampleRateOverride={importer.defaultSampleSettings.sampleRateOverride}";
 ```
 
 ## Force To Mono and Reimport
@@ -26,7 +33,7 @@ var path = UnityEditor.AssetDatabase.GetAssetPath(audioSource.clip);
 var importer = (UnityEditor.AudioImporter)UnityEditor.AssetImporter.GetAtPath(path);
 importer.forceToMono = true;
 importer.SaveAndReimport();
-return $"Reimported {path} — channels now: {audioSource.clip.channels}");
+return $"Reimported {path} — channels now: {audioSource.clip.channels}";
 ```
 
 ## Set Load Type
@@ -56,7 +63,7 @@ var path = UnityEditor.AssetDatabase.GetAssetPath(audioSource.clip);
 var importer = (UnityEditor.AudioImporter)UnityEditor.AssetImporter.GetAtPath(path);
 var settings = importer.defaultSampleSettings;
 settings.compressionFormat = UnityEngine.AudioCompressionFormat.Vorbis;
-settings.quality = 0.7f; // 0.0–1.0; raise to 0.7–0.85 for dialogue
+settings.quality = 0.7f; // 0.0–1.0; tune per clip — quality is not linear
 importer.defaultSampleSettings = settings;
 importer.SaveAndReimport();
 ```
@@ -83,14 +90,14 @@ return $"clip={src.clip?.name}, loadType={src.clip?.loadType}, " +
           $"channels={src.clip?.channels}, frequency={src.clip?.frequency}, " +
           $"spatialBlend={src.spatialBlend}, rolloff={src.rolloffMode}, " +
           $"mixerGroup={src.outputAudioMixerGroup?.name ?? "None"}, " +
-          $"bypassEffects={src.bypassEffects}");
+          $"bypassEffects={src.bypassEffects}";
 ```
 
 ## Read DSP Buffer Size
 
 ```csharp
 UnityEngine.AudioSettings.GetDSPBufferSize(out int bufferLength, out int numBuffers);
-return $"DSP buffer: {bufferLength} samples x {numBuffers} buffers");
+return $"DSP buffer: {bufferLength} samples x {numBuffers} buffers";
 ```
 
 ## Check Source File Format (Lossy Warning)
@@ -98,7 +105,9 @@ return $"DSP buffer: {bufferLength} samples x {numBuffers} buffers");
 ```csharp
 var path = UnityEditor.AssetDatabase.GetAssetPath(clip);
 if (path.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase))
-    return $"'{clip.name}' is MP3 — lossy source quality is lost permanently after Unity re-encodes. Recommend WAV or AIFF sources.");
+    return $"'{clip.name}' is MP3 — lossy source quality is lost permanently after Unity re-encodes. Recommend WAV or AIFF sources.";
+if (path.EndsWith(".ogg", System.StringComparison.OrdinalIgnoreCase))
+    return $"'{clip.name}' is OGG — lossy source quality is lost permanently after Unity re-encodes. Recommend WAV or AIFF sources.";
 ```
 
 ## Resolving `audioSource` / `clip` inside a snippet
@@ -124,8 +133,8 @@ var clip = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.AudioClip>("Ass
 ## Enumerate scene components
 
 Substitute the component type (`UnityEngine.AudioSource`, `UnityEngine.AudioListener`). Inactive
-objects are included deliberately — a disabled second listener still counts against the
-one-listener rule.
+objects are included so the count shows every listener. Before you treat a listener as a
+duplicate, check its `enabled` and `gameObject.activeInHierarchy`.
 
 ```csharp
 var found = UnityEngine.Object.FindObjectsByType<UnityEngine.AudioSource>(

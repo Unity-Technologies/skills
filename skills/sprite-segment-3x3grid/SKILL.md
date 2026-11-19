@@ -9,7 +9,7 @@ Segment a sprite's texture into a 3x3 grid and output a text pattern showing whi
 ## Important
 
 - Use the unity cli (`unity command --format json`) and the `unity-cli` and `unity-pipeline` skills for each step.
-- Don't use `using` directives or unqualified types in the `snippet` for `eval`. The compiler reads using `UnityEngine` and a bare AssetDatabase, Volume, or Object causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read; it arrives at `data.result.result`.
+- Run C# with `unity command script eval --code '<snippet>'`. Don't use `using` directives or unqualified types in the snippet. The compiler reads using `UnityEngine` and a bare AssetDatabase, Volume, or Object causes errors (CS0246 / CS0103 / CS0104). `return` what you want to read; it arrives at `data.result.result`.
 - Create a restore point you can roll back to if your changes fail.
 - Do only what's asked. Don't change unrelated assets or files.
 - Never leave verification code in the user's script. Never build logging or detection they didn't ask for. See [Final step](#final-step).
@@ -191,7 +191,7 @@ Use the Sprite's `rect` property to determine the pixel region to analyze:
 
 Do the following checks:
 
-1. Check the project has zero console errors. Use `console_status` for counts.
+1. Check the project has zero console errors. Use `console status` for counts.
 2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
 
 If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.

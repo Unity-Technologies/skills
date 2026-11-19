@@ -4,28 +4,28 @@
 
 ---
 
-If a new Importer does not need to be created, skip to Step 3
+## Workflow
 
 ### Step 1: Pre-Flight
-- Check whether an importer asset already exists for this file. If it does, skip to Step 3.
-- Verify the file to be imported exists.
-- Verify the file type is supported by Pixyz/Asset Transformer Toolkit using `ATTAssistantUtilities.CanImportFile()`.
-- Check what kind of file (eg. point cloud, CAD) is it. Find the Importer type that would best match it.
+1. Check whether an Importer asset already exists for this file. If it does, skip to Step 3, because creating a second Importer for the same file duplicates the imported model.
+2. Check the file to import exists.
+3. Call `ATTAssistantUtilities.CanImportFile()` to check Asset Transformer Toolkit supports the file type. If it returns `false`, tell the user the format isn't supported and stop.
+4. Identify the kind of file, such as point cloud or CAD, and pick the best-matching type from `ATTAssistantUtilities.GetImporterTypes()`.
 
 ### Step 2: Create Importer
-- Create the appropriate Importer asset with the path to the file to be imported. The path must be relative to the Application.dataPath.
-- If there are issues, fix and revalidate. Do not exceed 3 iterations.
-Do not continue if this step cannot be completed successfully.
+1. Call `ATTAssistantUtilities.CreateImporter()` with the absolute system path to the file, the type from Step 1, and the folder from `ATTAssistantUtilities.EnsureImporterSaveFolder()`.
+2. If it fails, fix the problem and try again. Stop after three attempts, because repeated failures usually mean the approach is wrong, and more attempts waste the user's time.
+3. If you can't create the Importer, tell the user why and stop, because every later step needs it.
 
 ### Step 3: Configure Importer
-- If requested, change the importer's settings.
-- If requested, assign the requested RuleSet to the Importer.
-- If requested, make changes to the LOD generation.
-Continue only if asked to also import the file. The import process can be very long, so NEVER assume you must import the file unless it was requested.
+1. If the user asked to change Importer settings, change them through `SerializedObject`, using the paths from `ATTAssistantUtilities.GetImporterProperties()`.
+2. If the user asked for a RuleSet on the Importer, assign it.
+3. If the user asked for LOD changes, follow the Levels of Detail workflow.
+4. Stop here unless the user asked you to import the file, because an import can take a very long time.
 
 ### Step 4: Import
-- Start the asynchronous import using `ATTAssistantUtilities.ImportFile()`.
-- Report whether the import process started successfully. Remind the user this is a background process.
+1. Start the asynchronous import with `ATTAssistantUtilities.ImportFile()`.
+2. Report whether the import started, and remind the user it runs in the background.
 
 ## Importer utility functions
 
@@ -115,7 +115,7 @@ public static void ImportFile(string importerPath)
 
 ### Technical Notes
 - Because import is an asynchronous process, the imported files may not yet exist in the project by the time the prompt finishes execution.
-- The imported model will always be saved to the same directory that the ImporterScriptableObject lives in.
-- Importers are designed to be extended. Check which Importer types exist in the project using `ATTAssistantUtilities.GetImporterTypes()` instead of making assumptions like a point cloud file always maps to the PointCloudImporterScriptableObject.
-- Only one import should be processing at a time.
+- The toolkit always saves the imported model in the same folder as its ImporterScriptableObject.
+- Users can add their own Importer types. Check which Importer types exist in the project with `ATTAssistantUtilities.GetImporterTypes()` instead of assuming, for example, that a point cloud file always maps to `PointCloudImporterScriptableObject`.
+- Run only one import at a time, because imports run in the background and you can't tell which result belongs to which import while several are running.
 - When creating a new ImporterScriptableObject, save it under the folder returned by `ATTAssistantUtilities.EnsureImporterSaveFolder()`. This reflects the user-configured save folder from Project Settings and defaults to `"Assets/3DModels"`.

@@ -5,6 +5,8 @@
 
 ---
 
+The Asset Transformer Toolkit package docs have no scripting API reference for the Rule class, so this file lists the members this skill uses.
+
 ## Rule constructors
 
 The Rule API reference contains the following constructors.

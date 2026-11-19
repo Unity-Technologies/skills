@@ -5,6 +5,8 @@
 
 ---
 
+The Asset Transformer Toolkit package docs have no scripting API reference for the RuleSet class or `RunRuleSet`, so this file lists the members this skill uses.
+
 ## RuleSet methods
 
 The RuleSet API reference contains the following methods.

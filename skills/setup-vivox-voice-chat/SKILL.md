@@ -176,7 +176,7 @@ After writing code that uses this package:
 
 Do the following checks:
 
-1. Check the project has zero console errors. Use `console_status` for counts.
+1. Check the project has zero console errors. Use `console status` for counts.
 2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
 3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `script eval` rather than adding logging. Take no screenshots as they take too much time.
 

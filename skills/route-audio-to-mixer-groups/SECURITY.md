@@ -1,4 +1,4 @@
-# Security notes: audio-setup-mixers
+# Security notes: route-audio-to-mixer-groups
 
 This skill has the agent run C# inside the user's open Unity Editor through `unity command script eval`. Automated skill scanners flag that as a powerful capability. It is intentional, and it is limited by the safeguards below.
 

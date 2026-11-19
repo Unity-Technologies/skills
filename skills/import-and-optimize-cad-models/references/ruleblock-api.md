@@ -1,3 +1,5 @@
+The Asset Transformer Toolkit package docs have no scripting API reference for the RuleBlock class or `ActionBase.Id`, so this file lists the members this skill uses.
+
 ## ActionBase properties
 
 ### `Id`

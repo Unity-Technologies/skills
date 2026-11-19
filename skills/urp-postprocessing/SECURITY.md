@@ -12,5 +12,5 @@ This skill has the agent run C# inside the user's open Unity Editor through `uni
 
 - **Only the user's own Editor.** `unity command script eval` talks to the Editor open on this machine. It can't reach another machine or another user's Editor.
 - **Capability gate.** `script eval` is only available when the project's Pipeline package provides it.
-- **No remote code.** The agent runs C# it writes from this skill's own recipes. Nothing downloaded from outside is executed.
+- **No remote code.** The agent runs C# it writes from this skill's own recipes. The skill never tells it to download or run code from outside.
 - **Named commands first.** When a dedicated `unity command` covers a step, the skill uses it instead of `script eval`.
