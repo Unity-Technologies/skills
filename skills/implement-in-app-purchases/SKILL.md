@@ -138,9 +138,9 @@ Read the [EntitlementStatus API](https://docs.unity3d.com/Packages/com.unity.pur
 
 Do the following checks:
 
-1. Check the project has zero console errors. Use `console_status` for counts.
+1. Check the project has zero console errors. Use `console status` for counts.
 2. Stop there unless the user asked you to prove it works or you suspect a specific fault.
-3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `eval` rather than adding logging. Take no screenshots, because they take too much time.
+3. If you do enter Play mode, do it once only to chase a fault you already suspect. Read the world through `script eval` rather than adding logging. Take no screenshots, because they take too much time.
 
 If a check fails, go back and reread the [docs pages](#full-topic-map) to find out what you missed.
 
@@ -160,6 +160,6 @@ After writing code that uses this package, also read the code back and check it,
 Report the following to the user, in this order:
 
 1. What changed: each file you changed, with the old and new API calls or values where they apply (for example, `IStoreListener.ProcessPurchase` → `OnPurchasePending`).
-2. How you verified it: the outcome of each Final step check, including the console error count and anything you read through `eval` in Play mode.
+2. How you verified it: the outcome of each Final step check, including the console error count and anything you read through `script eval` in Play mode.
 3. Incidental side effects: anything you touched beyond the requested change, such as packages you installed or upgraded, project or Services settings you changed, generated files (for example tangle classes or `IAPProductCatalog.json`), and temporary files you created or removed.
 4. Follow-up the user must do, for example product setup in App Store Connect or the Google Play Console, and sandbox testing on a device. Include the manual steps that the path reference file lists.

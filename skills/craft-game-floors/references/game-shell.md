@@ -1,6 +1,6 @@
 # Game Shell
 
-> Craft reference for the `craft-game-floors` skill. **Load:** once the core loop works, before the feel pass concludes — and in any ad-hoc session, whenever the game boots straight into gameplay: such a build isn't done. UI construction mechanics live in the `ui` skill family; this reference owns which screens exist and how they behave. Relative links in this file resolve to the skill directory. Confirm engine behavior against the linked documentation for the installed version before acting on it.
+> Craft reference for the `craft-game-floors` skill. **Load:** once the core loop works, before the feel pass concludes — and in any ad-hoc session, whenever the game boots straight into gameplay: such a build isn't done. UI construction mechanics live in the `create-ui` skill; this reference owns which screens exist and how they behave. Relative links in this file resolve to the skill directory. Confirm engine behavior against the linked documentation for the installed version before acting on it.
 
 ## The opinion
 

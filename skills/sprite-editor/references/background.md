@@ -1,5 +1,7 @@
 # Sprite Editor Background Information
 
+Markdown links in this file are relative to this file. Any other relative path, such as `scripts/README.md`, resolves to the skill directory, the parent of this `references` folder.
+
 ## Table of Contents
 - [Why Use ISpriteEditorDataProvider](#why-use-ispriteeditordataprovider)
 - [Original vs Imported Image Sizes](#original-vs-imported-image-sizes)

@@ -1,4 +1,5 @@
 # Custom Sprite Packing with ScriptablePacker
+Relative paths in this file resolve to the skill directory — the folder that holds the skill's main instructions.
 
 Guide for implementing custom sprite packing algorithms in SpriteAtlas V2.
 
@@ -44,7 +45,7 @@ Custom packers are useful for:
 
 ### Abstract Methods
 
-See [resources/scriptablepacker.cs](../resources/scriptablepacker.cs).
+See [scripts/scriptablepacker.cs](../scripts/scriptablepacker.cs).
 
 ### PackerData Structure
 
@@ -67,49 +68,49 @@ struct PackerData
 
 Information about each sprite:
 
-See [resources/spritedata.cs](../resources/spritedata.cs).
+See [scripts/spritedata.cs](../scripts/spritedata.cs).
 
 ### SpritePack Output Structure
 
 Set this on each `SpriteData` to specify packing result:
 
-See [resources/spritepack.cs](../resources/spritepack.cs).
+See [scripts/spritepack.cs](../scripts/spritepack.cs).
 
 ### TextureData Structure
 
 Source texture information:
 
-See [resources/texturedata.cs](../resources/texturedata.cs).
+See [scripts/texturedata.cs](../scripts/texturedata.cs).
 
 ### PackTransform Options
 
 Sprite transformations during packing:
 
-See [resources/packtransform.cs](../resources/packtransform.cs).
+See [scripts/packtransform.cs](../scripts/packtransform.cs).
 
 ## Example: Grid-Based Packer
 
 Simple example that arranges sprites in a grid pattern.
 
-See [resources/gridspritepacker.cs](../resources/gridspritepacker.cs).
+See [scripts/gridspritepacker.cs](../scripts/gridspritepacker.cs).
 
 ## Example: Multi-Page Packer
 
 Distributes sprites across multiple atlas pages.
 
-See [resources/multipagepacker.cs](../resources/multipagepacker.cs).
+See [scripts/multipagepacker.cs](../scripts/multipagepacker.cs).
 
 ## Example: Size-Optimized Packer
 
 Packs larger sprites first for better space utilization.
 
-See [resources/sizeoptimizedpacker.cs](../resources/sizeoptimizedpacker.cs).
+See [scripts/sizeoptimizedpacker.cs](../scripts/sizeoptimizedpacker.cs).
 
 ## Assigning Custom Packer to Atlas
 
 Use `SpriteAtlasAsset.SetScriptablePacker()` to assign your custom packer.
 
-See [resources/custompackersetup.cs](../resources/custompackersetup.cs).
+See [scripts/custompackersetup.cs](../scripts/custompackersetup.cs).
 
 ## Best Practices
 
@@ -144,4 +145,4 @@ See [resources/custompackersetup.cs](../resources/custompackersetup.cs).
 
 ## Debugging Tips
 
-See [resources/packerdebugging.cs](../resources/packerdebugging.cs).
+See [scripts/packerdebugging.cs](../scripts/packerdebugging.cs).
