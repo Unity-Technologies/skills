@@ -1,6 +1,6 @@
 # LevelPlay Native Dependency Resolution
 
-Detailed guidance for Step 4 of SKILL.md. LevelPlay requires native Android/iOS libraries that Unity's
+Detailed guidance for Step 4 of the workflow. LevelPlay requires native Android/iOS libraries that Unity's
 package manager alone doesn't handle; a dependency manager bridges this gap. Read this when resolving
 native dependencies, when the user does not yet have a dependency manager, or when diagnosing gradle
 (Android) / CocoaPods (iOS) build failures.

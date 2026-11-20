@@ -18,21 +18,23 @@
 
 LevelPlay SDK provides APIs to help facilitate privacy regulation requirements including GDPR, CCPA, and COPPA. These settings must be configured before SDK initialization.
 
+When talking to the user, name these settings only. Don't explain what a law is or who or where it applies to, and don't say which settings the user needs; point to [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings) and the user's own legal counsel.
+
 **SDK Version Requirement:** SDK 9.4.0+ for current APIs (older deprecated APIs available in SDK 9.3.0 and lower)
 
 ## Quick Reference
 
-| Regulation | SDK 9.5.0+ API | SDK 9.4.x API | When to Use |
-|------------|---------------|---------------|-------------|
-| **GDPR** | `LevelPlayPrivacySettings.SetGDPRConsent(bool)` | `LevelPlayPrivacySettings.SetGDPRConsents(Dictionary)` | EU users, requires explicit consent |
-| **CCPA** | `LevelPlayPrivacySettings.SetCCPA(true)` | `LevelPlayPrivacySettings.SetCCPA(true)` | California users opting out of data sale |
-| **COPPA** | `LevelPlayPrivacySettings.SetCOPPA(true)` | `LevelPlayPrivacySettings.SetCOPPA(true)` | Apps directed at children under 13 |
+| Setting | SDK 9.5.0+ API | SDK 9.4.x API |
+|---------|---------------|---------------|
+| **GDPR consent** | `LevelPlayPrivacySettings.SetGDPRConsent(bool)` | `LevelPlayPrivacySettings.SetGDPRConsents(Dictionary)` |
+| **CCPA** | `LevelPlayPrivacySettings.SetCCPA(true)` | `LevelPlayPrivacySettings.SetCCPA(true)` |
+| **COPPA** | `LevelPlayPrivacySettings.SetCOPPA(true)` | `LevelPlayPrivacySettings.SetCOPPA(true)` |
+
+For what each setting covers, see [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings).
 
 ## GDPR Consent Management
 
-### What is GDPR?
-
-The General Data Protection Regulation (GDPR) is a European Union privacy law requiring explicit user consent for data collection and processing. Apps serving EU users must implement GDPR consent flows.
+For what this setting covers, see [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings).
 
 ### Set GDPR Consent
 
@@ -115,23 +117,23 @@ public class GDPRConsentManager : MonoBehaviour
 
     void Start()
     {
-        // Check if user is in GDPR region (EU)
-        if (IsUserInGDPRRegion())
+        // Your own logic decides whether to request GDPR consent
+        if (ShouldRequestGDPRConsent())
         {
             // Show consent dialog and get user's answer
             ShowConsentDialog();
         }
         else
         {
-            // Not in GDPR region, initialize normally
+            // GDPR consent not requested; initialize normally
             InitializeLevelPlay();
         }
     }
 
-    private bool IsUserInGDPRRegion()
+    private bool ShouldRequestGDPRConsent()
     {
-        // Implement your region detection logic
-        // Options: IP geolocation, device locale, or third-party consent SDK
+        // Implement your own logic for when this setting applies
+        // For example, a consent management platform
         return false; // Placeholder
     }
 
@@ -189,9 +191,7 @@ LevelPlayPrivacySettings.SetGDPRConsent(false); // User revoked consent
 
 ## CCPA Compliance
 
-### What is CCPA?
-
-The California Consumer Privacy Act (CCPA) gives California residents the right to opt out of the "sale" of their personal information. Apps must provide a "Do Not Sell My Personal Information" option.
+For what this setting covers, see [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings).
 
 ### Set CCPA Opt-Out (SDK 9.4.0+)
 
@@ -223,8 +223,8 @@ public class CCPAComplianceManager : MonoBehaviour
 
     void Start()
     {
-        // Check if user is in California
-        if (IsUserInCalifornia())
+        // Your own logic decides whether the CCPA setting applies
+        if (ShouldApplyCCPA())
         {
             // Load previously saved opt-out preference
             userOptedOut = PlayerPrefs.GetInt("CCPA_OptOut", 0) == 1;
@@ -243,10 +243,9 @@ public class CCPAComplianceManager : MonoBehaviour
         InitializeLevelPlay();
     }
 
-    private bool IsUserInCalifornia()
+    private bool ShouldApplyCCPA()
     {
-        // Implement your region detection logic
-        // Options: IP geolocation, device locale
+        // Implement your own logic for when this setting applies
         return false; // Placeholder
     }
 
@@ -288,9 +287,7 @@ public class CCPAComplianceManager : MonoBehaviour
 
 ## COPPA Compliance
 
-### What is COPPA?
-
-The Children's Online Privacy Protection Act (COPPA) is a US federal law protecting children under 13. Apps directed at children must not collect personal information without parental consent.
+For what this setting covers, see [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings).
 
 ### Set Child-Directed Treatment (SDK 9.4.0+)
 
@@ -299,7 +296,7 @@ Indicate that your app is directed at children:
 ```csharp
 using Unity.Services.LevelPlay;
 
-// App is directed at children under 13 (call BEFORE SDK initialization)
+// App is directed at children (call BEFORE SDK initialization)
 LevelPlayPrivacySettings.SetCOPPA(true);
 ```
 
@@ -351,13 +348,12 @@ public class COPPACompliantInitializer : MonoBehaviour
 
 If your app is child-directed:
 
-1. **Disable personalized ads**: COPPA requires non-personalized ads only
-2. **Google Play Families Policy**: If targeting children on Google Play:
+1. **Google Play Families Policy**: If targeting children on Google Play:
    - Set COPPA flag: `LevelPlayPrivacySettings.SetCOPPA(true)`
    - Review Google Play Families requirements for child-directed apps
    - Test thoroughly before submission
-3. **App Store age ratings**: Set appropriate age ratings in both app stores
-4. **Privacy policy**: Clearly state data collection practices for children
+2. **App Store age ratings**: Set appropriate age ratings in both app stores
+3. **Privacy policy**: Clearly state data collection practices for children
 
 ---
 
@@ -385,8 +381,8 @@ public class PrivacyComplianceManager : MonoBehaviour
             LevelPlayPrivacySettings.SetCOPPA(true);
         }
 
-        // 2. GDPR (if user in EU)
-        if (IsUserInGDPRRegion())
+        // 2. GDPR consent (if your logic requests it)
+        if (ShouldRequestGDPRConsent())
         {
             if (HasStoredGDPRConsent())
             {
@@ -400,8 +396,8 @@ public class PrivacyComplianceManager : MonoBehaviour
             }
         }
 
-        // 3. CCPA (if user in California)
-        if (IsUserInCalifornia())
+        // 3. CCPA (if your logic applies it)
+        if (ShouldApplyCCPA())
         {
             bool ccpaOptOut = LoadCCPAOptOut();
             if (ccpaOptOut)
@@ -429,15 +425,15 @@ public class PrivacyComplianceManager : MonoBehaviour
         return PlayerPrefs.GetInt("CCPA_OptOut", 0) == 1;
     }
 
-    private bool IsUserInGDPRRegion()
+    private bool ShouldRequestGDPRConsent()
     {
-        // Implement region detection
+        // Implement your own logic for when this setting applies
         return false;
     }
 
-    private bool IsUserInCalifornia()
+    private bool ShouldApplyCCPA()
     {
-        // Implement region detection
+        // Implement your own logic for when this setting applies
         return false;
     }
 
@@ -519,14 +515,13 @@ LevelPlay.SetMetaData("is_child_directed", "false");
 
 1. **Call before initialization**: All privacy settings must be applied before `LevelPlay.Init()`
 2. **Persist user choices**: Store consent preferences and reapply on each app launch
-3. **Detect user region**: Use geolocation or device locale to determine applicable regulations
-4. **Provide UI controls**: Give users easy access to privacy settings
-5. **Respect user choices**: Honor opt-outs and consent denials
-6. **Update promptly**: When user changes preferences, apply immediately via privacy APIs
-7. **Test thoroughly**: Test your privacy settings in all supported regions
-8. **Document clearly**: Include privacy policy links in your app
-9. **Use consent management platforms**: Consider third-party CMPs for complex consent requirements
-10. **Stay updated**: Privacy regulations evolve, monitor SDK updates for compliance changes
+3. **Provide UI controls**: Give users easy access to privacy settings
+4. **Respect user choices**: Honor opt-outs and consent denials
+5. **Update promptly**: When user changes preferences, apply immediately via privacy APIs
+6. **Test thoroughly**: Test every combination of privacy settings your app uses
+7. **Document clearly**: Include privacy policy links in your app
+8. **Use consent management platforms**: Consider third-party CMPs for complex consent requirements
+9. **Stay updated**: Privacy regulations evolve, monitor SDK updates for compliance changes
 
 ---
 
@@ -586,8 +581,5 @@ private void OnInitSuccess(LevelPlayConfiguration config)
 
 ## Additional Resources
 
-- [LevelPlay Privacy Documentation](https://docs.unity.com/en-us/grow/levelplay)
-- [GDPR Overview](https://gdpr.eu/)
-- [CCPA Information](https://oag.ca.gov/privacy/ccpa)
-- [COPPA Requirements](https://www.ftc.gov/legal-library/browse/rules/childrens-online-privacy-protection-rule-coppa)
+- [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings)
 - [Google Play Families Policy](https://support.google.com/googleplay/android-developer/answer/9893335)

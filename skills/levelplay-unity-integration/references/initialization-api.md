@@ -19,8 +19,8 @@ Proper SDK initialization is critical for LevelPlay to function correctly. This 
 
 ## Code Organization Options (Step 7)
 
-Step 7 of SKILL.md asks the user how they want to handle initialization and presents four options. Full
-implementation for each option follows. Present the four option labels exactly as written in SKILL.md;
+Step 7 of the workflow asks the user how they want to handle initialization and presents four options. Full
+implementation for each option follows. Present the four option labels exactly as written in the workflow;
 use the code here once the user has chosen.
 
 ### Option 1: Creating a New Script

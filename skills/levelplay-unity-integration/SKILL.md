@@ -1,6 +1,6 @@
 ---
 name: levelplay-unity-integration
-description: Integrates the LevelPlay ad mediation SDK via the Ads Mediation package. Use when the user asks about adding rewarded, interstitial, or banner ads, mediation or ad privacy setup, Android or iOS ad dependency build failures, or migrating from Unity Ads or IronSource APIs.
+description: Integrates the LevelPlay ad mediation SDK (Ads Mediation package). Use for where ads belong in a game, rewarded, interstitial or banner ads, mediation or privacy setup, Android or iOS ad build failures, or migrating from Unity Ads or IronSource.
 ---
 
 # LevelPlay Unity package/SDK Integration
@@ -11,7 +11,7 @@ This skill covers the LevelPlay integration path only; it does not cover other m
 
 Follow the steps and provide only the files and configurations described in this skill. Do not proactively add steps, create files, or make recommendations based on general knowledge. If the user asks a question outside the scope of this skill, check the skill and reference files first to confirm it is not covered. If it is not, use general knowledge to respond, but do not incorporate additional steps or files into the integration workflow as a result.
 
-Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding.
+Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding. The Step 2 project profile is read from files, not asked.
 
 LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and runs a unified auction across multiple ad networks and bidders to maximize competition for each impression. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
 
@@ -21,27 +21,37 @@ LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad
 
 ### 0. New Integration or Migration?
 
-Ask: "Are you starting a new LevelPlay integration, migrating an existing one (from an older SDK version or from Unity Ads), or troubleshooting an existing setup?"
+Ask: "Are you starting a new LevelPlay integration, migrating an existing one (from an older SDK version or from Unity Ads), troubleshooting an existing setup, or only asking where ads should go in your game?" If the user's message already answers this (for example it only asks where ads belong), take that path without asking.
 
 - **New integration**: proceed to Step 1.
 - **Migration** (SDK upgrade, replacing IronSource.Agent APIs, migrating from Unity Ads, or fixing a Maven Central Android build failure): Read `references/migration-sdk-9.md`. Ask which of the five scenarios applies — A = SDK upgrade, B = init API migration, C = ad unit API migration, D = Maven Central build failure, E = Unity Ads migration — then follow the matching scenario. After applying all code changes, work through the Migration Completeness Checklist (section C5 of the reference) — it catches requirements that a line-by-line translation misses because the legacy code had no equivalent line. Then ask the user to check the Unity console for compilation errors, and fix any that appear before presenting results. Do not block or keep retrying if you cannot see the console: list the files you changed, say what to look for, and continue.
 - **Troubleshooting or adding to an existing setup** (ATT, GDPR, ILRD, Test Suite, build errors on a fresh integration, or adding a feature to an already-working integration): Identify what the user needs and go directly to the relevant step or reference from "When to Read Detailed References."
+- **Placement advice only** (where ads should go, which strategy fits this game): run Step 1's project check first, because the profile reads project files and an empty directory would look like a game with no loop; then Step 2 to profile the project and confirm the goal, then Step 8 for the proposal, without installing anything, because the user asked for advice, not an integration. When the proposal is approved, offer to implement it; implementation starts at Step 3, only if the user says yes, and after repeating Step 1 if the working directory has changed since.
+- **Account resources only** (the user asks only to find or create their LevelPlay app and ad units, with `LEVELPLAY_SECRET_KEY` and `LEVELPLAY_REFRESH_TOKEN` set): skip Steps 1–4, because nothing is installed or written to a project; ask for the app name, target platforms, the audience answer (general, or child-directed / mixed, which sets `coppa`), and the formats with each rewarded reward (or take them from a Step 8 proposal if one exists), then follow the confirmation and creation procedure in `references/management-api.md` and hand back the `appKey` and ad unit ids. Offer to continue the integration from Step 1 afterwards; start it only if the user says yes.
 
 ### 1. Verify Unity Environment
 
 Check that the user is working in a Unity project by verifying Assets/ and ProjectSettings/ directories exist. If not in a Unity project, instruct the user to navigate to their Unity project directory. If those directories are not found but the user believes they are in the right place, ask: "It looks like you may not be at your project root — can you navigate to the top-level folder of your Unity project and confirm you can see Assets/ and ProjectSettings/ there?"
 
-### 2. Understand Business Goals
+### 2. Profile the Project, then Confirm the Goal
 
-Before implementing ad units, determine the user's optimization priorities to recommend the appropriate ad unit strategy. Ask:
+Read `references/project-inference.md`, then profile the project from its files: game type, session length, key moments (each as `Class.Method()` at `file:line`), the buttons a rewarded placement needs, economy, existing monetization (each ad call found, and whether it breaks a placement guard), and target platforms. Read these rather than asking, because the files answer them and every question costs the user a turn. The one row the files cannot answer is the audience, which is asked below. Edit nothing in this step.
 
-**"What's your primary optimization goal?"**
+Show the reference's seven-row readout, starting with the legal notice from the reference's "The readout" section, word for word. Then ask two questions in one message. First the goal question with Balanced pre-filled, because with no dashboard data yet nothing justifies a heavier default:
+
+**"From the project this looks like a [game type] with [key moments]. I'd default to Balanced. What's your primary optimization goal?"**
 - **Revenue-focused**: Maximize ad revenue and impression opportunities
 - **UX-focused**: Prioritize gameplay flow and user satisfaction  
 - **Balanced**: Optimize for both revenue and UX
 - **Not sure yet**: Default to Balanced and proceed. At Step 8, briefly note you're using Balanced since they were unsure, and invite them to indicate a different preference now that they've seen the format options.
 
-Record this answer for later strategy recommendation in Step 8.
+Then the audience question, because the answer rules formats out before the goal sets numbers, and it decides the COPPA call in Step 6.5 and the `coppa` flag on any app created in Step 5:
+
+**"And who is the game for: a general audience, children, or both (mixed)?"**
+
+Record the answer in the Audience row as the user's. The agent never decides it from the project, and never states what a regulation permits or requires; when the files show a child-audience signal, name it in the question (see "Audience" in the reference). If the user does not know, record it as unanswered, propose for a general audience and say so.
+
+If the readout finds LevelPlay or Unity Ads already in the project, say so and offer the matching Step 0 path. If it finds an ad placement that breaks a guard (a forced ad that pays a reward, a rewarded ad with no button), say so in the readout; Step 8 proposes the conversion. If the project shows no game loop, ask the reference's three questions before the goal question, instead of guessing. Record the goal and the profile for Step 8; a correction from the user replaces that row.
 
 ### 3. Install LevelPlay SDK via UPM
 
@@ -122,7 +132,13 @@ Without it, advertising ID access fails on Android 13+ devices. Details in `refe
 
 ### 5. Get App Key and Ad Unit IDs
 
-Before initializing LevelPlay, collect credentials from the LevelPlay dashboard.
+Before initializing LevelPlay, get the App Key and ad unit ids, through the LevelPlay Management API or the dashboard.
+
+**Have LevelPlay API credentials?** If `LEVELPLAY_SECRET_KEY` and `LEVELPLAY_REFRESH_TOKEN` are set in the environment (check with `test -n "$LEVELPLAY_SECRET_KEY" && test -n "$LEVELPLAY_REFRESH_TOKEN"`, never print them), you can find or create the user's app and ad units for them: read `references/management-api.md` and follow its procedure. Otherwise use the dashboard steps below.
+
+- When the variables are set, ask which path the user wants: "Your LevelPlay API credentials are set. Should I find or create your app and ad units through the API, or will you use the dashboard?" If they are unset, mention the API path once and continue with the dashboard unless the user wants to set them up; the reference says how.
+- Never ask the user to paste the secret key or refresh token into the conversation, because anything pasted here can be logged or shared, and the reference reads them from the environment instead.
+- **Order:** either path gives the App Key now, for Step 7, and the ad unit ids after Step 8, for Step 9, because the approved placements decide which ad units the game uses. On the API path, run the reference's app part now and its ad unit part once Step 8 is approved.
 
 **Dashboard:** https://platform.ironsrc.com/
 
@@ -134,7 +150,7 @@ Before initializing LevelPlay, collect credentials from the LevelPlay dashboard.
 
 **Ad Unit IDs:** Go to **Ad units** in the left sidenav → select your app → copy the ID for each format you plan to implement (Rewarded, Interstitial, Banner).
 
-**Note:** You need your App Key now for initialization (Step 7). Ad Unit IDs are only needed at Step 9 — if you haven't decided which ad formats to implement yet, just copy your App Key for now and return here after Step 8.
+**Note:** You need your App Key now for initialization (Step 7). Ad Unit IDs are only needed at Step 9 — if you haven't decided which ad formats to implement yet, just copy your App Key for now and return here after Step 8 (on the API path, the agent does this for you).
 
 Keep both accessible — you'll need them in the next steps.
 
@@ -158,9 +174,11 @@ This configuration is required for AdMob to work as a mediation network in Level
 
 > **Note:** This skill provides technical integration guidance, including for LevelPlay's privacy APIs. It is not legal advice, and it does not determine which laws apply to your app — that depends on your users, your data practices, and your distribution. Consult your own legal counsel, and refer to [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings) for the authoritative LevelPlay documentation.
 
-Ask the user: "Do you need to configure privacy settings for GDPR, CCPA/CPRA (or certain state privacy consumer acts), or for child-directed apps?"
+If the Step 2 Audience row is Child-directed or Mixed, the COPPA call below is required, from the user's own answer; say so instead of asking about COPPA again. Then, for every audience, ask the user: "LevelPlay has privacy settings for GDPR consent, CCPA, and COPPA. Which of these, if any, do you want to apply? LevelPlay's documentation describes each setting: [Regulation Advanced Settings for Unity](https://docs.unity.com/en-us/grow/levelplay/sdk/unity/regulation-advanced-settings)." When COPPA is already required from the audience answer, ask the same question about the other two settings.
 
-**If YES to any:**
+Name the settings only. Never explain what a law is, who or where it applies to, or which settings the user needs, even if asked; point to the documentation and the user's own legal counsel. Never present any option as recommended. Implement only the settings the user chooses.
+
+**If the user chooses any of these settings:**
 
 Privacy settings must be configured **BEFORE** SDK initialization. See `references/privacy-settings.md` for the complete implementation guide (UI, consent management, combined regulations, and the full network key list).
 
@@ -203,7 +221,7 @@ If CCPA or COPPA fails to compile, upgrade your Unity package/SDK via **Ads Medi
 
 **For iOS builds — required regardless of privacy regulations above:** Also implement App Tracking Transparency (ATT) before proceeding to Step 7. Apple requires ATT authorization before your app tracks users or accesses the device's advertising identifier on iOS 14.5+. Request ATT authorization before calling `LevelPlay.Init()` — this is both an Apple platform requirement and necessary for personalized ads (which also affects fill rate). See `references/ios-setup.md` for the ATT implementation code.
 
-**If NO privacy regulations and not targeting iOS:** Skip this step and proceed to Step 7.
+**If the user applies none of these settings and isn't targeting iOS:** Skip this step and proceed to Step 7.
 
 ### 7. Initialize LevelPlay SDK
 
@@ -222,7 +240,7 @@ confirmed in this conversation, skip that item and ask only about Step 5 and Ste
 
 "Please confirm these are working correctly:
 - Step 4: Have you run dependency resolution for your target platform(s) without errors?
-- Step 5: Do you have your App Key copied from the LevelPlay dashboard?
+- Step 5 (skip if the App Key came through the API): Do you have your App Key copied from the LevelPlay dashboard?
 - Step 6 (only if using AdMob): Have you configured AdMob keys in Unity Editor settings?
 
 Verify these are working before proceeding."
@@ -255,21 +273,26 @@ LevelPlay SDK must be initialized before loading or showing any ads. Initializat
 
 The exact wiring code for each option (including the iOS coroutine placement) is in `references/initialization-api.md` (Version-Aware ILRD Init Wiring). ILRD callbacks do not fire with mock ads — a device build is needed to verify (see Step 10). For advanced options (user ID, segmentation, consent management), see `references/initialization-api.md`.
 
-### 8. Recommend Ad Unit Strategy
+### 8. Propose Placements
 
-Based on the optimization goal identified in Step 2, recommend an ad unit strategy.
+Read `references/placement-strategy.md`. Based on the optimization goal and the project profile from Step 2, propose where each ad goes in this game. If the user joined after Step 2, build the profile now first.
 
 **Recall the user's optimization goal from Step 2.** If the conversation has been long or the answer is unclear, confirm: "Earlier you mentioned your optimization goal. To confirm, are you primarily focused on revenue, user experience, or a balance of both?"
 
-**Map the answer to a strategy** and give a brief recommendation (full detail, benchmarks, and placement guidance are in `references/best-practices.md` under "Ad Format Strategy by Goal"):
+**Map the answer to a strategy** and give a brief recommendation (full detail and frequency caps are in `references/best-practices.md` under "Ad Format Strategy by Goal"):
 
 - **Revenue-focused** → **Revenue Strategy.** Rewarded (primary monetization, multiple high-value moments) → Interstitial (secondary; at transitions; frequency cap 3–5 min) → Banner (persistent during gameplay). Bid floors are an optional revenue lever configured in Step 9. Implementation priority: **Rewarded → Interstitial → Banner**.
 - **UX-focused** → **UX Strategy.** Rewarded only, user-initiated (explicit opt-in), high-value rewards, **no forced ads, ever**. Interstitials optional/sparingly at session boundaries only; banners generally avoided or menu-only. Implementation priority: **Rewarded only, or Rewarded → (optional) Interstitial**.
 - **Balanced** → **Balanced Strategy.** Rewarded (2–3 strategic placements) → Interstitial (moderate; natural breakpoints; frequency cap 5–7 min) → Banner (selective; menus/low-attention). Implementation priority: **Rewarded → Interstitial → Banner (selective)**.
 - **"Not sure yet"** (from Step 2) → use the **Balanced Strategy**, then add: "Since you weren't sure of your goal earlier, I've gone with the Balanced approach — if you'd prefer to lean more toward revenue or user experience now that you've seen the options, just say so."
 - If still unclear, ask: "Would you prioritize revenue, user experience, or a balance of both?"
+- If the Step 2 Audience row is **Child-directed** or **Mixed**, apply "Child-directed and mixed-audience games" in the reference first: banner off, rewarded off by default, no interstitial at session start, and "no ads" is a valid proposal. The goal sets numbers only inside those limits.
 
-The next step asks which ad formats to implement from this priority list. If the user wants a different order than recommended, accommodate that preference.
+**Then build the placement proposal** from the Step 2 profile and this strategy, per the reference: one table with the columns Placement | Format | Moment | Rule | Where in code, each code location a `file:line` you read, and each Moment the action that fires the ad (a press, a screen closing, a scene load), never a screen the player is still reading. An existing placement that breaks a guard is proposed as a conversion at its moment, not kept beside a new one. A rewarded placement hooks only to an existing button's press handler; a button the project lacks is named as one the user adds, never invented. No revenue, eCPM or fill figures, because the project cannot predict them. Ask:
+
+**"Here's where I'd put each ad in your game. Approve it as is, or tell me what to change: add, drop or move a placement, or change a cap?"**
+
+Apply any edit, show the changed rows, and ask again. Do not start Step 9 until the user approves the current proposal, because it decides which of their files Step 9 edits. If the user chose the API path at Step 5, run the ad unit part of `references/management-api.md` once the proposal is approved, before Step 9, so Step 9 has the ids. If the user came through Step 0's advice-only path, the approved proposal is the deliverable: offer to implement it, which starts at Step 3 (repeat Step 1's project check first if the working directory has changed), and stop unless they say yes.
 
 ### 9. Implement Ad Units
 
@@ -285,7 +308,7 @@ Verify initialization is working before proceeding with ad units."
 
 **If they answer NO or are unsure:** direct back to Step 7 and do not provide ad implementation code until initialization is confirmed working.
 
-**Ad format checkpoint — ask before generating any code:** "Which ad formats do you want to implement? Rewarded, Interstitial, Banner, or a combination?" Only implement the formats the user selects. They can add more formats later using the 'Adding More Ad Formats Later' section.
+**Ad format checkpoint — ask before generating any code:** "Which ad formats do you want to implement? Rewarded, Interstitial, Banner, or a combination?" If the user approved a Step 8 proposal, its formats are the answer: skip this question and say "Implementing the formats from your approved proposal: [formats]." Only implement the formats the user selects. They can add more formats later using the 'Adding More Ad Formats Later' section.
 
 **First, ask the user how they want to organize the ad code. Do not generate any code until they have answered:**
 
@@ -332,6 +355,8 @@ For each ad format, follow the implementation guidelines in the detailed referen
 - **Rewarded ads**: See `references/rewarded-api.md`
 - **Interstitial ads**: See `references/interstitial-api.md`
 - **Banner ads**: See `references/banner-api.md`
+
+**Wire each approved placement** at its Step 8 code location, per "Wiring an approved placement in Step 9" in `references/placement-strategy.md`, only under organization options 1, 2 and 4, which put the agent in the user's files: list the files first, re-read each method, insert exactly one call into the ad code, and never rewrite the method. Under option 3 ("Just show me the code snippets") do not edit any gameplay script: give a call-site snippet for each approved location, named by its `file:line`, and leave the integration to the user, because that option is the user's choice to keep their files to themselves.
 
 **Impression Level Revenue Tracking (version-aware):** See `references/ilrd-api.md` to forward impression data to the analytics platform (Firebase, AppsFlyer, Adjust, Singular, or custom backend).
 - **SDK 9.5.0+ (current):** subscribe to each ad object's `OnAdImpressionDataReady` event right after you create it (and unsubscribe in `OnDestroy()`). Add this to every ad manager you generate — it is the correct ILRD path in 9.5.0+.
@@ -412,24 +437,28 @@ Read specific references based on what the user is doing:
 
 - **`references/dependency-resolution.md`**: Resolving native dependencies (Step 4), or gradle/CocoaPods build failures
 - **`references/initialization-api.md`**: Step 7 init code-organization options and ILRD init wiring; also user ID, segmentation, consent management, advanced config
-- **`references/privacy-settings.md`**: GDPR, CCPA, or COPPA compliance (incl. legacy `SetConsent` and the full network key list)
+- **`references/privacy-settings.md`**: the GDPR consent, CCPA, and COPPA settings (incl. legacy `SetConsent` and the full network key list)
 - **`references/ios-setup.md`**: iOS builds — ATT, SKAdNetwork, the iOS coroutine initializer
 - **`references/rewarded-api.md`** / **`references/interstitial-api.md`** / **`references/banner-api.md`**: Implementing each ad format (Step 9)
-- **`references/best-practices.md`**: Strategy detail (Step 8), the Step 9 code-generation guidelines, optimization, placement
+- **[`references/project-inference.md`](references/project-inference.md)**: Profiling the project from its files and the readout (Step 2)
+- **[`references/placement-strategy.md`](references/placement-strategy.md)**: The placement proposal (Step 8) and wiring approved placements (Step 9)
+- **[`references/management-api.md`](references/management-api.md)**: Finding or creating the app and ad units through the LevelPlay Management API (Step 5, then after Step 8)
+- **`references/best-practices.md`**: Strategy detail and frequency caps (Step 8), the Step 9 code-generation guidelines, optimization
 - **`references/ilrd-api.md`**: Wiring ILRD to an analytics platform
 - **`references/testing-and-validation.md`**: Mock ads and the Test Suite (Step 10)
 - **`references/troubleshooting.md`**: Compile/build errors, ads not loading, callbacks not firing
 - **`references/migration-sdk-9.md`**: Migrating from IronSource or older LevelPlay APIs, upgrading the SDK to 9.x.x, migrating from Unity Ads, or Maven Central dependency build failures (Step 0)
+- **[`references/CHANGELOG.md`](references/CHANGELOG.md)**: What changed in each version of this skill
 
 ## Examples
 
 **Note**: Examples show abbreviated workflows for illustration. In practice, follow all steps 1–10 in order.
 
-**Revenue-focused game** ("maximize ad revenue in my casual puzzle game"): Steps 1–7 to verify environment/goal/install/deps/App Key/AdMob/init → Step 8 recommend Revenue strategy → Step 9 ask code organization and generate the chosen structure → Step 10 testing.
+**Revenue-focused game** ("maximize ad revenue in my casual puzzle game"): Step 2 profiles the puzzle (level complete, hint button) and confirms Revenue → Steps 3–7 → Step 8 proposes a rewarded hint on the hint button and a capped level-complete interstitial, with `file:line` hooks → Step 9 ask code organization and wire the approved placements → Step 10 testing.
 
-**UX-focused game** ("optional rewarded ads for extra lives without annoying players"): same spine, but Step 8 recommends UX strategy (rewarded only, user-initiated) and Step 9 implements rewarded with proper patterns.
+**UX-focused game** ("optional rewarded ads for extra lives without annoying players"): same spine; the profile finds the lives system, and Step 8 proposes rewarded only, on an existing extra-life button or one the user adds.
 
-**Existing project** ("existing GameManager, add interstitials between levels"): same spine, Step 8 Balanced, Step 9 ask to see `GameManager.cs` then provide Option-2 snippets.
+**Existing project** ("existing GameManager, add interstitials between levels"): same spine; the profile cites the level-end method in `GameManager.cs`, Step 8 proposes a Balanced interstitial there, and Step 9 asks to see `GameManager.cs` then provides Option-2 snippets.
 
 ## Core Rules (reminder)
 
@@ -438,5 +467,5 @@ These repeat the rules at the top of this file — they are the guardrails that 
 - Base editor-side checks on the actual project rather than assumptions — read the project files, or ask the user to confirm in the Editor. The C# scripts generated in this skill are MonoBehaviour files for the user to save to their project, not for inline execution.
 - This skill covers the LevelPlay integration path only; it does not cover other mediation SDKs. If the user explicitly asks about alternatives, acknowledge that alternatives exist and point them to those vendors' own documentation — do not describe, characterize, or make claims about competitor products.
 - Follow the steps and provide only the files and configurations described in this skill. Do not proactively add steps, create files, or make recommendations based on general knowledge. If the user asks a question outside the scope of this skill, check the skill and reference files first to confirm it is not covered. If it is not, use general knowledge to respond, but do not incorporate additional steps or files into the integration workflow as a result.
-- Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding.
+- Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding. The Step 2 project profile is read from files, not asked.
 - When a step points to a reference file, read that reference and use its content — do not substitute general knowledge. Present the four init options (Step 7) and four organization options (Step 9) exactly as written, and ask the ILRD question (Step 7) verbatim.

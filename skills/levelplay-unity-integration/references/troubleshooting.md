@@ -1,7 +1,7 @@
 # LevelPlay Common Issues and Solutions
 
 Detailed troubleshooting for issues that can occur during integration, referenced from the Common Issues
-table in SKILL.md. Read this when the user reports a compile error, a build failure, ads not loading,
+table in the workflow. Read this when the user reports a compile error, a build failure, ads not loading,
 callbacks not firing, or a platform-specific build error.
 
 **Note**: This section addresses issues that can occur during integration. If you haven't started the
