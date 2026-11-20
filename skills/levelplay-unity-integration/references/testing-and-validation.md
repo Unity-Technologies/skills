@@ -1,6 +1,8 @@
 # LevelPlay Testing and Validation
 
-Detailed guidance for the two validation approaches referenced from Step 10 of SKILL.md: mock ads in
+> Relative file paths in this reference (for example `ios-setup.md`) resolve to the skill directory's `references/` folder.
+
+Detailed guidance for the two validation approaches referenced from Step 10 of the workflow: mock ads in
 the Unity Editor (early development) and the LevelPlay Test Suite (integration validation on device).
 Read this when the user is testing their integration, asks how mock ads work, or is setting up the
 Test Suite.
@@ -150,6 +152,18 @@ Suite will silently never launch.
 
 **Important**: Remove both lines before your production release. Test Suite should only be used during
 development and testing.
+
+**Optional safety net:** wrap each of the two lines in a compile guard, so a forgotten removal cannot
+reach players, because release builds without **Development Build** compile them out:
+
+```csharp
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+LevelPlay.SetMetaData("is_test_suite", "enable");
+#endif
+```
+
+Wrap `LevelPlay.LaunchTestSuite();` the same way. The guard is a backstop, not a replacement: still
+remove both lines before release.
 
 ## Test Suite Initializer Template
 

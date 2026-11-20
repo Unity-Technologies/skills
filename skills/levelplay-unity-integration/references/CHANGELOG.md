@@ -1,11 +1,44 @@
 # Changelog
 
-## v0.10.0 — 2026-08-21 — Workflow spine, and a hard install gate
+## Contents
 
-Moves reference material out of `SKILL.md` and makes the SDK install a verified step rather than an assumed one.
+- [v0.11.0 — 2026-10-08 — Project-aware placement proposals](#v0110--2026-10-08--project-aware-placement-proposals)
+- [v0.10.0 — 2026-08-21 — Workflow spine, and a hard install gate](#v0100--2026-08-21--workflow-spine-and-a-hard-install-gate)
+- [v0.9.0 — 2026-08-17 — SDK 9.x migration support](#v090--2026-08-17--sdk-9x-migration-support)
+- [v0.8.0 — 2026-08-05 — Version-aware ILRD (SDK 9.5.0), rewarded load lifecycle, and improved activation](#v080--2026-08-05--version-aware-ilrd-sdk-950-rewarded-load-lifecycle-and-improved-activation)
+- [v0.7.0 — 2026-06-12 — Initial public beta release](#v070--2026-06-12--initial-public-beta-release)
+
+## v0.11.0 — 2026-10-08 — Project-aware placement proposals
+
+The skill reads the game before it proposes ads, and proposes placements in the game's own code rather than a generic format list.
+
+**Added:**
+- `references/project-inference.md`: how to profile the project from its files before proposing ads, in a budgeted order: game type, session length, key moments cited as `Class.Method()` at `file:line`, the buttons a rewarded placement needs, economy, existing monetization, and target platforms. The agent shows a seven-row readout, and asks at most three questions when the project has no game loop yet.
+- An **Audience** row in the profile, asked with the goal question rather than inferred, because whether a game is child-directed is the developer's determination. The answer rules formats out in Step 8, makes the `SetCOPPA(true)` call in Step 6.5 required, and sets the `coppa` flag on any app created through the API.
+- Existing ad placements are audited against the placement guards, not inherited: a forced ad that pays a reward, or a rewarded ad with no button, is reported as found and as needing a change, and Step 8 proposes the conversion at the same moment.
+- `references/placement-strategy.md`: how to turn the profile and the optimization goal into a placement proposal (format, moment, rule, code location), with the guards that always apply. A rewarded ad is hooked only to a button the player presses, a missing button is named as one the user adds rather than invented, and the proposal carries no revenue, eCPM or fill figures. Interstitial caps follow the ranges in `best-practices.md`.
+- A "Child-directed and mixed-audience games" section: banner off on every screen, rewarded off by default, no interstitial at session start, and "no ads" as a valid proposal for a free-play toy.
+- The mid-action guard now covers events the game raises on its own (a timer, a year-end or wave tick, a room generating): not a transition unless the game already stops play behind a screen there.
+- The proposal's Moment column names the action that fires the ad (a press, a screen closing, a scene load), never a screen the player is still reading.
+- The agent never states what a regulation permits, requires or forbids; it points to `references/privacy-settings.md` for the API and leaves the determination to the developer.
+- A legal notice, shown word for word before the profile table the first time the profile appears.
+- Privacy settings are named, never explained: the Step 6.5 question, the Quick Reference table, the GDPR/CCPA/COPPA intros and the code samples in `references/privacy-settings.md` no longer describe what a law is or where it applies; they point to LevelPlay's Regulation Advanced Settings page, and the samples' region checks become `ShouldRequestGDPRConsent()` / `ShouldApplyCCPA()` that the developer's own logic decides. "Children" is no longer defined as under 13.
+- The button search also looks for a screen's own buttons (Restart, Retry, Return, Next) in scripts, prefabs and scenes, because a lose or results screen that no script shows by name is found through the buttons on it.
+- An optional `#if UNITY_EDITOR || DEVELOPMENT_BUILD` guard around the two Test Suite lines in `testing-and-validation.md`, so a forgotten removal is compiled out of release builds. Removing the lines before release is still required.
 
 **Changed:**
-- `SKILL.md` is now the workflow spine only, going from about 1,100 lines to 435. The dependency-resolution, testing-and-validation and troubleshooting material that was inlined in it moves into `references/`. Nothing was dropped; it is read on demand instead. `SKILL.md` is loaded in full on every invocation while a reference file is read only when a step links it, so this is a saving on every run that does not need the detail.
+- The changelog moves to `references/CHANGELOG.md` and the README is removed, following the repository's skill layout (supplemental files live under `references/`).
+- Step 2 is now "Profile the Project, then Confirm the Goal": the agent reads the project, shows the readout, then asks the existing goal question with Balanced pre-filled.
+- Step 8 is now "Propose Placements": the goal-to-strategy mapping is unchanged, and it ends with a placement table the user approves or edits before Step 9.
+- Step 9 skips the ad-format question when the approved proposal already answers it, and wires each approved placement with one call at its cited location.
+- Evals cover the profile-then-proposal flow, the no-game-loop case, the child-directed case, an existing forced ad that pays a reward, and an automatic tick that is not an interstitial moment.
+
+## v0.10.0 — 2026-08-21 — Workflow spine, and a hard install gate
+
+Moves reference material out of the skill file and makes the SDK install a verified step rather than an assumed one.
+
+**Changed:**
+- The skill file is now the workflow spine only, going from about 1,100 lines to 435. The dependency-resolution, testing-and-validation and troubleshooting material that was inlined in it moves into `references/`. Nothing was dropped; it is read on demand instead. The skill file is loaded in full on every invocation while a reference file is read only when a step links it, so this is a saving on every run that does not need the detail.
 - The reference set grows from nine files to twelve: `dependency-resolution.md`, `testing-and-validation.md` and `troubleshooting.md` are now separate files.
 
 **Added:**
@@ -43,7 +76,7 @@ Accuracy and activation updates reflecting current LevelPlay SDK behavior.
 
 **Rewarded ad load lifecycle**
 - Clarified that `LoadAd()` must be called explicitly; the SDK does not auto-manage rewarded loading (unlike the legacy IronSource API).
-- Reframed the guidance so explicit, publisher-triggered loading is the default, with eager preloading documented as an optional pattern. Applies to `references/rewarded-api.md` and the loading-strategy guidance in `SKILL.md`.
+- Reframed the guidance so explicit, publisher-triggered loading is the default, with eager preloading documented as an optional pattern. Applies to `references/rewarded-api.md` and the loading-strategy guidance in the skill file.
 
 **Description and activation**
 - Reworked the skill description to increase activation on general ad and monetization requests, not only when a developer names LevelPlay.
