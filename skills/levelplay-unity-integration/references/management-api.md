@@ -16,10 +16,10 @@ the workflow stays available and gives the same result.
 
 Read the API docs before the first call, and again if a call answers in a way this file does not
 describe, because the docs are the source of truth for fields and limits:
-[API overview](https://docs.unity.com/en-us/grow/levelplay/platform/api),
-[authentication](https://docs.unity.com/en-us/grow/levelplay/platform/api/authentication),
-[applications](https://docs.unity.com/en-us/grow/levelplay/platform/api/application),
-[ad units](https://docs.unity.com/en-us/grow/levelplay/platform/api/ad-units).
+[API overview](https://docs.unity.com/en-us/grow/levelplay/platform/api.md),
+[authentication](https://docs.unity.com/en-us/grow/levelplay/platform/api/authentication.md),
+[applications](https://docs.unity.com/en-us/grow/levelplay/platform/api/application.md),
+[ad units](https://docs.unity.com/en-us/grow/levelplay/platform/api/ad-units.md).
 
 ## When this runs
 
@@ -282,7 +282,7 @@ commands of its own and run them. The body file keeps the names out of the shell
    (set the manager's `currentPlacement` before the call and read it in `OnAdRewarded`), because a
    `ShowAd(placementName)` whose name is not configured on the dashboard has no placement behind
    it. If the user wants named dashboard placements (capping and pacing per placement), they create
-   them first — see the [Placements API](https://docs.unity.com/en-us/grow/levelplay/platform/api/placements)
+   them first — see the [Placements API](https://docs.unity.com/en-us/grow/levelplay/platform/api/placements.md)
    — and only then does Step 9 pass the names.
 7. **Tell the user what to check on the dashboard.** New apps are pre-launch and new ad units are
    created Off; turning them on and setting up ad networks and instances are dashboard steps. Do not

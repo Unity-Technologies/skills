@@ -73,6 +73,8 @@ rewardedAd.LoadAd();
 - Ad positioning and layout (for banners)
 - Basic ad logic and state management
 
+If mock ads don't run as expected in the **Device Simulator**, switch to **Game** view and retry.
+
 ## Mock Ad Callback Behavior
 
 Mock ads in Unity Editor fire most callbacks, but not all:
