@@ -19,7 +19,7 @@ LevelPlay SDK on iOS requires additional configuration beyond the basic Unity in
 
 ## Prerequisites
 
-For the current supported Unity, iOS deployment target, and Xcode versions, see the [LevelPlay iOS SDK integration guide](https://docs.unity.com/en-us/grow/levelplay/sdk/ios/sdk-integration).
+For the current supported Unity, iOS deployment target, and Xcode versions, see the [LevelPlay iOS SDK integration guide](https://docs.unity.com/en-us/grow/levelplay/sdk/ios/sdk-integration.md).
 
 ## SKAdNetwork Configuration
 
@@ -303,7 +303,7 @@ LevelPlay SDK requires certain capabilities to function properly:
 
 In Xcode, verify these settings:
 
-- **Deployment Target**: see the [LevelPlay iOS SDK integration guide](https://docs.unity.com/en-us/grow/levelplay/sdk/ios/sdk-integration) for the currently supported minimum
+- **Deployment Target**: see the [LevelPlay iOS SDK integration guide](https://docs.unity.com/en-us/grow/levelplay/sdk/ios/sdk-integration.md) for the currently supported minimum
 - **Enable Bitcode**: No
 - **Other Linker Flags**: Should include `-ObjC` (automatically added by Unity)
 

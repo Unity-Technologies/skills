@@ -58,7 +58,7 @@ When prompted:
    - **Android**: Dependencies will auto-resolve on build (newer MDR versions)
    - **iOS**: Go to Assets > Mobile Dependency Resolver > iOS Resolver > Install Cocoapods
 
-**Alternative**: Install another dependency manager like EDM4U if preferred (search for installation instructions in their documentation).
+**Alternative**: If the user prefers EDM4U, they can install it instead; point them to the EDM4U documentation for installation instructions.
 
 **Note**: Unity is transitioning to Unity External Dependency Manager (UEDM). If available in your Unity version, prefer UEDM over MDR.
 

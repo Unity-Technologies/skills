@@ -2,14 +2,38 @@
 
 ## Contents
 
-- [v0.12.0 — 2026-10-08 — App and ad units through the Management API](#v0120--2026-10-08--app-and-ad-units-through-the-management-api)
-- [v0.11.0 — 2026-10-08 — Project-aware placement proposals](#v0110--2026-10-08--project-aware-placement-proposals)
+- [v0.13.0 — 2026-11-23 — Skill quality checklist updates](#v0130--2026-11-23--skill-quality-checklist-updates)
+- [v0.12.0 — 2026-11-19 — App and ad units through the Management API](#v0120--2026-11-19--app-and-ad-units-through-the-management-api)
+- [v0.11.0 — 2026-11-19 — Project-aware placement proposals](#v0110--2026-11-19--project-aware-placement-proposals)
 - [v0.10.0 — 2026-08-21 — Workflow spine, and a hard install gate](#v0100--2026-08-21--workflow-spine-and-a-hard-install-gate)
 - [v0.9.0 — 2026-08-17 — SDK 9.x migration support](#v090--2026-08-17--sdk-9x-migration-support)
 - [v0.8.0 — 2026-08-05 — Version-aware ILRD (SDK 9.5.0), rewarded load lifecycle, and improved activation](#v080--2026-08-05--version-aware-ilrd-sdk-950-rewarded-load-lifecycle-and-improved-activation)
 - [v0.7.0 — 2026-06-12 — Initial public beta release](#v070--2026-06-12--initial-public-beta-release)
 
-## v0.12.0 — 2026-10-08 — App and ad units through the Management API
+## v0.13.0 — 2026-11-23 — Skill quality checklist updates
+
+The skill follows the Unity skills checklist more closely: it reads the LevelPlay docs before acting, checks and reports its work at the end, and drops repeated text.
+
+**Added:**
+- "Read the documentation first" and "Documentation topic map" sections, with the page list in `references/docs-topic-map.md`, so the agent checks the current LevelPlay docs before it acts. For privacy questions, the agent links the Regulation Advanced Settings page instead of summarizing it.
+- Guardrail and restore point lines at the top of the skill.
+- Added a final step: the agent checks for zero console errors and, only when it suspects a fault, reads Play mode state through `script eval`.
+- A "Final report" section: what the agent changed, any side effects, and what the user still needs to do.
+- `SECURITY.md`: read-only C# in the Editor through `script eval` as an accepted risk, with its mitigation.
+
+**Changed:**
+- The description follows the "Make sure to use this skill when..." pattern, and covers creating the LevelPlay app and ad units, and adding ads from a single network.
+- Step 8 skips the approval question when every placement is deferred.
+- The project profile treats Unity 6 template identifiers as defaults, not as Android or iOS setup, and rechecks each cited method before the readout.
+- Links the agent fetches in `references/management-api.md` and `references/ios-setup.md` use the Markdown version of each page.
+- Step 3, Step 9, and `references/dependency-resolution.md` give one instruction per step.
+- `references/testing-and-validation.md` now explains what to do when mock ads don't run as expected in the **Device Simulator**.
+- Evals: close-call trigger queries replace unrelated ones, two trigger queries become multi-step tasks, an AdMob-only request is a should-trigger query, editor eval 3 covers existing ad code, and a new eval checks that the legal notice appears word for word.
+
+**Removed:**
+- The introduction paragraph, a repeated note in Step 5, and a repeated example under "Adding More Ad Formats Later".
+
+## v0.12.0 — 2026-11-19 — App and ad units through the Management API
 
 The agent can find or create the user's LevelPlay app and ad units through the LevelPlay Management API, as an alternative to the dashboard.
 
@@ -24,7 +48,7 @@ The agent can find or create the user's LevelPlay app and ad units through the L
 - Evals: a trigger query for creating the app and ad units through the API replaces the near-duplicate ad unit IDs query, and a functional eval covers credential handling and the confirmation before creating.
 
 
-## v0.11.0 — 2026-10-08 — Project-aware placement proposals
+## v0.11.0 — 2026-11-19 — Project-aware placement proposals
 
 The skill reads the game before it proposes ads, and proposes placements in the game's own code rather than a generic format list.
 

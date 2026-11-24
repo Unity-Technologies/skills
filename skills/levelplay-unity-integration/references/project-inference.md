@@ -228,11 +228,7 @@ Report what exists by name, and route on what you find:
 
 ## Target platforms
 
-LevelPlay runs on Android and iOS only, so these are the only platforms the profile reports. Read
-the `applicationIdentifier` entries in `ProjectSettings/ProjectSettings.asset` (iOS appears there as
-`iPhone`): an entry that is not the default `com.DefaultCompany.*` identifier suggests the platform
-was prepared. An `Assets/Plugins/Android/` or `Assets/Plugins/iOS/` folder corroborates. Any other
-target (Standalone, WebGL) is named as not covered by LevelPlay.
+LevelPlay runs on Android and iOS only, so these are the only platforms the profile reports. Read the `applicationIdentifier` entries in `ProjectSettings/ProjectSettings.asset` (iOS appears there as `iPhone`). Treat an identifier as a default, not as evidence, if it starts with `com.DefaultCompany.` or contains `com.unity.template`, because Unity 6 templates fill these in. A customized identifier suggests the platform was prepared, and an `Assets/Plugins/Android/` or `Assets/Plugins/iOS/` folder corroborates it. If every Android and iOS identifier is a default and neither folder exists, write exactly "No Android or iOS setup found yet. LevelPlay runs on Android and iOS only." in the row, and don't describe Android or iOS as inferred. Name any other target (Standalone, WebGL) as not covered by LevelPlay.
 
 Treat this row as inferred. Step 4 still asks the platform question, because the active build
 target is not recorded in a readable project file.
@@ -259,6 +255,8 @@ children?"), never that the row is filled in without asking.
 Record the answer as `General`, `Child-directed` or `Mixed`, marked as from the user. If the user
 does not know, record `Unanswered`, propose for a general audience in Step 8 and say so, and say
 that the answer is needed before Step 6.5 and before any app is created in Step 5.
+
+Before you show the readout, open each cited file again at the cited line and confirm the method is there. Fix or drop any citation you can't confirm. When a search finds nothing, say what you searched and that you didn't find it; never say it doesn't exist.
 
 ## The readout
 

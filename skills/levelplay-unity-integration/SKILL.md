@@ -1,6 +1,6 @@
 ---
 name: levelplay-unity-integration
-description: Integrates the LevelPlay ad mediation SDK (Ads Mediation package). Use for where ads belong in a game, rewarded, interstitial or banner ads, mediation or privacy setup, Android or iOS ad build failures, or migrating from Unity Ads or IronSource.
+description: Integrates LevelPlay mediation into a Unity game and proposes where ads belong. Make sure to use this skill when the user asks about adding rewarded, interstitial, or banner ads (even from one network or without naming LevelPlay), ad privacy settings, creating ad units, Android or iOS ad build failures, or migrating from Unity Ads or ironSource.
 ---
 
 # LevelPlay Unity package/SDK Integration
@@ -11,11 +11,26 @@ This skill covers the LevelPlay integration path only; it does not cover other m
 
 Follow the steps and provide only the files and configurations described in this skill. Do not proactively add steps, create files, or make recommendations based on general knowledge. If the user asks a question outside the scope of this skill, check the skill and reference files first to confirm it is not covered. If it is not, use general knowledge to respond, but do not incorporate additional steps or files into the integration workflow as a result.
 
+Do only what's asked. Don't change unrelated assets or files. Avoid long explanations. Never leave verification code in the user's script. Never build logging or detection they didn't ask for. The log lines in this skill's code templates are part of the integration, not verification code, so keep them.
+
+Create a restore point you can roll back to if your changes fail. Before you edit a file that already exists in the project, ask the user to commit it; without version control, copy it outside `Assets/` and tell the user where.
+
 Follow the integration workflow sequentially, one step at a time. Ask only the questions for the current step — do not gather information for future steps in advance. Wait for the user's response at each checkpoint before proceeding. The Step 2 project profile is read from files, not asked.
 
-LevelPlay is Unity's ad mediation platform: it connects your game to multiple ad networks simultaneously and runs a unified auction across multiple ad networks and bidders to maximize competition for each impression. This guide walks you through the full integration: installing the SDK, configuring dependencies for Android and iOS, initializing LevelPlay in your project, and implementing rewarded, interstitial, and banner ads. If you already have part of this set up, you can skip ahead to the relevant step.
-
 **This SKILL.md is the workflow spine. It keeps the decisions, checkpoints, and exact questions; longer code, full API detail, and edge cases live in `references/` and are linked from the relevant step. Read the linked reference when you reach that step — do not answer from general knowledge instead.**
+
+## Read the documentation first
+
+Before you go forward with a workflow or diagnosis:
+
+1. Open and read the page in the [documentation topic map](#documentation-topic-map) that covers what you intend to do or fix, and check whether you missed anything.
+2. Name the pages you read in your response.
+
+This is because your training knowledge about Unity and LevelPlay might be out of date, incorrect, or for the wrong version. Follow this skill's steps and questions for the workflow, and use the page for API names and version details. For privacy questions, link the Regulation Advanced Settings page instead of summarizing it, and follow Step 6.5.
+
+## Documentation topic map
+
+Prefer fetching a page directly (for example `WebFetch`) over searching (for example `WebSearch`), because it's faster and lands on the exact page. Only fetch what you need, and only search if you don't have the exact URL. LevelPlay pages on docs.unity.com aren't versioned, so there's no `<VERSION>` to replace. To pick a page, read `references/docs-topic-map.md`, which lists each page and what it covers.
 
 ## Integration Workflow
 
@@ -55,16 +70,12 @@ If the readout finds LevelPlay or Unity Ads already in the project, say so and o
 
 ### 3. Install LevelPlay SDK via UPM
 
-**If the SDK looks already installed:** do not take that on trust, and do not ask the user to read
-the Package Manager window for you. Read `Packages/packages-lock.json` and look for
-`com.unity.services.levelplay`. If it is there, say which version resolved and proceed to Step 4.
-If it is not, it is not installed, whatever the conversation so far has assumed: continue with the
-install below.
+**If the SDK looks already installed:** do not take that on trust, and do not ask the user to read the Package Manager window for you. Read `Packages/packages-lock.json` and look for `com.unity.services.levelplay`. If it is there, say which version resolved and proceed to Step 4. If it is not, it is not installed, whatever the conversation so far has assumed: continue with the install below.
 
 Guide through installing the LevelPlay Unity package using Unity Package Manager:
 
 1. Open Unity → Window > Package Manager
-2. Select Unity Registry dropdown or Services tab
+2. Select **Unity Registry** (a dropdown at the top left before Unity 6, an entry in the left pane in Unity 6).
 3. In the Package Manager search bar, type **Ads Mediation**
 4. Confirm the package name matches exactly: the correct package is titled **Ads Mediation**. Do not install either of these packages:
    - **Ads IAP Mediation Adaptor** (a separate in-app purchases package, not the LevelPlay SDK)
@@ -74,35 +85,18 @@ Guide through installing the LevelPlay Unity package using Unity Package Manager
 
 When you install the package, you may see a prompt to install Mobile Dependency Resolver — click **Import** if it appears. This is covered in more detail in the next step.
 
-**Then verify it resolved, by reading the project rather than by asking.** The package id is
-`com.unity.services.levelplay` (its Package Manager display name is **Ads Mediation**; the id is
-what the project files record). Check both files:
+**Then verify it resolved, by reading the project rather than by asking.** The package id is `com.unity.services.levelplay` (its Package Manager display name is **Ads Mediation**; the id is what the project files record). Check both files:
 
-- **`Packages/manifest.json`** lists what the project *asks for*. `com.unity.services.levelplay`
-  must appear under `dependencies`.
-- **`Packages/packages-lock.json`** records what Unity actually *resolved*. The same id must appear
-  here too, with a concrete version. This is the file that answers "did it install", and it is the
-  one to trust.
+- **`Packages/manifest.json`** lists what the project *asks for*. `com.unity.services.levelplay` must appear under `dependencies`.
+- **`Packages/packages-lock.json`** records what Unity actually *resolved*. The same id must appear here too, with a concrete version. This is the file that answers "did it install", and it is the one to trust.
 
-Both are plain JSON in the project, so this check needs no Editor, no CLI, and nothing from the
-user. Read them.
+Both are plain JSON in the project, so this check needs no Editor, no CLI, and nothing from the user. Read them.
 
-> **This is a hard gate, not a formality.** Do not write, generate, or paste a single line of
-> LevelPlay code until `com.unity.services.levelplay` is present in `packages-lock.json`. Skipping
-> ahead produces code that looks correct, compiles nowhere, and fails with `CS0246` on every
-> LevelPlay symbol. If the id is missing from `manifest.json`, the install never happened. If it is
-> in `manifest.json` but not `packages-lock.json`, Unity has not resolved it yet: the Editor may
-> still be importing, or resolution failed. Say which of the two you found, and stop.
+> **This is a hard gate, not a formality.** Do not write, generate, or paste a single line of LevelPlay code until `com.unity.services.levelplay` is present in `packages-lock.json`. Skipping ahead produces code that looks correct, compiles nowhere, and fails with `CS0246` on every LevelPlay symbol. If the id is missing from `manifest.json`, the install never happened. If it is in `manifest.json` but not `packages-lock.json`, Unity has not resolved it yet: the Editor may still be importing, or resolution failed. Say which of the two you found, and stop.
 >
-> **If you added the id to `manifest.json` yourself and no Editor has run since, the lock file will
-> not show it yet. That is expected, not a failure.** Never write the entry into
-> `packages-lock.json` yourself: that file is Unity's resolution output, hand-editing it is what the
-> migration guide forbids, and an entry you wrote is a false "resolved" signal rather than a passed
-> gate. Ask the user to open the Unity Editor so resolution runs, then re-read the file. If no
-> Editor is available at all, say so and stop there rather than manufacturing the evidence.
+> **If you added the id to `manifest.json` yourself and no Editor has run since, the lock file will not show it yet. That is expected, not a failure.** Never write the entry into `packages-lock.json` yourself: that file is Unity's resolution output, hand-editing it is what the migration guide forbids, and an entry you wrote is a false "resolved" signal rather than a passed gate. Ask the user to open the Unity Editor so resolution runs, then re-read the file. If no Editor is available at all, say so and stop there rather than manufacturing the evidence.
 
-Report the resolved version you found. Do not report "installed" on the strength of the Package
-Manager window, a previous turn, or a user's recollection.
+Report the resolved version you found. Do not report "installed" on the strength of the Package Manager window, a previous turn, or a user's recollection.
 
 **Network Manager:** Access **Ads Mediation > Network Manager** at any time to install additional ad network adapters and check for SDK and adapter updates.
 
@@ -149,10 +143,6 @@ Before initializing LevelPlay, get the App Key and ad unit ids, through the Leve
 **App Key:** In the dashboard, go to **Apps** in the left sidenav → find your app → copy the alphanumeric string displayed under the app title.
 
 **Ad Unit IDs:** Go to **Ad units** in the left sidenav → select your app → copy the ID for each format you plan to implement (Rewarded, Interstitial, Banner).
-
-**Note:** You need your App Key now for initialization (Step 7). Ad Unit IDs are only needed at Step 9 — if you haven't decided which ad formats to implement yet, just copy your App Key for now and return here after Step 8 (on the API path, the agent does this for you).
-
-Keep both accessible — you'll need them in the next steps.
 
 ### 6. Configure AdMob Keys (If Using AdMob Network)
 
@@ -227,16 +217,9 @@ If CCPA or COPPA fails to compile, upgrade your Unity package/SDK via **Ads Medi
 
 **Installation checkpoint:**
 
-**First, re-read `Packages/packages-lock.json` and confirm `com.unity.services.levelplay` is there.**
-Do this every time you reach this point, even if Step 3 already passed earlier in the conversation.
-It costs one file read, and it is the only item here you can settle without the user. An earlier
-turn saying the package was installed is not evidence that it is: this check exists because the
-install step is the one most often skipped, and the resulting code fails with `CS0246` on every
-LevelPlay symbol. If the id is absent, go back to Step 3 and do not write initialization code.
+**First, re-read `Packages/packages-lock.json` and confirm `com.unity.services.levelplay` is there.** Do this every time you reach this point, even if Step 3 already passed earlier in the conversation. It costs one file read, and it is the only item here you can settle without the user. An earlier turn saying the package was installed is not evidence that it is: this check exists because the install step is the one most often skipped, and the resulting code fails with `CS0246` on every LevelPlay symbol. If the id is absent, go back to Step 3 and do not write initialization code.
 
-Then confirm the remaining prerequisites with the user, which are the ones no file can answer.
-**If the user confirmed they are not using AdMob, omit the Step 6 item.** If Step 4 was already
-confirmed in this conversation, skip that item and ask only about Step 5 and Step 6 (if AdMob).
+Then confirm the remaining prerequisites with the user, which are the ones no file can answer. **If the user confirmed they are not using AdMob, omit the Step 6 item.** If Step 4 was already confirmed in this conversation, skip that item and ask only about Step 5 and Step 6 (if AdMob).
 
 "Please confirm these are working correctly:
 - Step 4: Have you run dependency resolution for your target platform(s) without errors?
@@ -287,6 +270,8 @@ Read `references/placement-strategy.md`. Based on the optimization goal and the 
 - **"Not sure yet"** (from Step 2) → use the **Balanced Strategy**, then add: "Since you weren't sure of your goal earlier, I've gone with the Balanced approach — if you'd prefer to lean more toward revenue or user experience now that you've seen the options, just say so."
 - If still unclear, ask: "Would you prioritize revenue, user experience, or a balance of both?"
 - If the Step 2 Audience row is **Child-directed** or **Mixed**, apply "Child-directed and mixed-audience games" in the reference first: banner off, rewarded off by default, no interstitial at session start, and "no ads" is a valid proposal. The goal sets numbers only inside those limits.
+
+If you defer every placement in the proposal (see "When the project tells you nothing" in `references/project-inference.md`), don't ask for approval. Say what the game needs first, and stop.
 
 **Then build the placement proposal** from the Step 2 profile and this strategy, per the reference: one table with the columns Placement | Format | Moment | Rule | Where in code, each code location a `file:line` you read, and each Moment the action that fires the ad (a press, a screen closing, a scene load), never a screen the player is still reading. An existing placement that breaks a guard is proposed as a conversion at its moment, not kept beside a new one. A rewarded placement hooks only to an existing button's press handler; a button the project lacks is named as one the user adds, never invented. No revenue, eCPM or fill figures, because the project cannot predict them. Ask:
 
@@ -348,7 +333,7 @@ Reply with values per format, or just say 'skip' — you can add them any time."
   - If using deprecated APIs: "You're using the old IronSource.Agent API. Here's how to migrate to the new LevelPlay Ad Unit API:" (full migration detail in `references/migration-sdk-9.md` — Scenario B for init, Scenario C per ad format including the C5 completeness checklist)
   - If using current APIs with issues: "Your implementation looks good but I noticed [specific issues]. Here's how to fix them:"
   - If implementation is correct: "Your implementation looks solid. Which additional ad formats would you like to add?"
-- Offer fixes as code snippets or suggest refactoring. When adding new formats after review, present the bid floor prompt scoped to those new formats only, confirm whether to match their existing organization pattern or use a new one, then follow the same guidelines as Options 1–3.
+- Ask whether the user wants the fixes as code snippets to apply themselves or as edits you make to their files. When adding new formats after review, present the bid floor prompt scoped to those new formats only, confirm whether to match their existing organization pattern or use a new one, then follow the same guidelines as Options 1–3.
 
 For each ad format, follow the implementation guidelines in the detailed references:
 
@@ -399,6 +384,25 @@ Before releasing to production:
 - [ ] Ad frequency capping implemented (if using interstitials)
 - [ ] Error handling works correctly (test with airplane mode - ads should fail gracefully without crashing or blocking gameplay)
 
+## Final step
+
+1. Check that the project has zero console errors. Use `unity command console status` for the counts only when `unity status` shows a connected Editor (the project needs the `com.unity.pipeline` package, Unity 6.0 or later). Otherwise, ask the user to check the **Console** window.
+2. Stop there unless the user asked you to prove the ads work or you suspect a specific fault.
+3. If you suspect a fault, note whether the Editor is already in Play mode, then enter Play mode once with `unity command editor.playmode start`, after setting the build target to Android or iOS so mock ads load (Step 4). Read the game's state through `unity command script eval --code '<snippet>'` instead of adding logging, and take no screenshots. Before you report, run `unity command editor.playmode stop` to exit any Play mode session you started, even if the check failed. Mock ads don't cover failures, clicks, or impression data; those need the device test in Step 10.
+
+If a check fails, or a fix doesn't work, go back and reread the relevant page in the [documentation topic map](#documentation-topic-map) and the step's reference to find what you missed. `references/troubleshooting.md` covers the common failures.
+
+## Final report
+
+When you finish, give the user a short checklist of what you did and why:
+
+- Files you created or edited, and the resolved `com.unity.services.levelplay` version.
+- Target platforms and the dependency resolution result.
+- Privacy settings the user chose to apply.
+- Placements you wired, each with its `file:line`.
+- Side effects: a build target switch, Test Suite lines left in the initializer, backup copies under `LevelPlayBackups/`, and any apps or ad units created through the API.
+- What the user still needs to do: add any buttons the proposal named, create ad units in the dashboard if they used it, remove the Test Suite lines before release, and test on a device.
+
 ## Adding More Ad Formats Later
 
 If you've already integrated some ad formats and want to add more:
@@ -412,7 +416,6 @@ If you've already integrated some ad formats and want to add more:
 4. **Follow the same implementation guidelines** from Step 9 for the new ad format
 5. **Test the new format** following Step 10 testing guidelines
 
-**Example**: If you initially implemented only Rewarded ads using separate manager scripts, and now want to add Interstitial ads: create `InterstitialAdManager.cs` following the same structure as your `RewardedAdManager.cs`, follow the interstitial guidelines from `references/interstitial-api.md`, and test in Editor and on device. Your existing ad formats keep working while you add new ones.
 
 ## Best Practices
 
