@@ -118,7 +118,7 @@ As you work, commit your changes in line with the user's version control setup. 
 
 ## Recipe
 1. Make sure the project opens cleanly (with no compile or other errors in the Editor).  If there are issues present, check with the user; they may know about them and want to ignore them.  Run the test case and make sure you know what state it's in, fixing things if necessary.
-2. Commit any changes so that we start the upgrade process with clean version control.
+2. Check the working tree first. If it has uncommitted changes you didn't make, ask the user how to preserve them (commit, stash or leave them), then create a scoped rollback point (a commit of only your own starting state, or a branch) so the process starts from a known version control state.
 3. Open the project in the Unity Editor.  Then use Unity CLI to run the audit command.
 4. Group the issues by file and by type.
 5. Choose a type of issue to work through one group or file at a time.
