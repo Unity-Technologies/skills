@@ -141,6 +141,12 @@ foreach (var vol in volumes)
     if (profile == null) { report.AppendLine($"Warning: Volume '{vol.name}' has no profile assigned."); continue; }
     if (profile.components.Count == 0)
         report.AppendLine($"Warning: Volume '{vol.name}' profile has no overrides.");
+    // An override added to a profile asset without AddObjectToAsset is in memory only: it shows
+    // up now but is gone after the next Editor restart.
+    if (UnityEditor.EditorUtility.IsPersistent(profile))
+        foreach (var c in profile.components)
+            if (c != null && !UnityEditor.AssetDatabase.IsSubAsset(c))
+                report.AppendLine($"Warning: override '{c.GetType().Name}' on profile '{profile.name}' is not saved in the asset. Call AssetDatabase.AddObjectToAsset(component, profile), then SaveAssets().");
 }
 
 // Return the findings: logs land in the Editor console, the returned value comes back to you
@@ -191,13 +197,14 @@ using UnityEngine.Rendering.Universal;  // Bloom, Tonemapping, ColorAdjustments,
 | `UnityEngine.Rendering.PostProcessing` | `UnityEngine.Rendering.Universal` |
 | `profile.GetSetting<T>()` | `profile.TryGet<T>(out var t)` (returns bool) |
 | `profile.AddSettings<T>()` | `profile.Add<T>()` (returns T; throws if already exists — check `profile.Has<T>()` first) |
-| `volume.sharedProfile` (to modify at runtime) | `volume.profile` (auto-clones the asset into an instance) |
-| `VolumeManager.instance.stack.GetComponent<T>()` | `volume.profile.TryGet<T>(out var t)` |
+| `volume.profile = asset` (in Editor code) | `volume.sharedProfile = asset` (references the asset; the `profile` slot is a runtime instance the scene never saves) |
+| `VolumeManager.instance.stack.GetComponent<T>()` | `volume.sharedProfile.TryGet<T>(out var t)` |
 
 ### Key Facts
 - **`overrideState = true`** is required on every `VolumeParameter` you set. The volume system skips parameters where `overrideState` is `false`. This is the #1 scripting mistake.
 - **`sharedProfile`** = returns the asset directly (edits persist to disk). **`profile`** = auto-clones into an instance if needed (safe for runtime edits). Check with `volume.HasInstantiatedProfile()`.
 - **`profile.Add<T>(bool overrides = false)`** — pass `true` to auto-enable `overrideState` on all parameters of the added component.
+- **On a profile asset in the Editor, `Add<T>()` alone is in memory only.** Also call `UnityEditor.AssetDatabase.AddObjectToAsset(component, profile)` before `SaveAssets()`, or the override is gone after the next Editor restart. A runtime `volume.profile` instance doesn't need it.
 
 ## Step 7. Debugging Checklist
 
@@ -205,7 +212,9 @@ When post-processing isn't working, check in order:
 
 1. `cam.TryGetComponent<UniversalAdditionalCameraData>(out var data)` succeeds and `data.renderPostProcessing` is `true`?
 2. Volume exists in scene with a non-null `profile` (or `sharedProfile`) assigned?
-3. Overrides added via `profile.Add<T>()` AND `overrideState = true` on each property you set?
+3. Overrides added via `profile.Add<T>()` AND `overrideState = true` on each property you set? On a profile asset, is each override also a sub-asset (`AssetDatabase.AddObjectToAsset`)?
+   - The effect worked but vanished after Play Mode exit or an Editor restart: the override was never stored in the asset. `AssetDatabase.LoadAllAssetsAtPath(profilePath)` must return the profile plus one object per override.
+   - The Volume's profile field shows `None` while the effect still renders: the code assigned `volume.profile` instead of `volume.sharedProfile`.
 4. Volume's `GameObject.layer` is included in camera's `data.volumeLayerMask`? (Default mask is layer 0 "Default" only.)
 5. `volume.isGlobal = true` (for global), or camera is inside the Volume's trigger `Collider` (for local)?
 6. Camera `data.renderType` is `CameraRenderType.Base`, not `Overlay`? (Overlay cameras composite onto the Base camera's output.)

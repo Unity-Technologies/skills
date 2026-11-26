@@ -27,8 +27,11 @@ var profile = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.Rendering.
 var assetPath = UnityEditor.AssetDatabase.GenerateUniqueAssetPath("Assets/Settings/PostProcessProfile.asset");
 UnityEditor.AssetDatabase.CreateAsset(profile, assetPath);
 
-// MUST set overrideState = true on each property
+// MUST set overrideState = true on each property.
+// On a profile ASSET, Add<T>() only creates the component in memory: also store it in the asset
+// with AddObjectToAsset, or the override is gone after the next Editor restart or asset reload.
 var bloom = profile.Add<UnityEngine.Rendering.Universal.Bloom>();
+UnityEditor.AssetDatabase.AddObjectToAsset(bloom, profile);
 bloom.threshold.overrideState = true;
 bloom.threshold.value = 0.9f;
 bloom.intensity.overrideState = true;
@@ -37,16 +40,22 @@ bloom.scatter.overrideState = true;
 bloom.scatter.value = 0.7f;
 
 var tonemapping = profile.Add<UnityEngine.Rendering.Universal.Tonemapping>();
+UnityEditor.AssetDatabase.AddObjectToAsset(tonemapping, profile);
 tonemapping.mode.overrideState = true;
 tonemapping.mode.value = UnityEngine.Rendering.Universal.TonemappingMode.ACES;
 
 var volumeObj = new UnityEngine.GameObject("Global Volume");
 var volume = volumeObj.AddComponent<UnityEngine.Rendering.Volume>();
 volume.isGlobal = true;
-volume.profile = profile;
+// sharedProfile references the asset. The profile setter only fills the Volume's runtime slot,
+// which is not saved, so the reloaded scene would show the Volume with no profile.
+volume.sharedProfile = profile;
 
 UnityEditor.Undo.RegisterCreatedObjectUndo(volumeObj, "Create Global Volume");
+UnityEditor.EditorUtility.SetDirty(bloom);
+UnityEditor.EditorUtility.SetDirty(tonemapping);
 UnityEditor.EditorUtility.SetDirty(profile);
+UnityEditor.EditorUtility.SetDirty(volume);
 UnityEditor.AssetDatabase.SaveAssets();
 
 return "Created Global Volume with Bloom and ACES Tonemapping.";
@@ -95,11 +104,19 @@ if (volumeObj != null && volumeObj.TryGetComponent<UnityEngine.Rendering.Volume>
     && volume.sharedProfile != null)
 {
     var profile = volume.sharedProfile;
-    if (profile.TryGet<UnityEngine.Rendering.Universal.Bloom>(out var bloom))
-    {
-        bloom.intensity.overrideState = true;
-        bloom.intensity.value = 2f;
-    }
+    if (!profile.TryGet<UnityEngine.Rendering.Universal.Bloom>(out var bloom))
+        bloom = profile.Add<UnityEngine.Rendering.Universal.Bloom>();
+
+    // TryGet only reads the in-memory list, so finding the override doesn't mean it is saved.
+    // Store it in the asset if it isn't yet: this also repairs a profile written by code that
+    // skipped AddObjectToAsset.
+    if (!UnityEditor.AssetDatabase.IsSubAsset(bloom))
+        UnityEditor.AssetDatabase.AddObjectToAsset(bloom, profile);
+
+    bloom.intensity.overrideState = true;
+    bloom.intensity.value = 2f;
+
+    UnityEditor.EditorUtility.SetDirty(bloom);
     UnityEditor.EditorUtility.SetDirty(profile);
     // SetDirty only marks the asset. Without this the edit is in memory only: it reads back
     // correctly for the rest of the session and is lost when the session ends.
@@ -130,6 +147,8 @@ UnityEditor.EditorUtility.SetDirty(target);
 // SetDirty marks; it does not write. Persist according to what `target` is, or the change is
 // lost at session end even though every read-back looks correct:
 //   an asset (Volume Profile, URP Asset)  -> UnityEditor.AssetDatabase.SaveAssets();
+//                                            (persists edits to existing overrides; an override
+//                                            newly added with Add<T>() also needs AddObjectToAsset)
 //   a component in a scene                -> MarkSceneDirty(target.gameObject.scene) and tell
 //                                            the user the scene needs saving
 UnityEditor.Undo.FlushUndoRecordObjects();         // force the snapshot out now
